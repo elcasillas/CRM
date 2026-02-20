@@ -11,3 +11,15 @@ export interface Contact {
   notes: string | null
   created_at: string
 }
+
+export type InteractionType = 'call' | 'email' | 'meeting' | 'note' | 'other'
+
+export interface Interaction {
+  id: string
+  user_id: string
+  contact_id: string
+  type: InteractionType
+  occurred_at: string
+  notes: string | null
+  created_at: string
+}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { Contact, ContactStatus } from '@/lib/types'
 
@@ -166,7 +167,11 @@ export default function ContactsPage() {
             <tbody>
               {contacts.map(c => (
                 <tr key={c.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-                  <td className="py-3 pr-6 text-slate-200">{c.name}</td>
+                  <td className="py-3 pr-6">
+                    <Link href={`/dashboard/contacts/${c.id}`} className="text-slate-200 hover:text-white transition-colors">
+                      {c.name}
+                    </Link>
+                  </td>
                   <td className="py-3 pr-6 text-slate-400">{c.email ?? '—'}</td>
                   <td className="py-3 pr-6 text-slate-400">{c.company ?? '—'}</td>
                   <td className="py-3 pr-6">
