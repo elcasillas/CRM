@@ -12,7 +12,11 @@ An AI-powered CRM built with Next.js 15 (App Router), TypeScript, Tailwind CSS, 
 npm run dev        # start dev server at localhost:3000
 npm run build      # production build (must pass before merging)
 npm run lint       # ESLint
+
+supabase db push   # apply pending migrations to the remote Supabase project
 ```
+
+`SUPABASE_ACCESS_TOKEN` is set in `~/.bashrc`. The project is already linked (`supabase link` has been run); no re-linking needed in a fresh shell.
 
 ## Environment Setup
 
