@@ -46,6 +46,10 @@ logs/
 secrets.json
 credentials.json
 
+# Supabase local config (contains real keys — never commit)
+js/supabase-config.js
+js/supabase-config.local.js
+
 # Database
 *.db
 *.sqlite3
