@@ -3,29 +3,6 @@
 .env.local
 .env.*.local
 
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-.Python
-*.egg
-*.egg-info/
-dist/
-build/
-eggs/
-parts/
-var/
-sdist/
-develop-eggs/
-.installed.cfg
-lib/
-lib64/
-venv/
-.venv/
-env/
-ENV/
-
 # Jupyter Notebooks
 .ipynb_checkpoints/
 *.ipynb
