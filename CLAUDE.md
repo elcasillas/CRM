@@ -24,6 +24,22 @@ cp .env.local.example .env.local
 
 Required variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
 
+## Deployment
+
+Hosted on Vercel. Project: `ed-casillas-projects/crm`.
+
+```bash
+vercel --prod   # deploy from local (requires vercel login)
+```
+
+Pushes to `master` auto-deploy via the GitHub integration Vercel detected at first deploy.
+
+**Environment variables** are set in the Vercel project dashboard (or via `vercel env add`). The three required vars are the same as `.env.local`.
+
+**Supabase URL configuration** (required for auth redirects):
+- Site URL and allowed redirect URLs must include the Vercel domain.
+- Set in Supabase dashboard → Authentication → URL Configuration.
+
 ## Architecture
 
 ### Stack
