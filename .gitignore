@@ -53,3 +53,10 @@ js/supabase-config.local.js
 # Database
 *.db
 *.sqlite3
+
+# Next.js
+.next/
+out/
+
+# Node
+node_modules/
