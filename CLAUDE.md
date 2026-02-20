@@ -4,36 +4,53 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-An AI-powered CRM (Customer Relationship Management) app built as a vanilla HTML/JS/CSS frontend with Supabase as the backend. There is no build step — files are served directly in the browser.
+An AI-powered CRM built with Next.js 15 (App Router), TypeScript, Tailwind CSS, and Supabase (Postgres + Auth).
 
-## Running the App
-
-Open `index.html` directly in a browser, or serve it with any static file server:
+## Common Commands
 
 ```bash
-python -m http.server 8080
-# then visit http://localhost:8080
+npm run dev        # start dev server at localhost:3000
+npm run build      # production build (must pass before merging)
+npm run lint       # ESLint
 ```
+
+## Environment Setup
+
+Copy `.env.local.example` to `.env.local` and fill in values from the Supabase dashboard:
+
+```bash
+cp .env.local.example .env.local
+```
+
+Required variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
 
 ## Architecture
 
-- **No build toolchain** — no npm, no bundler, no compilation. All dependencies are loaded via CDN.
-- **Tailwind CSS** is loaded via CDN (`cdn.tailwindcss.com`) and used with utility classes directly in HTML.
-- **Supabase JS client** is loaded via CDN (`@supabase/supabase-js@2`).
-- **Dark theme** using Tailwind's `slate` palette (`bg-slate-900`, `text-slate-100`, etc.).
+### Stack
+- **Framework:** Next.js 15 App Router — server components by default, client components only where interactivity is needed
+- **Styling:** Tailwind CSS (dark slate palette: `bg-slate-900`, `text-slate-100`). Custom scrollbar in `app/globals.css`. No UI component library.
+- **Backend:** Supabase — Postgres as system of record, Supabase Auth for identity, Row Level Security on every table.
 
-## Supabase Configuration
+### Supabase Client Helpers
 
-`js/supabase-config.js` and `js/supabase-config.local.js` are gitignored (contain real keys). The loading order in `index.html` is:
+| File | Usage |
+|---|---|
+| `lib/supabase/client.ts` | Browser client — use in `'use client'` components |
+| `lib/supabase/server.ts` | Server client — use in server components and route handlers |
+| `middleware.ts` | Refreshes the session cookie on every request — do not remove |
 
-1. `js/supabase-config.local.js` — loaded first (local override, silently fails if absent)
-2. `js/supabase-config.js` — loaded as fallback only if `SUPABASE_URL` is still undefined
+For mutations that require elevated privileges, use the service role key only in route handlers (`app/**/route.ts`), never in client components.
 
-To set up locally, copy the example and fill in your credentials from the Supabase dashboard:
+### Database
 
-```bash
-cp js/supabase-config.example.js js/supabase-config.js
-# Edit js/supabase-config.js with your SUPABASE_URL and SUPABASE_ANON_KEY
-```
+Migrations live in `supabase/migrations/`. Apply them in order in a clean environment. Seed data is in `supabase/seed.sql`.
 
-The Supabase client is initialized in `js/app.js` and currently expects a `contacts` table to exist in the project.
+All tables must have:
+- `user_id uuid references auth.users not null`
+- RLS enabled with `user_id = auth.uid()` policies for all four operations
+
+### Non-Negotiables
+1. Supabase Postgres is the system of record — no client-side state as source of truth.
+2. RLS enforces access — never rely on client-side filtering for security.
+3. No serverful dependencies — Vercel Edge/serverless only.
+4. Keep UI consistent with the slate dark theme; no heavy UI frameworks.
