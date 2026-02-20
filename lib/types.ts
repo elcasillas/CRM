@@ -12,6 +12,24 @@ export interface Contact {
   created_at: string
 }
 
+export type DealStage = 'qualified' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost'
+
+export interface Deal {
+  id: string
+  user_id: string
+  contact_id: string | null
+  title: string
+  stage: DealStage
+  value: number | null
+  expected_close: string | null
+  notes: string | null
+  created_at: string
+}
+
+export interface DealWithContact extends Deal {
+  contacts: { name: string } | null
+}
+
 export type InteractionType = 'call' | 'email' | 'meeting' | 'note' | 'other'
 
 export interface Interaction {
