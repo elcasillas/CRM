@@ -30,4 +30,14 @@ begin
     (v_user_id, v_carol, 'call',    now() - interval '6 days',  'Walked through enterprise features.'),
     (v_user_id, v_david, 'email',   now() - interval '3 days',  'Follow-up on last quarter usage report.'),
     (v_user_id, v_eva,   'note',    now() - interval '2 days',  'Alice confirmed Eva is a strong referral. Schedule intro call.');
+
+  -- Deals
+  insert into public.deals (user_id, contact_id, title, stage, value, expected_close, notes) values
+    (v_user_id, v_alice, 'Acme Corp Q3 Renewal',       'closed_won',  24000,  current_date - 5,   'Signed and paid.'),
+    (v_user_id, v_bob,   'Beta LLC Starter Plan',       'proposal',    6000,   current_date + 14,  'Proposal sent, awaiting response.'),
+    (v_user_id, v_carol, 'Gamma Inc Enterprise Pilot',  'negotiation', 48000,  current_date + 30,  'Legal review in progress.'),
+    (v_user_id, v_david, 'Delta Co Expansion',          'qualified',   18000,  current_date + 45,  'Intro call complete, needs discovery.'),
+    (v_user_id, v_eva,   'Epsilon Ltd Referral Deal',   'qualified',   null,   null,               'Early stage — no value agreed yet.'),
+    (v_user_id, v_alice, 'Acme Corp Add-on Seats',      'proposal',    4800,   current_date + 10,  'Upsell on existing contract.'),
+    (v_user_id, null,    'Inbound — unassigned lead',   'qualified',   null,   null,               'Came in through the website form.');
 end $$;
