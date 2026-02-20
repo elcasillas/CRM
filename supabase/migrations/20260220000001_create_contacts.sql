@@ -3,7 +3,7 @@
 
 create table if not exists public.contacts (
   id         uuid        primary key default gen_random_uuid(),
-  user_id    uuid        not null references auth.users on delete cascade,
+  user_id    uuid        not null default auth.uid() references auth.users on delete cascade,
   name       text        not null,
   email      text,
   phone      text,
