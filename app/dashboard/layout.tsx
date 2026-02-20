@@ -5,6 +5,7 @@ import SignOutButton from '@/components/sign-out-button'
 
 const NAV_LINKS = [
   { href: '/dashboard/contacts', label: 'Contacts' },
+  { href: '/dashboard/pipeline', label: 'Pipeline' },
 ]
 
 export default async function DashboardLayout({
