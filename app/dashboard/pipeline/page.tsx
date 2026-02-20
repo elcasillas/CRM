@@ -17,11 +17,11 @@ const STAGE_LABELS: Record<DealStage, string> = {
 }
 
 const STAGE_HEADER_CLASSES: Record<DealStage, string> = {
-  qualified:   'text-slate-300',
-  proposal:    'text-yellow-300',
-  negotiation: 'text-orange-300',
-  closed_won:  'text-green-300',
-  closed_lost: 'text-slate-400',
+  qualified:   'text-gray-600',
+  proposal:    'text-amber-600',
+  negotiation: 'text-orange-600',
+  closed_won:  'text-green-600',
+  closed_lost: 'text-gray-400',
 }
 
 type FormData = {
@@ -37,12 +37,12 @@ const EMPTY_FORM: FormData = {
   title: '', stage: 'qualified', contact_id: '', value: '', expected_close: '', notes: '',
 }
 
-const INPUT = 'w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-100 focus:outline-none focus:border-slate-500 text-sm'
+const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs text-slate-400 mb-1">{label}</label>
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
       {children}
     </div>
   )
@@ -174,17 +174,17 @@ export default function PipelinePage() {
     <div className="px-6 py-8">
       {/* Page header */}
       <div className="flex items-center justify-between mb-6 max-w-full">
-        <h2 className="text-xl font-semibold text-slate-100">Pipeline</h2>
+        <h2 className="text-xl font-semibold text-gray-900">Pipeline</h2>
         <button
           onClick={() => openAdd()}
-          className="bg-slate-700 hover:bg-slate-600 text-slate-100 text-sm font-medium px-4 py-2 rounded transition-colors"
+          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
           + New deal
         </button>
       </div>
 
       {loading ? (
-        <p className="text-slate-400 text-sm">Loading…</p>
+        <p className="text-gray-400 text-sm">Loading…</p>
       ) : (
         /* Stage columns */
         <div className="overflow-x-auto pb-4">
@@ -195,15 +195,15 @@ export default function PipelinePage() {
               return (
                 <div key={stage} className="flex flex-col w-52 flex-shrink-0">
                   {/* Column header */}
-                  <div className="mb-3">
+                  <div className="mb-3 px-1">
                     <div className="flex items-baseline justify-between">
                       <span className={`text-xs font-semibold uppercase tracking-wide ${STAGE_HEADER_CLASSES[stage]}`}>
                         {STAGE_LABELS[stage]}
                       </span>
-                      <span className="text-xs text-slate-500">{stageDeals.length}</span>
+                      <span className="text-xs text-gray-400">{stageDeals.length}</span>
                     </div>
                     {total && (
-                      <p className="text-xs text-slate-500 mt-0.5">{total}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{total}</p>
                     )}
                   </div>
 
@@ -212,23 +212,23 @@ export default function PipelinePage() {
                     {stageDeals.map(deal => (
                       <div
                         key={deal.id}
-                        className="bg-slate-800 border border-slate-700 rounded-lg p-3"
+                        className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm"
                       >
-                        <p className="text-sm font-medium text-slate-100 leading-snug">{deal.title}</p>
+                        <p className="text-sm font-medium text-gray-900 leading-snug">{deal.title}</p>
 
                         {deal.contacts && (
-                          <p className="text-xs text-slate-400 mt-1">{deal.contacts.name}</p>
+                          <p className="text-xs text-gray-500 mt-1">{deal.contacts.name}</p>
                         )}
 
                         {(deal.value != null || deal.expected_close) && (
                           <div className="flex items-center gap-3 mt-2">
                             {deal.value != null && (
-                              <span className="text-xs text-slate-300 font-medium">
+                              <span className="text-xs text-gray-700 font-medium">
                                 {formatCurrency(deal.value)}
                               </span>
                             )}
                             {deal.expected_close && (
-                              <span className="text-xs text-slate-500">
+                              <span className="text-xs text-gray-400">
                                 {formatClose(deal.expected_close)}
                               </span>
                             )}
@@ -236,17 +236,17 @@ export default function PipelinePage() {
                         )}
 
                         {/* Card actions */}
-                        <div className="flex items-center gap-3 mt-2 pt-2 border-t border-slate-700">
+                        <div className="flex items-center gap-3 mt-2 pt-2 border-t border-gray-100">
                           {confirmDelete === deal.id ? (
                             <>
-                              <span className="text-xs text-slate-400">Delete?</span>
-                              <button onClick={() => handleDelete(deal.id)} className="text-xs text-red-400 hover:text-red-300">Confirm</button>
-                              <button onClick={() => setConfirmDelete(null)} className="text-xs text-slate-400 hover:text-slate-200">Cancel</button>
+                              <span className="text-xs text-gray-400">Delete?</span>
+                              <button onClick={() => handleDelete(deal.id)} className="text-xs text-red-600 hover:text-red-700 font-medium">Confirm</button>
+                              <button onClick={() => setConfirmDelete(null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
                             </>
                           ) : (
                             <>
-                              <button onClick={() => openEdit(deal)} className="text-xs text-slate-400 hover:text-slate-200">Edit</button>
-                              <button onClick={() => setConfirmDelete(deal.id)} className="text-xs text-slate-400 hover:text-red-400">Delete</button>
+                              <button onClick={() => openEdit(deal)} className="text-xs text-gray-500 hover:text-gray-700">Edit</button>
+                              <button onClick={() => setConfirmDelete(deal.id)} className="text-xs text-gray-500 hover:text-red-600">Delete</button>
                             </>
                           )}
                         </div>
@@ -256,7 +256,7 @@ export default function PipelinePage() {
                     {/* Per-column add button */}
                     <button
                       onClick={() => openAdd(stage)}
-                      className="w-full text-xs text-slate-500 hover:text-slate-300 border border-dashed border-slate-700 hover:border-slate-500 rounded-lg py-2 transition-colors"
+                      className="w-full text-xs text-gray-400 hover:text-gray-600 border border-dashed border-gray-300 hover:border-gray-400 rounded-xl py-2 transition-colors bg-white/50"
                     >
                       + Add
                     </button>
@@ -270,18 +270,18 @@ export default function PipelinePage() {
 
       {/* Add / Edit modal */}
       {modal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 border border-slate-700 rounded-lg w-full max-w-md">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md">
             {/* Modal header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
-              <h3 className="font-medium text-slate-100">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-900">
                 {modal === 'add' ? 'New deal' : 'Edit deal'}
               </h3>
-              <button onClick={closeModal} className="text-slate-400 hover:text-slate-200 text-lg leading-none">✕</button>
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
             </div>
 
             {/* Modal body */}
-            <div className="px-6 py-4 space-y-4">
+            <div className="px-6 py-5 space-y-4">
               <Field label="Title *">
                 <input type="text" value={form.title} onChange={set('title')} required className={INPUT} />
               </Field>
@@ -325,18 +325,18 @@ export default function PipelinePage() {
                 <textarea value={form.notes} onChange={set('notes')} rows={3} className={`${INPUT} resize-none`} />
               </Field>
 
-              {formError && <p className="text-red-400 text-sm">{formError}</p>}
+              {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
             </div>
 
             {/* Modal footer */}
-            <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3">
-              <button onClick={closeModal} className="text-sm text-slate-400 hover:text-slate-200">
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button onClick={closeModal} className="text-sm text-gray-500 hover:text-gray-700 font-medium">
                 Cancel
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving || !form.title.trim()}
-                className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-100 text-sm font-medium px-4 py-2 rounded transition-colors"
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>

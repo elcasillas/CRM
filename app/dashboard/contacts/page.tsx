@@ -15,10 +15,10 @@ const STATUS_LABELS: Record<ContactStatus, string> = {
 }
 
 const STATUS_CLASSES: Record<ContactStatus, string> = {
-  lead:     'bg-slate-700 text-slate-200',
-  prospect: 'bg-yellow-900/50 text-yellow-300',
-  customer: 'bg-green-900/50 text-green-300',
-  churned:  'bg-red-900/50 text-red-300',
+  lead:     'bg-gray-100 text-gray-700',
+  prospect: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+  customer: 'bg-green-50 text-green-700 ring-1 ring-green-200',
+  churned:  'bg-red-50 text-red-600 ring-1 ring-red-200',
 }
 
 type FormData = {
@@ -34,25 +34,25 @@ const EMPTY_FORM: FormData = {
   name: '', email: '', phone: '', company: '', status: 'lead', notes: '',
 }
 
-const INPUT = 'w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-100 focus:outline-none focus:border-slate-500 text-sm'
+const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs text-slate-400 mb-1">{label}</label>
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
       {children}
     </div>
   )
 }
 
 export default function ContactsPage() {
-  const [contacts, setContacts]       = useState<Contact[]>([])
-  const [loading, setLoading]         = useState(true)
-  const [modal, setModal]             = useState<'add' | 'edit' | null>(null)
-  const [editing, setEditing]         = useState<Contact | null>(null)
-  const [form, setForm]               = useState<FormData>(EMPTY_FORM)
-  const [saving, setSaving]           = useState(false)
-  const [formError, setFormError]     = useState<string | null>(null)
+  const [contacts, setContacts]           = useState<Contact[]>([])
+  const [loading, setLoading]             = useState(true)
+  const [modal, setModal]                 = useState<'add' | 'edit' | null>(null)
+  const [editing, setEditing]             = useState<Contact | null>(null)
+  const [form, setForm]                   = useState<FormData>(EMPTY_FORM)
+  const [saving, setSaving]               = useState(false)
+  const [formError, setFormError]         = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   const fetchContacts = useCallback(async () => {
@@ -138,10 +138,10 @@ export default function ContactsPage() {
     <div className="max-w-7xl mx-auto px-6 py-8">
       {/* Page header */}
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-slate-100">Contacts</h2>
+        <h2 className="text-xl font-semibold text-gray-900">Contacts</h2>
         <button
           onClick={openAdd}
-          className="bg-slate-700 hover:bg-slate-600 text-slate-100 text-sm font-medium px-4 py-2 rounded transition-colors"
+          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
           + New contact
         </button>
@@ -149,48 +149,48 @@ export default function ContactsPage() {
 
       {/* List */}
       {loading ? (
-        <p className="text-slate-400 text-sm">Loading…</p>
+        <p className="text-gray-400 text-sm">Loading…</p>
       ) : contacts.length === 0 ? (
-        <p className="text-slate-400 text-sm">No contacts yet. Add one to get started.</p>
+        <p className="text-gray-500 text-sm">No contacts yet. Add one to get started.</p>
       ) : (
-        <div className="overflow-x-auto">
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-800 text-left">
-                <th className="pb-3 pr-6 text-slate-400 font-medium">Name</th>
-                <th className="pb-3 pr-6 text-slate-400 font-medium">Email</th>
-                <th className="pb-3 pr-6 text-slate-400 font-medium">Company</th>
-                <th className="pb-3 pr-6 text-slate-400 font-medium">Status</th>
-                <th className="pb-3 text-slate-400 font-medium"></th>
+              <tr className="border-b border-gray-200 bg-gray-50">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3"></th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-100">
               {contacts.map(c => (
-                <tr key={c.id} className="border-b border-slate-800/50 hover:bg-slate-800/30">
-                  <td className="py-3 pr-6">
-                    <Link href={`/dashboard/contacts/${c.id}`} className="text-slate-200 hover:text-white transition-colors">
+                <tr key={c.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-3.5">
+                    <Link href={`/dashboard/contacts/${c.id}`} className="font-medium text-gray-900 hover:text-blue-600 transition-colors">
                       {c.name}
                     </Link>
                   </td>
-                  <td className="py-3 pr-6 text-slate-400">{c.email ?? '—'}</td>
-                  <td className="py-3 pr-6 text-slate-400">{c.company ?? '—'}</td>
-                  <td className="py-3 pr-6">
-                    <span className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${STATUS_CLASSES[c.status]}`}>
+                  <td className="px-6 py-3.5 text-gray-500">{c.email ?? '—'}</td>
+                  <td className="px-6 py-3.5 text-gray-500">{c.company ?? '—'}</td>
+                  <td className="px-6 py-3.5">
+                    <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${STATUS_CLASSES[c.status]}`}>
                       {STATUS_LABELS[c.status]}
                     </span>
                   </td>
-                  <td className="py-3">
+                  <td className="px-6 py-3.5">
                     <div className="flex items-center gap-3 justify-end">
                       {confirmDelete === c.id ? (
                         <>
-                          <span className="text-slate-400 text-xs">Delete?</span>
-                          <button onClick={() => handleDelete(c.id)} className="text-xs text-red-400 hover:text-red-300">Confirm</button>
-                          <button onClick={() => setConfirmDelete(null)} className="text-xs text-slate-400 hover:text-slate-200">Cancel</button>
+                          <span className="text-gray-400 text-xs">Delete?</span>
+                          <button onClick={() => handleDelete(c.id)} className="text-xs text-red-600 hover:text-red-700 font-medium">Confirm</button>
+                          <button onClick={() => setConfirmDelete(null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
                         </>
                       ) : (
                         <>
-                          <button onClick={() => openEdit(c)} className="text-xs text-slate-400 hover:text-slate-200">Edit</button>
-                          <button onClick={() => setConfirmDelete(c.id)} className="text-xs text-slate-400 hover:text-red-400">Delete</button>
+                          <button onClick={() => openEdit(c)} className="text-xs text-gray-500 hover:text-gray-700">Edit</button>
+                          <button onClick={() => setConfirmDelete(c.id)} className="text-xs text-gray-500 hover:text-red-600">Delete</button>
                         </>
                       )}
                     </div>
@@ -204,18 +204,18 @@ export default function ContactsPage() {
 
       {/* Add / Edit modal */}
       {modal && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-800 border border-slate-700 rounded-lg w-full max-w-md">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md">
             {/* Modal header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
-              <h3 className="font-medium text-slate-100">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-900">
                 {modal === 'add' ? 'New contact' : 'Edit contact'}
               </h3>
-              <button onClick={closeModal} className="text-slate-400 hover:text-slate-200 text-lg leading-none">✕</button>
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
             </div>
 
             {/* Modal body */}
-            <div className="px-6 py-4 space-y-4">
+            <div className="px-6 py-5 space-y-4">
               <Field label="Name *">
                 <input type="text" value={form.name} onChange={set('name')} required className={INPUT} />
               </Field>
@@ -240,18 +240,18 @@ export default function ContactsPage() {
               <Field label="Notes">
                 <textarea value={form.notes} onChange={set('notes')} rows={3} className={`${INPUT} resize-none`} />
               </Field>
-              {formError && <p className="text-red-400 text-sm">{formError}</p>}
+              {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
             </div>
 
             {/* Modal footer */}
-            <div className="px-6 py-4 border-t border-slate-700 flex justify-end gap-3">
-              <button onClick={closeModal} className="text-sm text-slate-400 hover:text-slate-200">
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button onClick={closeModal} className="text-sm text-gray-500 hover:text-gray-700 font-medium">
                 Cancel
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving || !form.name.trim()}
-                className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-100 text-sm font-medium px-4 py-2 rounded transition-colors"
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>
