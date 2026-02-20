@@ -1,6 +1,11 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import SignOutButton from '@/components/sign-out-button'
+
+const NAV_LINKS = [
+  { href: '/dashboard/contacts', label: 'Contacts' },
+]
 
 export default async function DashboardLayout({
   children,
@@ -18,7 +23,20 @@ export default async function DashboardLayout({
     <div>
       <header className="border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <span className="font-semibold text-slate-100">CRM</span>
+          <div className="flex items-center gap-6">
+            <span className="font-semibold text-slate-100">CRM</span>
+            <nav className="flex items-center gap-4">
+              {NAV_LINKS.map(link => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="text-sm text-slate-400 hover:text-slate-200 transition-colors"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-slate-400">{user.email}</span>
             <SignOutButton />
