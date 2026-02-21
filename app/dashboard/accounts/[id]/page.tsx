@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type {
   Account, Contact, Contract, DealStage, DealWithRelations,
@@ -108,7 +108,9 @@ function Modal({ title, onClose, onSave, saving, disabled, error, children }: {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function AccountDetailPage() {
-  const { id } = useParams<{ id: string }>()
+  const { id }      = useParams<{ id: string }>()
+  const searchParams = useSearchParams()
+  const initialTab  = (searchParams.get('tab') as Tab | null) ?? 'contacts'
 
   const [account,   setAccount]   = useState<Account | null>(null)
   const [contacts,  setContacts]  = useState<Contact[]>([])
@@ -121,7 +123,7 @@ export default function AccountDetailPage() {
   const [loading,   setLoading]   = useState(true)
   const [notFound,  setNotFound]  = useState(false)
 
-  const [tab, setTab] = useState<Tab>('contacts')
+  const [tab, setTab] = useState<Tab>(initialTab)
 
   // ── Per-entity modal state ──────────────────────────────────────────────────
   const [saving,    setSaving]    = useState(false)

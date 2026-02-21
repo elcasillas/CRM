@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import SignOutButton from '@/components/sign-out-button'
+import { GlobalSearch } from '@/components/global-search'
 
 export default async function DashboardLayout({
   children,
@@ -61,6 +62,7 @@ export default async function DashboardLayout({
             </nav>
           </div>
           <div className="flex items-center gap-4">
+            <GlobalSearch />
             <span className="text-sm text-gray-400">{user.email}</span>
             <SignOutButton />
           </div>
