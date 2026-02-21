@@ -36,8 +36,11 @@ function formatDate(ts: string) {
   return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-type FormData = { email: string; full_name: string; password: string; role: string }
-const EMPTY_FORM: FormData = { email: '', full_name: '', password: '', role: 'sales' }
+type AddForm  = { email: string; full_name: string; password: string; role: string }
+type EditForm = { full_name: string; email: string; role: string; new_password: string }
+
+const EMPTY_ADD: AddForm   = { email: '', full_name: '', password: '', role: 'sales' }
+const EMPTY_EDIT: EditForm = { full_name: '', email: '', role: 'sales', new_password: '' }
 
 export function UsersClient({
   users: initialUsers,
@@ -46,22 +49,46 @@ export function UsersClient({
   users: User[]
   currentUserId: string
 }) {
-  const [users, setUsers]       = useState(initialUsers)
-  const [modal, setModal]       = useState(false)
-  const [form, setForm]         = useState<FormData>(EMPTY_FORM)
-  const [saving, setSaving]     = useState(false)
+  const [users, setUsers]         = useState(initialUsers)
+  const [modal, setModal]         = useState<'add' | 'edit' | null>(null)
+  const [addForm, setAddForm]     = useState<AddForm>(EMPTY_ADD)
+  const [editForm, setEditForm]   = useState<EditForm>(EMPTY_EDIT)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [saving, setSaving]       = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
-  const [roleSaving, setRoleSaving] = useState<string | null>(null)
 
-  function set(field: keyof FormData) {
+  function setAdd(field: keyof AddForm) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setForm(f => ({ ...f, [field]: e.target.value }))
+      setAddForm(f => ({ ...f, [field]: e.target.value }))
   }
 
-  function openModal() {
-    setForm(EMPTY_FORM)
+  function setEdit(field: keyof EditForm) {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+      setEditForm(f => ({ ...f, [field]: e.target.value }))
+  }
+
+  function openAdd() {
+    setAddForm(EMPTY_ADD)
     setFormError(null)
-    setModal(true)
+    setModal('add')
+  }
+
+  function openEdit(user: User) {
+    setEditForm({
+      full_name:    user.full_name ?? '',
+      email:        user.email ?? '',
+      role:         user.role,
+      new_password: '',
+    })
+    setEditingId(user.id)
+    setFormError(null)
+    setModal('edit')
+  }
+
+  function closeModal() {
+    setModal(null)
+    setEditingId(null)
+    setFormError(null)
   }
 
   async function handleAdd() {
@@ -70,35 +97,51 @@ export function UsersClient({
     const res = await fetch('/api/admin/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify(addForm),
     })
     const data = await res.json()
     if (!res.ok) {
       setFormError(data.error)
     } else {
       setUsers(prev => [{
-        id: data.userId,
-        full_name: form.full_name.trim() || null,
-        role: form.role,
+        id:         data.userId,
+        full_name:  addForm.full_name.trim() || null,
+        role:       addForm.role,
         created_at: new Date().toISOString(),
-        email: form.email.trim(),
+        email:      addForm.email.trim(),
       }, ...prev])
-      setModal(false)
+      closeModal()
     }
     setSaving(false)
   }
 
-  async function handleRoleChange(userId: string, newRole: string) {
-    setRoleSaving(userId)
+  async function handleEdit() {
+    if (!editingId) return
+    setSaving(true)
+    setFormError(null)
     const res = await fetch('/api/admin/users', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId, role: newRole }),
+      body: JSON.stringify({
+        userId:       editingId,
+        full_name:    editForm.full_name,
+        email:        editForm.email,
+        role:         editForm.role,
+        new_password: editForm.new_password || undefined,
+      }),
     })
-    if (res.ok) {
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: newRole } : u))
+    const data = await res.json()
+    if (!res.ok) {
+      setFormError(data.error)
+    } else {
+      setUsers(prev => prev.map(u =>
+        u.id === editingId
+          ? { ...u, full_name: editForm.full_name.trim() || null, email: editForm.email.trim(), role: editForm.role }
+          : u
+      ))
+      closeModal()
     }
-    setRoleSaving(null)
+    setSaving(false)
   }
 
   return (
@@ -111,7 +154,7 @@ export function UsersClient({
           </p>
         </div>
         <button
-          onClick={openModal}
+          onClick={openAdd}
           className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
           + Add user
@@ -126,6 +169,7 @@ export function UsersClient({
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+              <th className="px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -141,18 +185,19 @@ export function UsersClient({
                 </td>
                 <td className="px-4 py-3.5 text-gray-500">{u.email ?? '—'}</td>
                 <td className="px-4 py-3.5">
-                  <select
-                    value={u.role}
-                    onChange={e => handleRoleChange(u.id, e.target.value)}
-                    disabled={roleSaving === u.id}
-                    className={`text-xs font-medium px-2 py-1 rounded-md border-0 focus:outline-none focus:ring-2 focus:ring-blue-300 cursor-pointer disabled:opacity-50 ${roleBadgeClass(u.role)}`}
-                  >
-                    {ROLES.map(r => (
-                      <option key={r.value} value={r.value}>{r.label}</option>
-                    ))}
-                  </select>
+                  <span className={`text-xs font-medium px-2 py-1 rounded-md ${roleBadgeClass(u.role)}`}>
+                    {roleLabel(u.role)}
+                  </span>
                 </td>
                 <td className="px-4 py-3.5 text-gray-400 text-xs">{formatDate(u.created_at)}</td>
+                <td className="px-4 py-3.5 text-right">
+                  <button
+                    onClick={() => openEdit(u)}
+                    className="text-xs text-gray-500 hover:text-gray-800 font-medium"
+                  >
+                    Edit
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -163,70 +208,87 @@ export function UsersClient({
       </div>
 
       {/* Add User Modal */}
-      {modal && (
+      {modal === 'add' && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <h3 className="font-semibold text-gray-900">Add user</h3>
-              <button onClick={() => setModal(false)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
             </div>
             <div className="px-6 py-5 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Email *</label>
-                <input
-                  type="email"
-                  value={form.email}
-                  onChange={set('email')}
-                  className={INPUT}
-                  placeholder="user@example.com"
-                  autoFocus
-                />
+                <input type="email" value={addForm.email} onChange={setAdd('email')} className={INPUT} placeholder="user@example.com" autoFocus />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Full name</label>
-                <input
-                  type="text"
-                  value={form.full_name}
-                  onChange={set('full_name')}
-                  className={INPUT}
-                  placeholder="Jane Smith"
-                />
+                <input type="text" value={addForm.full_name} onChange={setAdd('full_name')} className={INPUT} placeholder="Jane Smith" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Password *</label>
-                <input
-                  type="password"
-                  value={form.password}
-                  onChange={set('password')}
-                  className={INPUT}
-                  placeholder="Min. 6 characters"
-                />
+                <input type="password" value={addForm.password} onChange={setAdd('password')} className={INPUT} placeholder="Min. 6 characters" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
-                <select value={form.role} onChange={set('role')} className={INPUT}>
-                  {ROLES.map(r => (
-                    <option key={r.value} value={r.value}>{r.label}</option>
-                  ))}
+                <select value={addForm.role} onChange={setAdd('role')} className={INPUT}>
+                  {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
                 </select>
               </div>
-              {formError && (
-                <p className="text-red-600 text-sm font-medium">{formError}</p>
-              )}
+              {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-              <button
-                onClick={() => setModal(false)}
-                className="text-sm text-gray-500 hover:text-gray-700 font-medium"
-              >
-                Cancel
-              </button>
+              <button onClick={closeModal} className="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
               <button
                 onClick={handleAdd}
-                disabled={saving || !form.email.trim() || !form.password.trim()}
+                disabled={saving || !addForm.email.trim() || !addForm.password.trim()}
                 className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
               >
                 {saving ? 'Creating…' : 'Create user'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal */}
+      {modal === 'edit' && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-900">Edit user</h3>
+              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Full name</label>
+                <input type="text" value={editForm.full_name} onChange={setEdit('full_name')} className={INPUT} placeholder="Jane Smith" autoFocus />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                <input type="email" value={editForm.email} onChange={setEdit('email')} className={INPUT} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
+                <select value={editForm.role} onChange={setEdit('role')} className={INPUT}>
+                  {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  New password <span className="text-gray-400 font-normal">(leave blank to keep current)</span>
+                </label>
+                <input type="password" value={editForm.new_password} onChange={setEdit('new_password')} className={INPUT} placeholder="Min. 6 characters" />
+              </div>
+              {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button onClick={closeModal} className="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
+              <button
+                onClick={handleEdit}
+                disabled={saving || !editForm.email.trim()}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+              >
+                {saving ? 'Saving…' : 'Save changes'}
               </button>
             </div>
           </div>
