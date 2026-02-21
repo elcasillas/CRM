@@ -7,17 +7,18 @@ import type { Account, DealStage, DealWithRelations } from '@/lib/types'
 const supabase = createClient()
 
 type FormData = {
-  deal_name:    string
-  account_id:   string
-  stage_id:     string
-  value_amount: string
-  currency:     string
-  close_date:   string
-  deal_notes:   string
+  deal_name:     string
+  account_id:    string
+  stage_id:      string
+  deal_owner_id: string
+  value_amount:  string
+  currency:      string
+  close_date:    string
+  deal_notes:    string
 }
 
 const EMPTY_FORM: FormData = {
-  deal_name: '', account_id: '', stage_id: '', value_amount: '', currency: 'USD', close_date: '', deal_notes: '',
+  deal_name: '', account_id: '', stage_id: '', deal_owner_id: '', value_amount: '', currency: 'USD', close_date: '', deal_notes: '',
 }
 
 const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm'
@@ -75,10 +76,12 @@ function stageHeaderClass(s: DealStage): string {
 
 export default function DealsPage() {
   const [view, setView]       = useState<'table' | 'kanban'>('table')
-  const [stages, setStages]   = useState<DealStage[]>([])
-  const [deals, setDeals]     = useState<DealWithRelations[]>([])
+  const [stages, setStages]     = useState<DealStage[]>([])
+  const [deals, setDeals]       = useState<DealWithRelations[]>([])
   const [accounts, setAccounts] = useState<Pick<Account, 'id' | 'account_name'>[]>([])
-  const [loading, setLoading] = useState(true)
+  const [profiles, setProfiles] = useState<{ id: string; full_name: string | null }[]>([])
+  const [isAdmin, setIsAdmin]   = useState(false)
+  const [loading, setLoading]   = useState(true)
 
   // Filters
   const [search, setSearch]         = useState('')
@@ -119,9 +122,21 @@ export default function DealsPage() {
     else setAccounts(data ?? [])
   }, [])
 
+  const fetchProfiles = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, role')
+      .order('full_name')
+    if (error) { console.error('profiles fetch:', error.message); return }
+    setProfiles(data ?? [])
+    const me = (data ?? []).find(p => p.id === user?.id)
+    setIsAdmin(me?.role === 'admin')
+  }, [])
+
   useEffect(() => {
-    Promise.all([fetchStages(), fetchDeals(), fetchAccounts()]).then(() => setLoading(false))
-  }, [fetchStages, fetchDeals, fetchAccounts])
+    Promise.all([fetchStages(), fetchDeals(), fetchAccounts(), fetchProfiles()]).then(() => setLoading(false))
+  }, [fetchStages, fetchDeals, fetchAccounts, fetchProfiles])
 
   async function changeStage(deal: DealWithRelations, newStageId: string) {
     if (!newStageId || newStageId === deal.stage_id) return
@@ -149,13 +164,14 @@ export default function DealsPage() {
 
   function openEdit(deal: DealWithRelations) {
     setForm({
-      deal_name:    deal.deal_name,
-      account_id:   deal.account_id ?? '',
-      stage_id:     deal.stage_id,
-      value_amount: deal.value_amount != null ? String(deal.value_amount) : '',
-      currency:     deal.currency,
-      close_date:   deal.close_date ?? '',
-      deal_notes:   deal.deal_notes ?? '',
+      deal_name:     deal.deal_name,
+      account_id:    deal.account_id ?? '',
+      stage_id:      deal.stage_id,
+      deal_owner_id: deal.deal_owner_id,
+      value_amount:  deal.value_amount != null ? String(deal.value_amount) : '',
+      currency:      deal.currency,
+      close_date:    deal.close_date ?? '',
+      deal_notes:    deal.deal_notes ?? '',
     })
     setEditing(deal); setFormError(null); setModal('edit')
   }
@@ -179,6 +195,7 @@ export default function DealsPage() {
       currency:     form.currency     || 'USD',
       close_date:   form.close_date   || null,
       deal_notes:   form.deal_notes.trim() || null,
+      ...(isAdmin && modal === 'edit' && form.deal_owner_id ? { deal_owner_id: form.deal_owner_id } : {}),
     }
     if (modal === 'add') {
       const { error } = await supabase.from('deals').insert({ ...payload, deal_owner_id: user!.id })
@@ -466,6 +483,15 @@ export default function DealsPage() {
                   </select>
                 </Field>
               </div>
+              {isAdmin && modal === 'edit' && (
+                <Field label="Deal owner">
+                  <select value={form.deal_owner_id} onChange={set('deal_owner_id')} className={INPUT}>
+                    {profiles.map(p => (
+                      <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
+                    ))}
+                  </select>
+                </Field>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Value">
                   <input type="number" min="0" step="100" value={form.value_amount} onChange={set('value_amount')} placeholder="0" className={INPUT} />
