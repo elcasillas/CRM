@@ -14,20 +14,21 @@ const STATUS_CLASSES: Record<string, string> = {
 }
 
 type FormData = {
-  account_name:    string
-  account_website: string
-  address_line1:   string
-  address_line2:   string
-  city:            string
-  region:          string
-  postal:          string
-  country:         string
-  status:          string
+  account_name:     string
+  account_website:  string
+  address_line1:    string
+  address_line2:    string
+  city:             string
+  region:           string
+  postal:           string
+  country:          string
+  status:           string
+  account_owner_id: string
 }
 
 const EMPTY_FORM: FormData = {
   account_name: '', account_website: '', address_line1: '', address_line2: '',
-  city: '', region: '', postal: '', country: '', status: 'active',
+  city: '', region: '', postal: '', country: '', status: 'active', account_owner_id: '',
 }
 
 const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm'
@@ -43,6 +44,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export default function AccountsPage() {
   const [accounts, setAccounts]           = useState<AccountWithOwners[]>([])
+  const [profiles, setProfiles]           = useState<{ id: string; full_name: string | null }[]>([])
+  const [isAdmin, setIsAdmin]             = useState(false)
   const [loading, setLoading]             = useState(true)
   const [modal, setModal]                 = useState<'add' | 'edit' | null>(null)
   const [editing, setEditing]             = useState<AccountWithOwners | null>(null)
@@ -66,7 +69,15 @@ export default function AccountsPage() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { fetchAccounts() }, [fetchAccounts])
+  const fetchProfiles = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    const { data } = await supabase.from('profiles').select('id, full_name, role').order('full_name')
+    setProfiles(data ?? [])
+    const me = (data ?? []).find(p => p.id === user?.id)
+    setIsAdmin(me?.role === 'admin')
+  }, [])
+
+  useEffect(() => { Promise.all([fetchAccounts(), fetchProfiles()]) }, [fetchAccounts, fetchProfiles])
 
   const filtered = accounts.filter(a => {
     const q = search.toLowerCase()
@@ -84,15 +95,16 @@ export default function AccountsPage() {
 
   function openEdit(a: AccountWithOwners) {
     setForm({
-      account_name:    a.account_name,
-      account_website: a.account_website  ?? '',
-      address_line1:   a.address_line1    ?? '',
-      address_line2:   a.address_line2    ?? '',
-      city:            a.city             ?? '',
-      region:          a.region           ?? '',
-      postal:          a.postal           ?? '',
-      country:         a.country          ?? '',
-      status:          a.status,
+      account_name:     a.account_name,
+      account_website:  a.account_website  ?? '',
+      address_line1:    a.address_line1    ?? '',
+      address_line2:    a.address_line2    ?? '',
+      city:             a.city             ?? '',
+      region:           a.region           ?? '',
+      postal:           a.postal           ?? '',
+      country:          a.country          ?? '',
+      status:           a.status,
+      account_owner_id: a.account_owner_id,
     })
     setEditing(a); setFormError(null); setModal('edit')
   }
@@ -117,6 +129,7 @@ export default function AccountsPage() {
       postal:          form.postal.trim()           || null,
       country:         form.country.trim()          || null,
       status:          form.status,
+      ...(isAdmin && modal === 'edit' && form.account_owner_id ? { account_owner_id: form.account_owner_id } : {}),
     }
     if (modal === 'add') {
       const { data: { user } } = await supabase.auth.getUser()
@@ -290,6 +303,15 @@ export default function AccountsPage() {
                   <option value="churned">Churned</option>
                 </select>
               </Field>
+              {isAdmin && modal === 'edit' && (
+                <Field label="Account owner">
+                  <select value={form.account_owner_id} onChange={set('account_owner_id')} className={INPUT}>
+                    {profiles.map(p => (
+                      <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
+                    ))}
+                  </select>
+                </Field>
+              )}
               {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
