@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import SignOutButton from '@/components/sign-out-button'
 
 const NAV_LINKS = [
-  { href: '/dashboard/contacts', label: 'Contacts' },
+  { href: '/dashboard/accounts', label: 'Accounts' },
   { href: '/dashboard/pipeline', label: 'Pipeline' },
 ]
 
