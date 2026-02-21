@@ -3,11 +3,6 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import SignOutButton from '@/components/sign-out-button'
 
-const NAV_LINKS = [
-  { href: '/dashboard/accounts', label: 'Accounts' },
-  { href: '/dashboard/pipeline', label: 'Pipeline' },
-]
-
 export default async function DashboardLayout({
   children,
 }: {
@@ -20,6 +15,13 @@ export default async function DashboardLayout({
     redirect('/login')
   }
 
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+  const isAdmin = profile?.role === 'admin'
+
   return (
     <div>
       <header className="bg-white border-b border-gray-200">
@@ -27,15 +29,35 @@ export default async function DashboardLayout({
           <div className="flex items-center gap-6">
             <span className="font-semibold text-gray-900">CRM</span>
             <nav className="flex items-center gap-1">
-              {NAV_LINKS.map(link => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  {link.label}
-                </Link>
-              ))}
+              <Link
+                href="/dashboard/accounts"
+                className="text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                Accounts
+              </Link>
+              <Link
+                href="/dashboard/deals"
+                className="text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                Deals
+              </Link>
+              {isAdmin && (
+                <>
+                  <span className="text-gray-300 mx-1 select-none">|</span>
+                  <Link
+                    href="/dashboard/admin/stages"
+                    className="text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    Stages
+                  </Link>
+                  <Link
+                    href="/dashboard/admin/users"
+                    className="text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    Users
+                  </Link>
+                </>
+              )}
             </nav>
           </div>
           <div className="flex items-center gap-4">

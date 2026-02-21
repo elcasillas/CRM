@@ -51,6 +51,10 @@ export default function AccountsPage() {
   const [formError, setFormError]         = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
+  // Filter state
+  const [search, setSearch]         = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
+
   const fetchAccounts = useCallback(async () => {
     setLoading(true)
     const { data, error } = await supabase
@@ -63,6 +67,16 @@ export default function AccountsPage() {
   }, [])
 
   useEffect(() => { fetchAccounts() }, [fetchAccounts])
+
+  const filtered = accounts.filter(a => {
+    const q = search.toLowerCase()
+    const matchSearch = !q
+      || a.account_name.toLowerCase().includes(q)
+      || (a.city ?? '').toLowerCase().includes(q)
+      || (a.country ?? '').toLowerCase().includes(q)
+    const matchStatus = !filterStatus || a.status === filterStatus
+    return matchSearch && matchStatus
+  })
 
   function openAdd() {
     setForm(EMPTY_FORM); setEditing(null); setFormError(null); setModal('add')
@@ -134,10 +148,44 @@ export default function AccountsPage() {
         </button>
       </div>
 
+      {/* Filter bar */}
+      <div className="flex items-center gap-3 mb-4">
+        <input
+          type="text"
+          placeholder="Search accounts…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 w-64"
+        />
+        <select
+          value={filterStatus}
+          onChange={e => setFilterStatus(e.target.value)}
+          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
+        >
+          <option value="">All statuses</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="churned">Churned</option>
+        </select>
+        {(search || filterStatus) && (
+          <button
+            onClick={() => { setSearch(''); setFilterStatus('') }}
+            className="text-sm text-gray-400 hover:text-gray-600"
+          >
+            Clear
+          </button>
+        )}
+        {!loading && (search || filterStatus) && (
+          <span className="text-sm text-gray-400">{filtered.length} of {accounts.length}</span>
+        )}
+      </div>
+
       {loading ? (
         <p className="text-gray-400 text-sm">Loading…</p>
       ) : accounts.length === 0 ? (
         <p className="text-gray-500 text-sm">No accounts yet. Add one to get started.</p>
+      ) : filtered.length === 0 ? (
+        <p className="text-gray-500 text-sm">No accounts match your filters.</p>
       ) : (
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
           <table className="w-full text-sm">
@@ -152,7 +200,7 @@ export default function AccountsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {accounts.map(a => (
+              {filtered.map(a => (
                 <tr key={a.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-3.5">
                     <Link href={`/dashboard/accounts/${a.id}`} className="font-medium text-gray-900 hover:text-blue-600 transition-colors">
