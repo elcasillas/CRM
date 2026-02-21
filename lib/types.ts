@@ -120,3 +120,9 @@ export interface Note {
 export interface NoteWithAuthor extends Note {
   author: { full_name: string | null } | null
 }
+
+// ── Joined / view types ──────────────────────────────────────────────────────
+
+export interface ContractWithAccount extends Contract {
+  accounts: { account_name: string } | null
+}
