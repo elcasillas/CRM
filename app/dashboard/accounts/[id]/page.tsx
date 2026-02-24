@@ -345,7 +345,7 @@ export default function AccountDetailPage() {
         <button onClick={() => setConfirmDelete(null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
       </>
     ) : (
-      <button onClick={() => setConfirmDelete({ entity, id: rowId })} className="text-xs text-gray-400 hover:text-red-600">Delete</button>
+      <button onClick={() => setConfirmDelete({ entity, id: rowId })} title="Delete" className="text-gray-400 hover:text-red-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C9.327 4.025 9.66 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg></button>
     )
   }
 
@@ -504,7 +504,7 @@ export default function AccountDetailPage() {
                       <td className="px-5 py-3 text-gray-500">{c.phone ?? '—'}</td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3 justify-end">
-                          <button onClick={() => openEditContact(c)} className="text-xs text-gray-500 hover:text-gray-700">Edit</button>
+                          <button onClick={() => openEditContact(c)} title="Edit" className="text-gray-500 hover:text-gray-700"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" /></svg></button>
                           <DeleteActions entity="contact" rowId={c.id} />
                         </div>
                       </td>
@@ -549,7 +549,7 @@ export default function AccountDetailPage() {
                       <td className="px-5 py-3 text-gray-500">{fmtDate(h.start_date)}</td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3 justify-end">
-                          <button onClick={() => openEditHid(h)} className="text-xs text-gray-500 hover:text-gray-700">Edit</button>
+                          <button onClick={() => openEditHid(h)} title="Edit" className="text-gray-500 hover:text-gray-700"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" /></svg></button>
                           <DeleteActions entity="hid" rowId={h.id} />
                         </div>
                       </td>
@@ -602,7 +602,7 @@ export default function AccountDetailPage() {
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3 justify-end">
-                          <button onClick={() => openEditContract(c)} className="text-xs text-gray-500 hover:text-gray-700">Edit</button>
+                          <button onClick={() => openEditContract(c)} title="Edit" className="text-gray-500 hover:text-gray-700"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" /></svg></button>
                           <DeleteActions entity="contract" rowId={c.id} />
                         </div>
                       </td>
@@ -655,7 +655,7 @@ export default function AccountDetailPage() {
                       <td className="px-5 py-3 text-gray-500">{d.solutions_engineer?.full_name ?? '—'}</td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3 justify-end">
-                          <button onClick={() => openEditDeal(d)} className="text-xs text-gray-500 hover:text-gray-700">Edit</button>
+                          <button onClick={() => openEditDeal(d)} title="Edit" className="text-gray-500 hover:text-gray-700"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" /></svg></button>
                           <DeleteActions entity="deal" rowId={d.id} />
                         </div>
                       </td>
