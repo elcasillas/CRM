@@ -1,0 +1,12 @@
+{
+  "description": "Relative time formatting via formatRelative() with fixed reference date",
+  "referenceDate": "2026-02-23T12:00:00.000Z",
+  "cases": [
+    { "label": "null value",    "input": null                        },
+    { "label": "same day",      "input": "2026-02-23T10:00:00.000Z" },
+    { "label": "1 day ago",     "input": "2026-02-22T10:00:00.000Z" },
+    { "label": "5 days ago",    "input": "2026-02-18T10:00:00.000Z" },
+    { "label": "31 days ago",   "input": "2026-01-23T10:00:00.000Z" },
+    { "label": "3 months ago",  "input": "2025-11-23T10:00:00.000Z" }
+  ]
+}

@@ -1,0 +1,38 @@
+[
+  {
+    "label": "null value",
+    "input": null,
+    "fmtDate": "—",
+    "formatClose": null
+  },
+  {
+    "label": "empty string",
+    "input": "",
+    "fmtDate": "—",
+    "formatClose": null
+  },
+  {
+    "label": "standard date",
+    "input": "2026-01-15",
+    "fmtDate": "Jan 15, 2026",
+    "formatClose": "Jan 15"
+  },
+  {
+    "label": "end of year",
+    "input": "2026-12-31",
+    "fmtDate": "Dec 31, 2026",
+    "formatClose": "Dec 31"
+  },
+  {
+    "label": "end of February",
+    "input": "2026-02-28",
+    "fmtDate": "Feb 28, 2026",
+    "formatClose": "Feb 28"
+  },
+  {
+    "label": "past date",
+    "input": "2025-06-01",
+    "fmtDate": "Jun 1, 2025",
+    "formatClose": "Jun 1"
+  }
+]

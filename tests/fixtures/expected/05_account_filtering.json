@@ -1,0 +1,66 @@
+[
+  {
+    "label": "no filters",
+    "filters": {
+      "search": "",
+      "status": ""
+    },
+    "resultIds": [
+      "a1",
+      "a2",
+      "a3",
+      "a4"
+    ]
+  },
+  {
+    "label": "search by name",
+    "filters": {
+      "search": "acme",
+      "status": ""
+    },
+    "resultIds": [
+      "a1"
+    ]
+  },
+  {
+    "label": "search by city",
+    "filters": {
+      "search": "new york",
+      "status": ""
+    },
+    "resultIds": [
+      "a1"
+    ]
+  },
+  {
+    "label": "filter active",
+    "filters": {
+      "search": "",
+      "status": "active"
+    },
+    "resultIds": [
+      "a1",
+      "a2"
+    ]
+  },
+  {
+    "label": "filter churned",
+    "filters": {
+      "search": "",
+      "status": "churned"
+    },
+    "resultIds": [
+      "a4"
+    ]
+  },
+  {
+    "label": "search + status filter",
+    "filters": {
+      "search": "corp",
+      "status": "active"
+    },
+    "resultIds": [
+      "a1"
+    ]
+  }
+]

@@ -1,0 +1,57 @@
+[
+  {
+    "label": "null value",
+    "input": null,
+    "result": null
+  },
+  {
+    "label": "zero",
+    "input": 0,
+    "result": "$0"
+  },
+  {
+    "label": "below 1k",
+    "input": 500,
+    "result": "$500"
+  },
+  {
+    "label": "exactly 1k",
+    "input": 1000,
+    "result": "$1k"
+  },
+  {
+    "label": "5k",
+    "input": 5000,
+    "result": "$5k"
+  },
+  {
+    "label": "75k",
+    "input": 75000,
+    "result": "$75k"
+  },
+  {
+    "label": "500k",
+    "input": 500000,
+    "result": "$500k"
+  },
+  {
+    "label": "exactly 1M",
+    "input": 1000000,
+    "result": "$1M"
+  },
+  {
+    "label": "1.5M",
+    "input": 1500000,
+    "result": "$1.5M"
+  },
+  {
+    "label": "2.3M",
+    "input": 2300000,
+    "result": "$2.3M"
+  },
+  {
+    "label": "invalid string",
+    "input": "not-a-number",
+    "result": null
+  }
+]

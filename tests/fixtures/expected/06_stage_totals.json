@@ -1,0 +1,22 @@
+[
+  {
+    "label": "stage with multiple deals",
+    "stageId": "s1",
+    "result": "$125k"
+  },
+  {
+    "label": "stage with null value deal",
+    "stageId": "s2",
+    "result": "$1.5M"
+  },
+  {
+    "label": "stage with zero total",
+    "stageId": "s3",
+    "result": null
+  },
+  {
+    "label": "stage with no deals",
+    "stageId": "s4",
+    "result": null
+  }
+]

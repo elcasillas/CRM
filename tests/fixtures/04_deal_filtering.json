@@ -1,0 +1,17 @@
+{
+  "description": "Deal list filtering via filterDeals()",
+  "deals": [
+    { "id": "d1", "deal_name": "Acme Corp Expansion",  "stage_id": "s1", "accounts": { "account_name": "Acme Corp"    } },
+    { "id": "d2", "deal_name": "Globex Renewal",        "stage_id": "s2", "accounts": { "account_name": "Globex"       } },
+    { "id": "d3", "deal_name": "Initech Platform",      "stage_id": "s1", "accounts": { "account_name": "Initech"      } },
+    { "id": "d4", "deal_name": "Umbrella Corp Deal",    "stage_id": "s3", "accounts": { "account_name": "Umbrella Corp"} }
+  ],
+  "cases": [
+    { "label": "no filters",               "filters": { "search": "",      "stageId": ""   } },
+    { "label": "search by deal name",      "filters": { "search": "acme",  "stageId": ""   } },
+    { "label": "search by account name",   "filters": { "search": "globex","stageId": ""   } },
+    { "label": "filter by stage",          "filters": { "search": "",      "stageId": "s1" } },
+    { "label": "search partial match",     "filters": { "search": "corp",  "stageId": ""   } },
+    { "label": "search + stage (no match)","filters": { "search": "acme",  "stageId": "s2" } }
+  ]
+}

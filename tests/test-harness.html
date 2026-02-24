@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CRM Test Harness</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f8fafc;
+      color: #1e293b;
+      padding: 2rem;
+      line-height: 1.5;
+    }
+
+    header {
+      display: flex;
+      align-items: baseline;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    header h1 { font-size: 1.375rem; font-weight: 700; }
+    #summary { font-size: 0.875rem; color: #64748b; }
+
+    .controls { display: flex; gap: 0.75rem; margin-bottom: 1.75rem; }
+    button {
+      font-size: 0.8125rem; font-weight: 500; padding: 0.4rem 0.9rem;
+      border: 1px solid #cbd5e1; border-radius: 6px; background: white;
+      cursor: pointer; color: #334155; transition: background 0.15s;
+    }
+    button:hover { background: #f1f5f9; }
+    button.primary { background: #2563eb; color: white; border-color: #2563eb; }
+    button.primary:hover { background: #1d4ed8; }
+
+    .suite {
+      background: white; border: 1px solid #e2e8f0;
+      border-radius: 10px; margin-bottom: 1.25rem; overflow: hidden;
+    }
+    .suite-header {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9;
+      cursor: pointer; user-select: none;
+    }
+    .suite-header:hover { background: #fafafa; }
+    .suite-name { font-size: 0.9375rem; font-weight: 600; flex: 1; }
+    .badge {
+      font-size: 0.75rem; font-weight: 600; padding: 0.2rem 0.55rem;
+      border-radius: 999px;
+    }
+    .badge.pass  { background: #dcfce7; color: #15803d; }
+    .badge.fail  { background: #fee2e2; color: #b91c1c; }
+    .badge.warn  { background: #fef9c3; color: #854d0e; }
+    .badge.skip  { background: #f1f5f9; color: #64748b; }
+
+    .suite-body { display: none; }
+    .suite-body.open { display: block; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+    th {
+      text-align: left; padding: 0.5rem 1rem; font-size: 0.7rem;
+      text-transform: uppercase; letter-spacing: 0.05em;
+      color: #64748b; background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    td { padding: 0.5rem 1rem; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr.row-pass td:first-child { border-left: 3px solid #22c55e; }
+    tr.row-fail td:first-child { border-left: 3px solid #ef4444; }
+    tr.row-warn td:first-child { border-left: 3px solid #eab308; }
+
+    .status-icon { font-size: 0.9rem; }
+    .diff { font-family: monospace; font-size: 0.78rem; }
+    .diff .got  { color: #b91c1c; }
+    .diff .want { color: #15803d; }
+    code { font-family: monospace; background: #f1f5f9; padding: 0.1rem 0.35rem; border-radius: 4px; font-size: 0.78rem; }
+
+    #loading { color: #64748b; font-size: 0.875rem; padding: 1rem 0; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>CRM Test Harness</h1>
+  <span id="summary">Loading…</span>
+</header>
+
+<div class="controls">
+  <button class="primary" onclick="runAll()">Run all</button>
+  <button onclick="expandAll()">Expand all</button>
+  <button onclick="collapseAll()">Collapse all</button>
+  <button onclick="downloadGolden()">Download golden files</button>
+</div>
+
+<div id="results"><p id="loading">Running tests…</p></div>
+
+<!-- Load pure utility functions (works as a plain script, no module system needed) -->
+<script src="lib/utils.js"></script>
+
+<script>
+const REFERENCE_DATE = '2026-02-23T12:00:00.000Z'
+
+// ── Test suite definitions ────────────────────────────────────────────────────
+
+const SUITES = [
+  {
+    id: '01',
+    name: '01 – Currency Formatting',
+    fixture: 'fixtures/01_currency_formatting.json',
+    golden:  'fixtures/expected/01_currency_formatting.json',
+    run(fixture) {
+      return fixture.cases.map(c => ({
+        label:  c.label,
+        input:  c.input,
+        result: formatCurrency(c.input),
+      }))
+    },
+    compare(actual, expected) {
+      return actual.map((a, i) => {
+        const e = expected[i]
+        const pass = JSON.stringify(a.result) === JSON.stringify(e?.result)
+        return { label: a.label, pass, actual: a.result, expected: e?.result }
+      })
+    },
+  },
+
+  {
+    id: '02',
+    name: '02 – Date Formatting',
+    fixture: 'fixtures/02_date_formatting.json',
+    golden:  'fixtures/expected/02_date_formatting.json',
+    run(fixture) {
+      return fixture.cases.map(c => ({
+        label:       c.label,
+        input:       c.input,
+        fmtDate:     fmtDate(c.input),
+        formatClose: formatClose(c.input),
+      }))
+    },
+    compare(actual, expected) {
+      return actual.map((a, i) => {
+        const e = expected[i]
+        const passA = a.fmtDate     === e?.fmtDate
+        const passB = a.formatClose === e?.formatClose
+        const pass  = passA && passB
+        return {
+          label: a.label, pass,
+          actual:   `fmtDate: ${JSON.stringify(a.fmtDate)}, formatClose: ${JSON.stringify(a.formatClose)}`,
+          expected: `fmtDate: ${JSON.stringify(e?.fmtDate)}, formatClose: ${JSON.stringify(e?.formatClose)}`,
+        }
+      })
+    },
+  },
+
+  {
+    id: '03',
+    name: '03 – Relative Time',
+    fixture: 'fixtures/03_relative_time.json',
+    golden:  'fixtures/expected/03_relative_time.json',
+    run(fixture) {
+      return fixture.cases.map(c => ({
+        label:  c.label,
+        input:  c.input,
+        result: formatRelative(c.input, REFERENCE_DATE),
+      }))
+    },
+    compare(actual, expected) {
+      return actual.map((a, i) => {
+        const e = expected[i]
+        const pass = a.result === e?.result
+        return { label: a.label, pass, actual: a.result, expected: e?.result }
+      })
+    },
+  },
+
+  {
+    id: '04',
+    name: '04 – Deal Filtering',
+    fixture: 'fixtures/04_deal_filtering.json',
+    golden:  'fixtures/expected/04_deal_filtering.json',
+    run(fixture) {
+      return fixture.cases.map(c => ({
+        label:     c.label,
+        filters:   c.filters,
+        resultIds: filterDeals(fixture.deals, c.filters).map(d => d.id),
+      }))
+    },
+    compare(actual, expected) {
+      return actual.map((a, i) => {
+        const e = expected[i]
+        const pass = JSON.stringify(a.resultIds) === JSON.stringify(e?.resultIds)
+        return {
+          label: a.label, pass,
+          actual:   JSON.stringify(a.resultIds),
+          expected: JSON.stringify(e?.resultIds),
+        }
+      })
+    },
+  },
+
+  {
+    id: '05',
+    name: '05 – Account Filtering',
+    fixture: 'fixtures/05_account_filtering.json',
+    golden:  'fixtures/expected/05_account_filtering.json',
+    run(fixture) {
+      return fixture.cases.map(c => ({
+        label:     c.label,
+        filters:   c.filters,
+        resultIds: filterAccounts(fixture.accounts, c.filters).map(a => a.id),
+      }))
+    },
+    compare(actual, expected) {
+      return actual.map((a, i) => {
+        const e = expected[i]
+        const pass = JSON.stringify(a.resultIds) === JSON.stringify(e?.resultIds)
+        return {
+          label: a.label, pass,
+          actual:   JSON.stringify(a.resultIds),
+          expected: JSON.stringify(e?.resultIds),
+        }
+      })
+    },
+  },
+
+  {
+    id: '06',
+    name: '06 – Stage ACV Totals',
+    fixture: 'fixtures/06_stage_totals.json',
+    golden:  'fixtures/expected/06_stage_totals.json',
+    run(fixture) {
+      return fixture.cases.map(c => ({
+        label:   c.label,
+        stageId: c.stageId,
+        result:  stageTotal(fixture.deals, c.stageId),
+      }))
+    },
+    compare(actual, expected) {
+      return actual.map((a, i) => {
+        const e = expected[i]
+        const pass = JSON.stringify(a.result) === JSON.stringify(e?.result)
+        return { label: a.label, pass, actual: a.result, expected: e?.result }
+      })
+    },
+  },
+]
+
+// ── Runner ────────────────────────────────────────────────────────────────────
+
+let lastActuals = {}  // store for golden download
+
+async function runAll() {
+  document.getElementById('results').innerHTML = '<p id="loading">Running tests…</p>'
+  document.getElementById('summary').textContent = 'Running…'
+  lastActuals = {}
+
+  let totalPass = 0, totalFail = 0, totalWarn = 0
+
+  const suiteEls = []
+
+  for (const suite of SUITES) {
+    let fixture, golden
+
+    try {
+      fixture = await fetch(suite.fixture).then(r => { if (!r.ok) throw new Error(r.status); return r.json() })
+    } catch {
+      suiteEls.push(renderSuiteError(suite, 'Could not load fixture'))
+      totalWarn++
+      continue
+    }
+
+    try {
+      golden = await fetch(suite.golden).then(r => { if (!r.ok) throw new Error(r.status); return r.json() })
+    } catch {
+      golden = null
+    }
+
+    const actual = suite.run(fixture)
+    lastActuals[suite.id] = actual
+
+    let rows
+    if (!golden) {
+      rows = actual.map(a => ({ label: a.label, pass: null, actual: JSON.stringify(a), expected: null }))
+      totalWarn++
+    } else {
+      rows = suite.compare(actual, golden)
+      rows.forEach(r => r.pass ? totalPass++ : totalFail++)
+    }
+
+    suiteEls.push(renderSuite(suite, rows, !golden))
+  }
+
+  document.getElementById('results').innerHTML = suiteEls.join('')
+  const total = totalPass + totalFail
+  document.getElementById('summary').textContent =
+    golden === null
+      ? `${totalPass}/${total} passed`
+      : `${totalPass}/${total} passed${totalFail ? ` · ${totalFail} failed` : ''}${totalWarn ? ` · ${totalWarn} suite(s) missing golden` : ''}`
+
+  // Auto-expand failed suites
+  document.querySelectorAll('.suite').forEach(el => {
+    if (el.querySelector('tr.row-fail')) {
+      el.querySelector('.suite-body').classList.add('open')
+    }
+  })
+}
+
+// ── Rendering ─────────────────────────────────────────────────────────────────
+
+function esc(s) {
+  return String(s ?? 'null').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+}
+
+function renderSuite(suite, rows, noGolden) {
+  const passCount = rows.filter(r => r.pass === true).length
+  const failCount = rows.filter(r => r.pass === false).length
+  const badgeClass = noGolden ? 'warn' : (failCount ? 'fail' : 'pass')
+  const badgeText  = noGolden ? 'NO GOLDEN' : `${passCount}/${rows.length}`
+
+  const rowsHtml = rows.map(r => {
+    const rowClass  = r.pass === true ? 'row-pass' : r.pass === false ? 'row-fail' : 'row-warn'
+    const icon      = r.pass === true ? '✓' : r.pass === false ? '✗' : '?'
+    const diffHtml  = r.pass === false
+      ? `<div class="diff"><span class="got">got:  ${esc(r.actual)}</span><br><span class="want">want: ${esc(r.expected)}</span></div>`
+      : `<code>${esc(r.actual)}</code>`
+    return `
+      <tr class="${rowClass}">
+        <td><span class="status-icon">${icon}</span></td>
+        <td>${esc(r.label)}</td>
+        <td>${diffHtml}</td>
+      </tr>`
+  }).join('')
+
+  return `
+    <div class="suite" id="suite-${suite.id}">
+      <div class="suite-header" onclick="toggleSuite('${suite.id}')">
+        <span class="suite-name">${suite.name}</span>
+        <span class="badge ${badgeClass}">${badgeText}</span>
+      </div>
+      <div class="suite-body" id="body-${suite.id}">
+        <table>
+          <thead><tr><th style="width:2rem"></th><th>Case</th><th>Result</th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+    </div>`
+}
+
+function renderSuiteError(suite, msg) {
+  return `
+    <div class="suite" id="suite-${suite.id}">
+      <div class="suite-header">
+        <span class="suite-name">${suite.name}</span>
+        <span class="badge warn">ERROR</span>
+      </div>
+      <div class="suite-body open" id="body-${suite.id}">
+        <p style="padding:0.75rem 1rem;font-size:0.875rem;color:#b91c1c">${msg}</p>
+      </div>
+    </div>`
+}
+
+// ── Controls ──────────────────────────────────────────────────────────────────
+
+function toggleSuite(id) {
+  document.getElementById(`body-${id}`).classList.toggle('open')
+}
+function expandAll()   { document.querySelectorAll('.suite-body').forEach(el => el.classList.add('open')) }
+function collapseAll() { document.querySelectorAll('.suite-body').forEach(el => el.classList.remove('open')) }
+
+function downloadGolden() {
+  for (const [id, actual] of Object.entries(lastActuals)) {
+    const suite = SUITES.find(s => s.id === id)
+    if (!suite) continue
+    const blob = new Blob([JSON.stringify(actual, null, 2) + '\n'], { type: 'application/json' })
+    const a = Object.assign(document.createElement('a'), {
+      href: URL.createObjectURL(blob),
+      download: suite.golden.split('/').pop(),
+    })
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+runAll()
+</script>
+</body>
+</html>

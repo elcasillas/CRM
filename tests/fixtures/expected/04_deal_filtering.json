@@ -1,0 +1,65 @@
+[
+  {
+    "label": "no filters",
+    "filters": {
+      "search": "",
+      "stageId": ""
+    },
+    "resultIds": [
+      "d1",
+      "d2",
+      "d3",
+      "d4"
+    ]
+  },
+  {
+    "label": "search by deal name",
+    "filters": {
+      "search": "acme",
+      "stageId": ""
+    },
+    "resultIds": [
+      "d1"
+    ]
+  },
+  {
+    "label": "search by account name",
+    "filters": {
+      "search": "globex",
+      "stageId": ""
+    },
+    "resultIds": [
+      "d2"
+    ]
+  },
+  {
+    "label": "filter by stage",
+    "filters": {
+      "search": "",
+      "stageId": "s1"
+    },
+    "resultIds": [
+      "d1",
+      "d3"
+    ]
+  },
+  {
+    "label": "search partial match",
+    "filters": {
+      "search": "corp",
+      "stageId": ""
+    },
+    "resultIds": [
+      "d1",
+      "d4"
+    ]
+  },
+  {
+    "label": "search + stage (no match)",
+    "filters": {
+      "search": "acme",
+      "stageId": "s2"
+    },
+    "resultIds": []
+  }
+]

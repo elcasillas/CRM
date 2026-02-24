@@ -1,0 +1,16 @@
+{
+  "description": "Stage ACV totals via stageTotal()",
+  "deals": [
+    { "id": "d1", "stage_id": "s1", "value_amount": 50000   },
+    { "id": "d2", "stage_id": "s1", "value_amount": 75000   },
+    { "id": "d3", "stage_id": "s2", "value_amount": 1500000 },
+    { "id": "d4", "stage_id": "s2", "value_amount": null    },
+    { "id": "d5", "stage_id": "s3", "value_amount": 0       }
+  ],
+  "cases": [
+    { "label": "stage with multiple deals",    "stageId": "s1" },
+    { "label": "stage with null value deal",   "stageId": "s2" },
+    { "label": "stage with zero total",        "stageId": "s3" },
+    { "label": "stage with no deals",          "stageId": "s4" }
+  ]
+}

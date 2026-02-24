@@ -1,0 +1,17 @@
+{
+  "description": "Account list filtering via filterAccounts()",
+  "accounts": [
+    { "id": "a1", "account_name": "Acme Corp",    "city": "New York",    "country": "USA", "status": "active"   },
+    { "id": "a2", "account_name": "Globex",        "city": "Springfield", "country": "USA", "status": "active"   },
+    { "id": "a3", "account_name": "Initech",       "city": "Austin",      "country": "USA", "status": "inactive" },
+    { "id": "a4", "account_name": "Umbrella Corp", "city": "Raccoon City","country": "USA", "status": "churned"  }
+  ],
+  "cases": [
+    { "label": "no filters",            "filters": { "search": "",         "status": ""        } },
+    { "label": "search by name",        "filters": { "search": "acme",     "status": ""        } },
+    { "label": "search by city",        "filters": { "search": "new york", "status": ""        } },
+    { "label": "filter active",         "filters": { "search": "",         "status": "active"  } },
+    { "label": "filter churned",        "filters": { "search": "",         "status": "churned" } },
+    { "label": "search + status filter","filters": { "search": "corp",     "status": "active"  } }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "description": "Date formatting via fmtDate() and formatClose()",
+  "cases": [
+    { "label": "null value",       "input": null         },
+    { "label": "empty string",     "input": ""           },
+    { "label": "standard date",    "input": "2026-01-15" },
+    { "label": "end of year",      "input": "2026-12-31" },
+    { "label": "end of February",  "input": "2026-02-28" },
+    { "label": "past date",        "input": "2025-06-01" }
+  ]
+}

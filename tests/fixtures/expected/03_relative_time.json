@@ -1,0 +1,32 @@
+[
+  {
+    "label": "null value",
+    "input": null,
+    "result": "—"
+  },
+  {
+    "label": "same day",
+    "input": "2026-02-23T10:00:00.000Z",
+    "result": "Today"
+  },
+  {
+    "label": "1 day ago",
+    "input": "2026-02-22T10:00:00.000Z",
+    "result": "1d ago"
+  },
+  {
+    "label": "5 days ago",
+    "input": "2026-02-18T10:00:00.000Z",
+    "result": "5d ago"
+  },
+  {
+    "label": "31 days ago",
+    "input": "2026-01-23T10:00:00.000Z",
+    "result": "1mo ago"
+  },
+  {
+    "label": "3 months ago",
+    "input": "2025-11-23T10:00:00.000Z",
+    "result": "3mo ago"
+  }
+]
