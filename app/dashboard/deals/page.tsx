@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { Account, DealStage, DealWithRelations } from '@/lib/types'
+import type { Account, DealStage, DealWithRelations, NoteWithAuthor } from '@/lib/types'
 
 const supabase = createClient()
 
@@ -44,6 +44,10 @@ function formatClose(d: string | null): string | null {
   if (!d) return null
   const [y, m, day] = d.split('-').map(Number)
   return new Date(y, m - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function fmtTs(ts: string): string {
+  return new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
 function formatRelative(ts: string | null): string {
@@ -95,6 +99,13 @@ export default function DealsPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
+  // Deal notes (shown in edit modal)
+  const [dealNotes, setDealNotes]     = useState<NoteWithAuthor[]>([])
+  const [noteText, setNoteText]       = useState('')
+  const [loggingNote, setLoggingNote] = useState(false)
+  const [noteConfirmDelete, setNoteConfirmDelete] = useState<string | null>(null)
+  const [userId, setUserId]           = useState('')
+
   const fetchStages = useCallback(async () => {
     const { data, error } = await supabase
       .from('deal_stages')
@@ -124,6 +135,7 @@ export default function DealsPage() {
 
   const fetchProfiles = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
+    if (user) setUserId(user.id)
     const { data, error } = await supabase
       .from('profiles')
       .select('id, full_name, role')
@@ -132,6 +144,16 @@ export default function DealsPage() {
     setProfiles(data ?? [])
     const me = (data ?? []).find(p => p.id === user?.id)
     setIsAdmin(me?.role === 'admin')
+  }, [])
+
+  const fetchDealNotes = useCallback(async (dealId: string) => {
+    const { data } = await supabase
+      .from('notes')
+      .select('*, author:profiles!created_by(full_name)')
+      .eq('entity_type', 'deal')
+      .eq('entity_id', dealId)
+      .order('created_at', { ascending: false })
+    setDealNotes((data ?? []) as NoteWithAuthor[])
   }, [])
 
   useEffect(() => {
@@ -173,10 +195,31 @@ export default function DealsPage() {
       close_date:    deal.close_date ?? '',
       deal_notes:    deal.deal_notes ?? '',
     })
+    setDealNotes([]); setNoteText(''); setNoteConfirmDelete(null)
+    fetchDealNotes(deal.id)
     setEditing(deal); setFormError(null); setModal('edit')
   }
 
-  function closeModal() { setModal(null); setEditing(null); setFormError(null) }
+  function closeModal() { setModal(null); setEditing(null); setFormError(null); setDealNotes([]); setNoteText('') }
+
+  async function addDealNote() {
+    if (!noteText.trim() || !editing) return
+    setLoggingNote(true)
+    const { error } = await supabase.from('notes').insert({
+      entity_type: 'deal',
+      entity_id:   editing.id,
+      note_text:   noteText.trim(),
+      created_by:  userId,
+    })
+    if (!error) { setNoteText(''); fetchDealNotes(editing.id) }
+    setLoggingNote(false)
+  }
+
+  async function deleteDealNote(noteId: string) {
+    const { error } = await supabase.from('notes').delete().eq('id', noteId)
+    if (!error) setDealNotes(prev => prev.filter(n => n.id !== noteId))
+    setNoteConfirmDelete(null)
+  }
 
   function set(field: keyof FormData) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -511,6 +554,51 @@ export default function DealsPage() {
               <Field label="Notes">
                 <textarea value={form.deal_notes} onChange={set('deal_notes')} rows={3} className={`${INPUT} resize-none`} />
               </Field>
+
+              {/* Activity notes — only shown when editing an existing deal */}
+              {modal === 'edit' && (
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="text-sm font-medium text-gray-700 mb-3">Activity</p>
+                  <div className="flex gap-2 mb-3">
+                    <textarea
+                      value={noteText}
+                      onChange={e => setNoteText(e.target.value)}
+                      rows={2}
+                      placeholder="Add a note…"
+                      className={`${INPUT} resize-none flex-1`}
+                    />
+                    <button
+                      onClick={addDealNote}
+                      disabled={loggingNote || !noteText.trim()}
+                      className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium px-3 rounded-lg transition-colors self-stretch"
+                    >
+                      {loggingNote ? '…' : 'Add'}
+                    </button>
+                  </div>
+                  {dealNotes.length > 0 && (
+                    <ul className="space-y-2 max-h-48 overflow-y-auto">
+                      {dealNotes.map(n => (
+                        <li key={n.id} className="bg-gray-50 rounded-lg p-3">
+                          <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{n.note_text}</p>
+                          <div className="flex items-center justify-between mt-2">
+                            <p className="text-xs text-gray-400">{n.author?.full_name ?? 'Unknown'} · {fmtTs(n.created_at)}</p>
+                            {noteConfirmDelete === n.id ? (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs text-gray-400">Delete?</span>
+                                <button onClick={() => deleteDealNote(n.id)} className="text-xs text-red-600 hover:text-red-700 font-medium">Confirm</button>
+                                <button onClick={() => setNoteConfirmDelete(null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => setNoteConfirmDelete(n.id)} className="text-xs text-gray-400 hover:text-red-600">Delete</button>
+                            )}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
               {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
