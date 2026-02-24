@@ -14,21 +14,22 @@ const STATUS_CLASSES: Record<string, string> = {
 }
 
 type FormData = {
-  account_name:     string
-  account_website:  string
-  address_line1:    string
-  address_line2:    string
-  city:             string
-  region:           string
-  postal:           string
-  country:          string
-  status:           string
-  account_owner_id: string
+  account_name:        string
+  account_website:     string
+  address_line1:       string
+  address_line2:       string
+  city:                string
+  region:              string
+  postal:              string
+  country:             string
+  status:              string
+  account_owner_id:    string
+  service_manager_id:  string
 }
 
 const EMPTY_FORM: FormData = {
   account_name: '', account_website: '', address_line1: '', address_line2: '',
-  city: '', region: '', postal: '', country: '', status: 'active', account_owner_id: '',
+  city: '', region: '', postal: '', country: '', status: 'active', account_owner_id: '', service_manager_id: '',
 }
 
 const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm'
@@ -103,8 +104,9 @@ export default function AccountsPage() {
       region:           a.region           ?? '',
       postal:           a.postal           ?? '',
       country:          a.country          ?? '',
-      status:           a.status,
-      account_owner_id: a.account_owner_id,
+      status:             a.status,
+      account_owner_id:   a.account_owner_id,
+      service_manager_id: a.service_manager_id ?? '',
     })
     setEditing(a); setFormError(null); setModal('edit')
   }
@@ -130,6 +132,7 @@ export default function AccountsPage() {
       country:         form.country.trim()          || null,
       status:          form.status,
       ...(isAdmin && modal === 'edit' && form.account_owner_id ? { account_owner_id: form.account_owner_id } : {}),
+      service_manager_id: form.service_manager_id || null,
     }
     if (modal === 'add') {
       const { data: { user } } = await supabase.auth.getUser()
@@ -208,6 +211,7 @@ export default function AccountsPage() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Website</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service Manager</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-6 py-3"></th>
               </tr>
@@ -230,6 +234,9 @@ export default function AccountsPage() {
                   </td>
                   <td className="px-6 py-3.5 text-gray-500">
                     {a.account_owner?.full_name ?? '—'}
+                  </td>
+                  <td className="px-6 py-3.5 text-gray-500">
+                    {a.service_manager?.full_name ?? '—'}
                   </td>
                   <td className="px-6 py-3.5">
                     <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${STATUS_CLASSES[a.status] ?? 'bg-gray-100 text-gray-600'}`}>
@@ -312,6 +319,14 @@ export default function AccountsPage() {
                   </select>
                 </Field>
               )}
+              <Field label="Service Manager">
+                <select value={form.service_manager_id} onChange={set('service_manager_id')} className={INPUT}>
+                  <option value="">— none —</option>
+                  {profiles.map(p => (
+                    <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
+                  ))}
+                </select>
+              </Field>
               {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
