@@ -150,6 +150,11 @@ export default function AccountDetailPage() {
   const [editingDeal, setEditingDeal] = useState<DealWithRelations | null>(null)
   const [dealForm,    setDealForm]    = useState<DealForm>(EMPTY_DEAL)
 
+  // description
+  const [descEditing, setDescEditing] = useState(false)
+  const [descDraft,   setDescDraft]   = useState('')
+  const [descSaving,  setDescSaving]  = useState(false)
+
   // note
   const [noteText,    setNoteText]    = useState('')
   const [loggingNote, setLoggingNote] = useState(false)
@@ -206,6 +211,18 @@ export default function AccountDetailPage() {
     Promise.all([fetchAccount(), fetchContacts(), fetchHids(), fetchContracts(), fetchDeals(), fetchNotes(), fetchStages()])
       .then(() => setLoading(false))
   }, [fetchAccount, fetchContacts, fetchHids, fetchContracts, fetchDeals, fetchNotes, fetchStages])
+
+  // ── Description ─────────────────────────────────────────────────────────────
+
+  function openDesc() { setDescDraft(account?.description ?? ''); setDescEditing(true) }
+  function cancelDesc() { setDescEditing(false) }
+
+  async function saveDescription() {
+    setDescSaving(true)
+    const { error } = await supabase.from('accounts').update({ description: descDraft.trim() || null }).eq('id', id)
+    if (!error) { setAccount(a => a ? { ...a, description: descDraft.trim() || null } : a); setDescEditing(false) }
+    setDescSaving(false)
+  }
 
   // ── Generic helpers ─────────────────────────────────────────────────────────
 
@@ -382,6 +399,43 @@ export default function AccountDetailPage() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* Description */}
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          {descEditing ? (
+            <div>
+              <textarea
+                value={descDraft}
+                onChange={e => setDescDraft(e.target.value)}
+                rows={3}
+                placeholder="Add a description…"
+                className={`${INPUT} resize-none mb-2`}
+                autoFocus
+              />
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={saveDescription}
+                  disabled={descSaving}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  {descSaving ? 'Saving…' : 'Save'}
+                </button>
+                <button onClick={cancelDesc} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={openDesc}
+              className="w-full text-left group"
+            >
+              {account.description ? (
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap group-hover:text-gray-800">{account.description}</p>
+              ) : (
+                <p className="text-sm text-gray-400 italic group-hover:text-gray-500">Add a description…</p>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
@@ -565,7 +619,7 @@ export default function AccountDetailPage() {
                   <tr className="border-b border-gray-200 bg-gray-50">
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deal</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stage</th>
-                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Value</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACV</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Close Date</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
                     <th className="px-5 py-3"></th>
@@ -733,7 +787,7 @@ export default function AccountDetailPage() {
             </select>
           </Field>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Value"><input type="number" min="0" step="100" value={dealForm.value_amount} onChange={e => setDealForm(f => ({ ...f, value_amount: e.target.value }))} placeholder="0" className={INPUT} /></Field>
+            <Field label="ACV"><input type="number" min="0" step="100" value={dealForm.value_amount} onChange={e => setDealForm(f => ({ ...f, value_amount: e.target.value }))} placeholder="0" className={INPUT} /></Field>
             <Field label="Currency">
               <select value={dealForm.currency} onChange={e => setDealForm(f => ({ ...f, currency: e.target.value }))} className={INPUT}>
                 <option value="USD">USD</option>

@@ -23,6 +23,7 @@ export interface Account {
   account_owner_id:   string
   service_manager_id: string | null
   status:             string
+  description:        string | null
   created_at:         string
   updated_at:         string
 }
