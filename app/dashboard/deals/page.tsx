@@ -241,7 +241,7 @@ export default function DealsPage() {
       close_date:   form.close_date   || null,
       deal_notes:            form.deal_notes.trim() || null,
       solutions_engineer_id: form.solutions_engineer_id || null,
-      ...(isAdmin && modal === 'edit' && form.deal_owner_id ? { deal_owner_id: form.deal_owner_id } : {}),
+      ...(modal === 'edit' && form.deal_owner_id ? { deal_owner_id: form.deal_owner_id } : {}),
     }
     if (modal === 'add') {
       const { error } = await supabase.from('deals').insert({ ...payload, deal_owner_id: user!.id })
@@ -365,7 +365,7 @@ export default function DealsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stage</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACV</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Close</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deal Owner</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SE</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Activity</th>
                   <th className="px-4 py-3"></th>
@@ -536,7 +536,7 @@ export default function DealsPage() {
                   </select>
                 </Field>
               </div>
-              {isAdmin && modal === 'edit' && (
+              {modal === 'edit' && (
                 <Field label="Deal owner">
                   <select value={form.deal_owner_id} onChange={set('deal_owner_id')} className={INPUT}>
                     {profiles.map(p => (
