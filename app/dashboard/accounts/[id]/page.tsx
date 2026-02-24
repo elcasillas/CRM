@@ -403,6 +403,9 @@ export default function AccountDetailPage() {
               {[account.address_line1, account.address_line2].filter(Boolean).join(', ') && (
                 <span>{[account.address_line1, account.address_line2].filter(Boolean).join(', ')}</span>
               )}
+              {account.account_owner?.full_name && (
+                <span>Owner: {account.account_owner.full_name}</span>
+              )}
               {account.service_manager?.full_name && (
                 <span>SM: {account.service_manager.full_name}</span>
               )}
