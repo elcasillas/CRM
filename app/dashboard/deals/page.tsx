@@ -7,18 +7,19 @@ import type { Account, DealStage, DealWithRelations, NoteWithAuthor } from '@/li
 const supabase = createClient()
 
 type FormData = {
-  deal_name:     string
-  account_id:    string
-  stage_id:      string
-  deal_owner_id: string
-  value_amount:  string
-  currency:      string
-  close_date:    string
-  deal_notes:    string
+  deal_name:             string
+  account_id:            string
+  stage_id:              string
+  deal_owner_id:         string
+  solutions_engineer_id: string
+  value_amount:          string
+  currency:              string
+  close_date:            string
+  deal_notes:            string
 }
 
 const EMPTY_FORM: FormData = {
-  deal_name: '', account_id: '', stage_id: '', deal_owner_id: '', value_amount: '', currency: 'USD', close_date: '', deal_notes: '',
+  deal_name: '', account_id: '', stage_id: '', deal_owner_id: '', solutions_engineer_id: '', value_amount: '', currency: 'USD', close_date: '', deal_notes: '',
 }
 
 const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm'
@@ -118,7 +119,7 @@ export default function DealsPage() {
   const fetchDeals = useCallback(async () => {
     const { data, error } = await supabase
       .from('deals')
-      .select('*, accounts(account_name), deal_stages(stage_name, sort_order, is_closed, is_won, is_lost), deal_owner:profiles!deal_owner_id(full_name)')
+      .select('*, accounts(account_name), deal_stages(stage_name, sort_order, is_closed, is_won, is_lost), deal_owner:profiles!deal_owner_id(full_name), solutions_engineer:profiles!solutions_engineer_id(full_name)')
       .order('last_activity_at', { ascending: false, nullsFirst: false })
     if (error) console.error('deals fetch:', error.message)
     else setDeals((data ?? []) as DealWithRelations[])
@@ -186,14 +187,15 @@ export default function DealsPage() {
 
   function openEdit(deal: DealWithRelations) {
     setForm({
-      deal_name:     deal.deal_name,
-      account_id:    deal.account_id ?? '',
-      stage_id:      deal.stage_id,
-      deal_owner_id: deal.deal_owner_id,
-      value_amount:  deal.value_amount != null ? String(deal.value_amount) : '',
-      currency:      deal.currency,
-      close_date:    deal.close_date ?? '',
-      deal_notes:    deal.deal_notes ?? '',
+      deal_name:             deal.deal_name,
+      account_id:            deal.account_id ?? '',
+      stage_id:              deal.stage_id,
+      deal_owner_id:         deal.deal_owner_id,
+      solutions_engineer_id: deal.solutions_engineer_id ?? '',
+      value_amount:          deal.value_amount != null ? String(deal.value_amount) : '',
+      currency:              deal.currency,
+      close_date:            deal.close_date ?? '',
+      deal_notes:            deal.deal_notes ?? '',
     })
     setDealNotes([]); setNoteText(''); setNoteConfirmDelete(null)
     fetchDealNotes(deal.id)
@@ -237,7 +239,8 @@ export default function DealsPage() {
       value_amount: form.value_amount ? parseFloat(form.value_amount) : null,
       currency:     form.currency     || 'USD',
       close_date:   form.close_date   || null,
-      deal_notes:   form.deal_notes.trim() || null,
+      deal_notes:            form.deal_notes.trim() || null,
+      solutions_engineer_id: form.solutions_engineer_id || null,
       ...(isAdmin && modal === 'edit' && form.deal_owner_id ? { deal_owner_id: form.deal_owner_id } : {}),
     }
     if (modal === 'add') {
@@ -363,6 +366,7 @@ export default function DealsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACV</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Close</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SE</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Activity</th>
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -393,6 +397,9 @@ export default function DealsPage() {
                     </td>
                     <td className="px-4 py-3.5 text-gray-500">
                       {deal.deal_owner?.full_name ?? '—'}
+                    </td>
+                    <td className="px-4 py-3.5 text-gray-500">
+                      {deal.solutions_engineer?.full_name ?? '—'}
                     </td>
                     <td className="px-4 py-3.5 text-gray-400 text-xs">
                       {formatRelative(deal.last_activity_at)}
@@ -445,6 +452,9 @@ export default function DealsPage() {
 
                         {deal.accounts && (
                           <p className="text-xs text-gray-500 mt-1">{deal.accounts.account_name}</p>
+                        )}
+                        {deal.solutions_engineer?.full_name && (
+                          <p className="text-xs text-blue-500 mt-0.5">SE: {deal.solutions_engineer.full_name}</p>
                         )}
 
                         {(deal.value_amount != null || deal.close_date) && (
@@ -535,6 +545,14 @@ export default function DealsPage() {
                   </select>
                 </Field>
               )}
+              <Field label="Solutions Engineer">
+                <select value={form.solutions_engineer_id} onChange={set('solutions_engineer_id')} className={INPUT}>
+                  <option value="">— none —</option>
+                  {profiles.map(p => (
+                    <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
+                  ))}
+                </select>
+              </Field>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="ACV">
                   <input type="number" min="0" step="100" value={form.value_amount} onChange={set('value_amount')} placeholder="0" className={INPUT} />

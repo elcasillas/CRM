@@ -59,12 +59,12 @@ function stageBadgeClass(s: { is_won: boolean; is_lost: boolean; sort_order: num
 type ContactForm = { first_name: string; last_name: string; email: string; phone: string; title: string; is_primary: boolean }
 type HidForm     = { hid_number: string; dc_location: string; cluster_id: string; start_date: string; domain_name: string }
 type ContractForm = { effective_date: string; renewal_date: string; renewal_term_months: string; auto_renew: boolean; status: string }
-type DealForm    = { deal_name: string; stage_id: string; value_amount: string; currency: string; close_date: string; deal_notes: string }
+type DealForm    = { deal_name: string; stage_id: string; solutions_engineer_id: string; value_amount: string; currency: string; close_date: string; deal_notes: string }
 
 const EMPTY_CONTACT: ContactForm  = { first_name: '', last_name: '', email: '', phone: '', title: '', is_primary: false }
 const EMPTY_HID: HidForm          = { hid_number: '', dc_location: '', cluster_id: '', start_date: '', domain_name: '' }
 const EMPTY_CONTRACT: ContractForm = { effective_date: '', renewal_date: '', renewal_term_months: '', auto_renew: false, status: 'active' }
-const EMPTY_DEAL: DealForm        = { deal_name: '', stage_id: '', value_amount: '', currency: 'USD', close_date: '', deal_notes: '' }
+const EMPTY_DEAL: DealForm        = { deal_name: '', stage_id: '', solutions_engineer_id: '', value_amount: '', currency: 'USD', close_date: '', deal_notes: '' }
 
 type Tab = 'contacts' | 'hids' | 'contracts' | 'deals' | 'notes'
 
@@ -119,6 +119,7 @@ export default function AccountDetailPage() {
   const [deals,     setDeals]     = useState<DealWithRelations[]>([])
   const [notes,     setNotes]     = useState<NoteWithAuthor[]>([])
   const [stages,    setStages]    = useState<DealStage[]>([])
+  const [profiles,  setProfiles]  = useState<{ id: string; full_name: string | null }[]>([])
   const [userId,    setUserId]    = useState('')
   const [loading,   setLoading]   = useState(true)
   const [notFound,  setNotFound]  = useState(false)
@@ -185,7 +186,7 @@ export default function AccountDetailPage() {
   const fetchDeals = useCallback(async () => {
     const { data } = await supabase
       .from('deals')
-      .select('*, deal_stages(stage_name, sort_order, is_closed, is_won, is_lost), accounts(account_name), deal_owner:profiles!deal_owner_id(full_name)')
+      .select('*, deal_stages(stage_name, sort_order, is_closed, is_won, is_lost), accounts(account_name), deal_owner:profiles!deal_owner_id(full_name), solutions_engineer:profiles!solutions_engineer_id(full_name)')
       .eq('account_id', id)
       .order('created_at', { ascending: false })
     setDeals((data ?? []) as DealWithRelations[])
@@ -206,11 +207,16 @@ export default function AccountDetailPage() {
     setStages(data ?? [])
   }, [])
 
+  const fetchProfiles = useCallback(async () => {
+    const { data } = await supabase.from('profiles').select('id, full_name').order('full_name')
+    setProfiles(data ?? [])
+  }, [])
+
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => { if (user) setUserId(user.id) })
-    Promise.all([fetchAccount(), fetchContacts(), fetchHids(), fetchContracts(), fetchDeals(), fetchNotes(), fetchStages()])
+    Promise.all([fetchAccount(), fetchContacts(), fetchHids(), fetchContracts(), fetchDeals(), fetchNotes(), fetchStages(), fetchProfiles()])
       .then(() => setLoading(false))
-  }, [fetchAccount, fetchContacts, fetchHids, fetchContracts, fetchDeals, fetchNotes, fetchStages])
+  }, [fetchAccount, fetchContacts, fetchHids, fetchContracts, fetchDeals, fetchNotes, fetchStages, fetchProfiles])
 
   // ── Description ─────────────────────────────────────────────────────────────
 
@@ -288,12 +294,12 @@ export default function AccountDetailPage() {
   // ── Deal CRUD ───────────────────────────────────────────────────────────────
 
   function openAddDeal()                    { setDealForm({ ...EMPTY_DEAL, stage_id: stages[1]?.id ?? '' }); setEditingDeal(null); clearError(); setDealModal('add') }
-  function openEditDeal(d: DealWithRelations) { setDealForm({ deal_name: d.deal_name, stage_id: d.stage_id, value_amount: d.value_amount != null ? String(d.value_amount) : '', currency: d.currency, close_date: d.close_date ?? '', deal_notes: d.deal_notes ?? '' }); setEditingDeal(d); clearError(); setDealModal('edit') }
+  function openEditDeal(d: DealWithRelations) { setDealForm({ deal_name: d.deal_name, stage_id: d.stage_id, solutions_engineer_id: d.solutions_engineer_id ?? '', value_amount: d.value_amount != null ? String(d.value_amount) : '', currency: d.currency, close_date: d.close_date ?? '', deal_notes: d.deal_notes ?? '' }); setEditingDeal(d); clearError(); setDealModal('edit') }
   function closeDealModal()                 { setDealModal(null); setEditingDeal(null); clearError() }
 
   async function saveDeal() {
     setSaving(true); clearError()
-    const payload = { account_id: id, stage_id: dealForm.stage_id, deal_name: dealForm.deal_name.trim(), value_amount: dealForm.value_amount ? parseFloat(dealForm.value_amount) : null, currency: dealForm.currency || 'USD', close_date: dealForm.close_date || null, deal_notes: dealForm.deal_notes.trim() || null }
+    const payload = { account_id: id, stage_id: dealForm.stage_id, deal_name: dealForm.deal_name.trim(), solutions_engineer_id: dealForm.solutions_engineer_id || null, value_amount: dealForm.value_amount ? parseFloat(dealForm.value_amount) : null, currency: dealForm.currency || 'USD', close_date: dealForm.close_date || null, deal_notes: dealForm.deal_notes.trim() || null }
     const { error } = dealModal === 'add'
       ? await supabase.from('deals').insert({ ...payload, deal_owner_id: userId })
       : await supabase.from('deals').update(payload).eq('id', editingDeal!.id)
@@ -622,6 +628,7 @@ export default function AccountDetailPage() {
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACV</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Close Date</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SE</th>
                     <th className="px-5 py-3"></th>
                   </tr>
                 </thead>
@@ -639,6 +646,7 @@ export default function AccountDetailPage() {
                       <td className="px-5 py-3 text-gray-700 font-medium">{fmtCurrency(d.value_amount)}</td>
                       <td className="px-5 py-3 text-gray-500">{fmtDate(d.close_date)}</td>
                       <td className="px-5 py-3 text-gray-500">{d.deal_owner?.full_name ?? '—'}</td>
+                      <td className="px-5 py-3 text-gray-500">{d.solutions_engineer?.full_name ?? '—'}</td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3 justify-end">
                           <button onClick={() => openEditDeal(d)} className="text-xs text-gray-500 hover:text-gray-700">Edit</button>
@@ -784,6 +792,12 @@ export default function AccountDetailPage() {
             <select value={dealForm.stage_id} onChange={e => setDealForm(f => ({ ...f, stage_id: e.target.value }))} className={INPUT}>
               <option value="">— select —</option>
               {stages.map(s => <option key={s.id} value={s.id}>{s.stage_name}</option>)}
+            </select>
+          </Field>
+          <Field label="Solutions Engineer">
+            <select value={dealForm.solutions_engineer_id} onChange={e => setDealForm(f => ({ ...f, solutions_engineer_id: e.target.value }))} className={INPUT}>
+              <option value="">— none —</option>
+              {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
             </select>
           </Field>
           <div className="grid grid-cols-2 gap-4">

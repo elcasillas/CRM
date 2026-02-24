@@ -11,20 +11,22 @@ type User = {
 }
 
 const ROLES = [
-  { value: 'sales',           label: 'Sales' },
-  { value: 'service_manager', label: 'Service Manager' },
-  { value: 'read_only',       label: 'Read Only' },
-  { value: 'admin',           label: 'Admin' },
+  { value: 'sales',                label: 'Sales' },
+  { value: 'solutions_engineer',   label: 'Solutions Engineer' },
+  { value: 'service_manager',      label: 'Service Manager' },
+  { value: 'read_only',            label: 'Read Only' },
+  { value: 'admin',                label: 'Admin' },
 ]
 
 const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm'
 
 function roleBadgeClass(role: string) {
   switch (role) {
-    case 'admin':           return 'bg-purple-50 text-purple-700 ring-1 ring-purple-200'
-    case 'sales':           return 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
-    case 'service_manager': return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
-    default:                return 'bg-gray-100 text-gray-600'
+    case 'admin':                return 'bg-purple-50 text-purple-700 ring-1 ring-purple-200'
+    case 'sales':                return 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
+    case 'solutions_engineer':   return 'bg-teal-50 text-teal-700 ring-1 ring-teal-200'
+    case 'service_manager':      return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+    default:                     return 'bg-gray-100 text-gray-600'
   }
 }
 

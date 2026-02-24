@@ -91,19 +91,21 @@ export interface Deal {
   deal_name:        string
   deal_description: string | null
   deal_notes:       string | null
-  deal_owner_id:    string
-  value_amount:     number | null
-  currency:         string
-  close_date:       string | null
-  last_activity_at: string | null
-  created_at:       string
-  updated_at:       string
+  deal_owner_id:          string
+  solutions_engineer_id:  string | null
+  value_amount:           number | null
+  currency:               string
+  close_date:             string | null
+  last_activity_at:       string | null
+  created_at:             string
+  updated_at:             string
 }
 
 export interface DealWithRelations extends Deal {
-  accounts:    { account_name: string } | null
-  deal_stages: Pick<DealStage, 'stage_name' | 'sort_order' | 'is_closed' | 'is_won' | 'is_lost'> | null
-  deal_owner:  { full_name: string | null } | null
+  accounts:             { account_name: string } | null
+  deal_stages:          Pick<DealStage, 'stage_name' | 'sort_order' | 'is_closed' | 'is_won' | 'is_lost'> | null
+  deal_owner:           { full_name: string | null } | null
+  solutions_engineer:   { full_name: string | null } | null
 }
 
 // ── Notes ───────────────────────────────────────────────────────────────────
