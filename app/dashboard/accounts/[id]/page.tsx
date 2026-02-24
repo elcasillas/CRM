@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type {
-  Account, Contact, Contract, DealStage, DealWithRelations,
+  Account, AccountWithOwners, Contact, Contract, DealStage, DealWithRelations,
   HidRecord, NoteWithAuthor,
 } from '@/lib/types'
 
@@ -112,7 +112,7 @@ export default function AccountDetailPage() {
   const searchParams = useSearchParams()
   const initialTab  = (searchParams.get('tab') as Tab | null) ?? 'contacts'
 
-  const [account,   setAccount]   = useState<Account | null>(null)
+  const [account,   setAccount]   = useState<AccountWithOwners | null>(null)
   const [contacts,  setContacts]  = useState<Contact[]>([])
   const [hids,      setHids]      = useState<HidRecord[]>([])
   const [contracts, setContracts] = useState<Contract[]>([])
@@ -163,9 +163,9 @@ export default function AccountDetailPage() {
   // ── Data fetchers ───────────────────────────────────────────────────────────
 
   const fetchAccount = useCallback(async () => {
-    const { data, error } = await supabase.from('accounts').select('*').eq('id', id).single()
+    const { data, error } = await supabase.from('accounts').select('*, account_owner:profiles!account_owner_id(id, full_name), service_manager:profiles!service_manager_id(id, full_name)').eq('id', id).single()
     if (error || !data) setNotFound(true)
-    else setAccount(data)
+    else setAccount(data as AccountWithOwners)
   }, [id])
 
   const fetchContacts = useCallback(async () => {
@@ -402,6 +402,9 @@ export default function AccountDetailPage() {
               )}
               {[account.address_line1, account.address_line2].filter(Boolean).join(', ') && (
                 <span>{[account.address_line1, account.address_line2].filter(Boolean).join(', ')}</span>
+              )}
+              {account.service_manager?.full_name && (
+                <span>SM: {account.service_manager.full_name}</span>
               )}
             </div>
           </div>
