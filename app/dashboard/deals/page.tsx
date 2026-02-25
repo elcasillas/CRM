@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { Account, DealStage, DealWithRelations, NoteWithAuthor } from '@/lib/types'
 
@@ -62,6 +63,13 @@ function formatRelative(ts: string | null): string {
   return `${months}mo ago`
 }
 
+function healthBadgeClass(score: number | null): string {
+  if (score == null) return 'bg-gray-100 text-gray-400'
+  if (score >= 80) return 'bg-green-100 text-green-700'
+  if (score >= 60) return 'bg-amber-100 text-amber-700'
+  return 'bg-red-100 text-red-600'
+}
+
 function stageBadgeClass(s: Pick<DealStage, 'is_won' | 'is_lost' | 'sort_order'> | null): string {
   if (!s) return 'bg-gray-100 text-gray-600'
   if (s.is_lost) return 'bg-red-50 text-red-600 ring-1 ring-red-200'
@@ -107,13 +115,17 @@ export default function DealsPage() {
   const [noteConfirmDelete, setNoteConfirmDelete] = useState<string | null>(null)
   const [userId, setUserId]           = useState('')
 
+  // AI summary
+  const [summary, setSummary]               = useState<string | null>(null)
+  const [loadingSummary, setLoadingSummary] = useState(false)
+
   const fetchStages = useCallback(async () => {
     const { data, error } = await supabase
       .from('deal_stages')
-      .select('id, stage_name, sort_order, is_closed, is_won, is_lost')
+      .select('id, stage_name, sort_order, is_closed, is_won, is_lost, win_probability')
       .order('sort_order')
     if (error) console.error('stages fetch:', error.message)
-    else setStages(data ?? [])
+    else setStages((data ?? []) as DealStage[])
   }, [])
 
   const fetchDeals = useCallback(async () => {
@@ -146,6 +158,12 @@ export default function DealsPage() {
     const me = (data ?? []).find(p => p.id === user?.id)
     setIsAdmin(me?.role === 'admin')
   }, [])
+
+  function triggerHealthScore(dealId: string) {
+    fetch(`/api/deals/${dealId}/health-score`, { method: 'POST' })
+      .then(() => fetchDeals())
+      .catch(() => { /* silent */ })
+  }
 
   const fetchDealNotes = useCallback(async (dealId: string) => {
     const { data } = await supabase
@@ -197,12 +215,12 @@ export default function DealsPage() {
       close_date:            deal.close_date ?? '',
       deal_notes:            deal.deal_notes ?? '',
     })
-    setDealNotes([]); setNoteText(''); setNoteConfirmDelete(null)
+    setDealNotes([]); setNoteText(''); setNoteConfirmDelete(null); setSummary(null)
     fetchDealNotes(deal.id)
     setEditing(deal); setFormError(null); setModal('edit')
   }
 
-  function closeModal() { setModal(null); setEditing(null); setFormError(null); setDealNotes([]); setNoteText('') }
+  function closeModal() { setModal(null); setEditing(null); setFormError(null); setDealNotes([]); setNoteText(''); setSummary(null) }
 
   async function addDealNote() {
     if (!noteText.trim() || !editing) return
@@ -213,7 +231,7 @@ export default function DealsPage() {
       note_text:   noteText.trim(),
       created_by:  userId,
     })
-    if (!error) { setNoteText(''); fetchDealNotes(editing.id) }
+    if (!error) { setNoteText(''); fetchDealNotes(editing.id); triggerHealthScore(editing.id) }
     setLoggingNote(false)
   }
 
@@ -244,8 +262,8 @@ export default function DealsPage() {
       ...(modal === 'edit' && form.deal_owner_id ? { deal_owner_id: form.deal_owner_id } : {}),
     }
     if (modal === 'add') {
-      const { error } = await supabase.from('deals').insert({ ...payload, deal_owner_id: user!.id })
-      if (error) { setFormError(error.message) } else { closeModal(); fetchDeals() }
+      const { data: inserted, error } = await supabase.from('deals').insert({ ...payload, deal_owner_id: user!.id }).select('id').single()
+      if (error) { setFormError(error.message) } else { closeModal(); fetchDeals(); if (inserted) triggerHealthScore(inserted.id) }
     } else if (modal === 'edit' && editing) {
       const stageChanged = form.stage_id !== editing.stage_id
       const { error } = await supabase.from('deals')
@@ -262,7 +280,7 @@ export default function DealsPage() {
             changed_by:    user!.id,
           })
         }
-        closeModal(); fetchDeals()
+        closeModal(); fetchDeals(); triggerHealthScore(editing.id)
       }
     }
     setSaving(false)
@@ -313,6 +331,12 @@ export default function DealsPage() {
               Kanban
             </button>
           </div>
+          <Link
+            href="/dashboard/deals/import"
+            className="text-sm text-gray-500 hover:text-gray-700 font-medium border border-gray-300 px-3 py-2 rounded-lg transition-colors"
+          >
+            Import CSV
+          </Link>
           <button
             onClick={() => openAdd()}
             className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
@@ -368,6 +392,7 @@ export default function DealsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deal Owner</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SE</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Activity</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Health</th>
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
@@ -403,6 +428,15 @@ export default function DealsPage() {
                     </td>
                     <td className="px-4 py-3.5 text-gray-400 text-xs">
                       {formatRelative(deal.last_activity_at)}
+                    </td>
+                    <td className="px-4 py-3.5">
+                      {deal.health_score != null ? (
+                        <span className={`inline-flex items-center justify-center w-8 h-6 rounded text-xs font-semibold ${healthBadgeClass(deal.health_score)}`}>
+                          {deal.health_score}
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 text-xs">—</span>
+                      )}
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-3 justify-end">
@@ -448,7 +482,14 @@ export default function DealsPage() {
                   <div className="flex-1 space-y-2">
                     {stageDeals.map(deal => (
                       <div key={deal.id} className="bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
-                        <p className="text-sm font-medium text-gray-900 leading-snug">{deal.deal_name}</p>
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-medium text-gray-900 leading-snug">{deal.deal_name}</p>
+                          {deal.health_score != null && (
+                            <span className={`flex-shrink-0 text-xs font-semibold px-1.5 py-0.5 rounded ${healthBadgeClass(deal.health_score)}`}>
+                              {deal.health_score}
+                            </span>
+                          )}
+                        </div>
 
                         {deal.accounts && (
                           <p className="text-xs text-gray-500 mt-1">{deal.accounts.account_name}</p>
@@ -613,6 +654,37 @@ export default function DealsPage() {
                         </li>
                       ))}
                     </ul>
+                  )}
+                </div>
+              )}
+
+              {/* AI summary — edit mode only */}
+              {modal === 'edit' && editing && (
+                <div className="border-t border-gray-100 pt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-gray-700">AI summary</p>
+                    <button
+                      onClick={async () => {
+                        setLoadingSummary(true)
+                        try {
+                          const res = await fetch(`/api/deals/${editing.id}/summarize`, { method: 'POST' })
+                          const body = await res.json()
+                          if (res.ok) setSummary(body.summary)
+                          else setSummary(`Error: ${body.error}`)
+                        } finally {
+                          setLoadingSummary(false)
+                        }
+                      }}
+                      disabled={loadingSummary}
+                      className="text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50 font-medium"
+                    >
+                      {loadingSummary ? 'Summarizing…' : summary ? 'Refresh' : 'Summarize'}
+                    </button>
+                  </div>
+                  {summary ? (
+                    <p className="text-sm text-gray-700 bg-blue-50 rounded-lg p-3 leading-relaxed">{summary}</p>
+                  ) : (
+                    <p className="text-xs text-gray-400">Click Summarize to generate an AI summary of this deal&apos;s notes using Claude.</p>
                   )}
                 </div>
               )}

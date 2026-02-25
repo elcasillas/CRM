@@ -75,12 +75,13 @@ export interface Contract {
 
 // ── Deal Stages ─────────────────────────────────────────────────────────────
 export interface DealStage {
-  id:         string
-  stage_name: string
-  sort_order: number
-  is_closed:  boolean
-  is_won:     boolean
-  is_lost:    boolean
+  id:               string
+  stage_name:       string
+  sort_order:       number
+  is_closed:        boolean
+  is_won:           boolean
+  is_lost:          boolean
+  win_probability:  number | null
 }
 
 // ── Deals ───────────────────────────────────────────────────────────────────
@@ -99,6 +100,16 @@ export interface Deal {
   last_activity_at:       string | null
   created_at:             string
   updated_at:             string
+  // Health score (computed, stored for display)
+  health_score:         number | null
+  hs_stage_probability: number | null
+  hs_velocity:          number | null
+  hs_activity_recency:  number | null
+  hs_close_date:        number | null
+  hs_acv:               number | null
+  hs_notes_signal:      number | null
+  health_debug:         Record<string, unknown> | null
+  notes_hash:           string | null
 }
 
 export interface DealWithRelations extends Deal {

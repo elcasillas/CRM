@@ -9,10 +9,11 @@ const supabase = createClient()
 const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm'
 
 type FormData = {
-  stage_name: string
-  is_closed:  boolean
-  is_won:     boolean
-  is_lost:    boolean
+  stage_name:      string
+  is_closed:       boolean
+  is_won:          boolean
+  is_lost:         boolean
+  win_probability: string
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -30,7 +31,7 @@ export default function AdminStagesPage() {
 
   const [modal, setModal]         = useState<'add' | 'edit' | null>(null)
   const [editing, setEditing]     = useState<DealStage | null>(null)
-  const [form, setForm]           = useState<FormData>({ stage_name: '', is_closed: false, is_won: false, is_lost: false })
+  const [form, setForm]           = useState<FormData>({ stage_name: '', is_closed: false, is_won: false, is_lost: false, win_probability: '' })
   const [saving, setSaving]       = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<Record<string, string>>({})
@@ -38,7 +39,7 @@ export default function AdminStagesPage() {
   const fetchStages = useCallback(async () => {
     const { data, error } = await supabase
       .from('deal_stages')
-      .select('id, stage_name, sort_order, is_closed, is_won, is_lost')
+      .select('id, stage_name, sort_order, is_closed, is_won, is_lost, win_probability')
       .order('sort_order')
     if (error) console.error('stages fetch:', error.message)
     else setStages(data ?? [])
@@ -63,12 +64,12 @@ export default function AdminStagesPage() {
   }
 
   function openAdd() {
-    setForm({ stage_name: '', is_closed: false, is_won: false, is_lost: false })
+    setForm({ stage_name: '', is_closed: false, is_won: false, is_lost: false, win_probability: '' })
     setEditing(null); setFormError(null); setModal('add')
   }
 
   function openEdit(s: DealStage) {
-    setForm({ stage_name: s.stage_name, is_closed: s.is_closed, is_won: s.is_won, is_lost: s.is_lost })
+    setForm({ stage_name: s.stage_name, is_closed: s.is_closed, is_won: s.is_won, is_lost: s.is_lost, win_probability: s.win_probability != null ? String(s.win_probability) : '' })
     setEditing(s); setFormError(null); setModal('edit')
   }
 
@@ -90,11 +91,13 @@ export default function AdminStagesPage() {
     if (!form.stage_name.trim()) { setFormError('Stage name is required'); return }
     setSaving(true); setFormError(null)
 
+    const prob = form.win_probability.trim() !== '' ? parseInt(form.win_probability, 10) : null
     const payload = {
-      stage_name: form.stage_name.trim(),
-      is_closed:  form.is_closed,
-      is_won:     form.is_won,
-      is_lost:    form.is_lost,
+      stage_name:      form.stage_name.trim(),
+      is_closed:       form.is_closed,
+      is_won:          form.is_won,
+      is_lost:         form.is_lost,
+      win_probability: prob != null && !isNaN(prob) ? Math.max(0, Math.min(100, prob)) : null,
     }
 
     if (modal === 'add') {
@@ -152,6 +155,7 @@ export default function AdminStagesPage() {
               <tr className="border-b border-gray-200 bg-gray-50">
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-12">Order</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stage name</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Win %</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Flags</th>
                 <th className="px-4 py-3"></th>
               </tr>
@@ -181,6 +185,7 @@ export default function AdminStagesPage() {
                     </div>
                   </td>
                   <td className="px-4 py-3.5 font-medium text-gray-900">{stage.stage_name}</td>
+                  <td className="px-4 py-3.5 text-gray-500 text-sm">{stage.win_probability != null ? `${stage.win_probability}%` : '—'}</td>
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {flagBadge('Closed', stage.is_closed)}
@@ -223,6 +228,17 @@ export default function AdminStagesPage() {
                   onChange={e => setForm(f => ({ ...f, stage_name: e.target.value }))}
                   className={INPUT}
                   autoFocus
+                />
+              </Field>
+              <Field label="Win probability (0–100)">
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={form.win_probability}
+                  onChange={e => setForm(f => ({ ...f, win_probability: e.target.value }))}
+                  placeholder="e.g. 75"
+                  className={INPUT}
                 />
               </Field>
               <div className="space-y-2">
