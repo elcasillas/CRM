@@ -337,6 +337,7 @@ export default function DealsPage() {
       case 'owner':    return d.deal_owner?.full_name ?? null
       case 'se':       return d.solutions_engineer?.full_name ?? null
       case 'modified': return lastNoteDates.get(d.id) ?? null
+      case 'days':     return lastNoteDates.get(d.id) ? Math.floor((Date.now() - new Date(lastNoteDates.get(d.id)!).getTime()) / 86400000) : null
       case 'health':   return d.health_score ?? null
       default:         return null
     }
@@ -575,6 +576,7 @@ export default function DealsPage() {
                   <Th col="close"    label="Close Date" />
                   <Th col="owner"    label="Deal Owner" />
                   <Th col="modified" label="Modified Date" />
+                  <Th col="days"     label="Days Since" />
                   <Th col="health"   label="Health" />
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -605,6 +607,9 @@ export default function DealsPage() {
                     </td>
                     <td className="px-4 py-3.5 text-gray-400 text-xs">
                       {(() => { const ts = lastNoteDates.get(deal.id); return ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—' })()}
+                    </td>
+                    <td className="px-4 py-3.5 text-gray-400 text-xs">
+                      {(() => { const ts = lastNoteDates.get(deal.id); return ts ? Math.floor((Date.now() - new Date(ts).getTime()) / 86400000) : '—' })()}
                     </td>
                     <td className="px-4 py-3.5">
                       {deal.health_score != null ? (
