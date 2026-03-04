@@ -720,7 +720,7 @@ export default function DealsPage() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">{modal === 'add' ? 'New deal' : 'Edit deal'}</h3>
+              <h3 className="font-semibold text-gray-900">{modal === 'add' ? 'New deal' : 'Edit Deal'}</h3>
               <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
             </div>
             <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
@@ -779,6 +779,37 @@ export default function DealsPage() {
                   <textarea value={form.deal_notes} onChange={set('deal_notes')} rows={3} className={`${INPUT} resize-none`} />
                 </Field>
               )}
+              {/* AI summary — edit mode only */}
+              {modal === 'edit' && editing && (
+                <div className="border-t border-gray-100 pt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-sm font-medium text-gray-700">AI summary</p>
+                    <button
+                      onClick={async () => {
+                        setLoadingSummary(true)
+                        try {
+                          const res = await fetch(`/api/deals/${editing.id}/summarize`, { method: 'POST' })
+                          const body = await res.json()
+                          if (res.ok) setSummary(body.summary)
+                          else setSummary(`Error: ${body.error}`)
+                        } finally {
+                          setLoadingSummary(false)
+                        }
+                      }}
+                      disabled={loadingSummary}
+                      className="text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50 font-medium"
+                    >
+                      {loadingSummary ? 'Summarizing…' : summary ? 'Refresh' : 'Summarize'}
+                    </button>
+                  </div>
+                  {summary ? (
+                    <p className="text-sm text-gray-700 bg-blue-50 rounded-lg p-3 leading-relaxed">{summary}</p>
+                  ) : (
+                    <p className="text-xs text-gray-400">Click Summarize to generate an AI summary of this deal&apos;s notes using Claude.</p>
+                  )}
+                </div>
+              )}
+
               {/* Notes — only shown when editing an existing deal */}
               {modal === 'edit' && (
                 <div className="border-t border-gray-100 pt-4">
@@ -833,37 +864,6 @@ export default function DealsPage() {
                         </li>
                       )}
                     </ul>
-                  )}
-                </div>
-              )}
-
-              {/* AI summary — edit mode only */}
-              {modal === 'edit' && editing && (
-                <div className="border-t border-gray-100 pt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-gray-700">AI summary</p>
-                    <button
-                      onClick={async () => {
-                        setLoadingSummary(true)
-                        try {
-                          const res = await fetch(`/api/deals/${editing.id}/summarize`, { method: 'POST' })
-                          const body = await res.json()
-                          if (res.ok) setSummary(body.summary)
-                          else setSummary(`Error: ${body.error}`)
-                        } finally {
-                          setLoadingSummary(false)
-                        }
-                      }}
-                      disabled={loadingSummary}
-                      className="text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50 font-medium"
-                    >
-                      {loadingSummary ? 'Summarizing…' : summary ? 'Refresh' : 'Summarize'}
-                    </button>
-                  </div>
-                  {summary ? (
-                    <p className="text-sm text-gray-700 bg-blue-50 rounded-lg p-3 leading-relaxed">{summary}</p>
-                  ) : (
-                    <p className="text-xs text-gray-400">Click Summarize to generate an AI summary of this deal&apos;s notes using Claude.</p>
                   )}
                 </div>
               )}
