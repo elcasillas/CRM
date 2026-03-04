@@ -29,7 +29,7 @@ export async function POST(
   // 1. Load deal + notes
   const { data: deal, error: dealErr } = await admin
     .from('deals')
-    .select('deal_name, deal_notes')
+    .select('deal_name')
     .eq('id', id)
     .single()
   if (dealErr || !deal) return NextResponse.json({ error: 'Deal not found' }, { status: 404 })
@@ -40,10 +40,7 @@ export async function POST(
     .eq('entity_type', 'deal')
     .eq('entity_id', id)
     .order('created_at', { ascending: true })
-  const notesTexts = [
-    ...(deal.deal_notes ? [deal.deal_notes] : []),
-    ...(notes ?? []).map((n: { note_text: string }) => n.note_text),
-  ]
+  const notesTexts = (notes ?? []).map((n: { note_text: string }) => n.note_text)
   const canonical = buildCanonical(notesTexts)
   if (!canonical) return NextResponse.json({ error: 'No notes to summarize' }, { status: 400 })
 

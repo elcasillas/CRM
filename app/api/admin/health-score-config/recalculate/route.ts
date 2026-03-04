@@ -33,7 +33,7 @@ export async function POST() {
   // Load all deals with stage info
   const { data: deals, error: dealsErr } = await admin
     .from('deals')
-    .select('id, value_amount, close_date, last_activity_at, deal_notes, deal_stages(stage_name, win_probability)')
+    .select('id, value_amount, close_date, last_activity_at, deal_stages(stage_name, win_probability)')
   if (dealsErr || !deals) return NextResponse.json({ error: 'Failed to load deals' }, { status: 500 })
 
   // ACV distribution
@@ -82,7 +82,6 @@ export async function POST() {
         value_amount:     deal.value_amount ? Number(deal.value_amount) : null,
         close_date:       deal.close_date ?? null,
         last_activity_at: deal.last_activity_at ?? null,
-        deal_notes:       deal.deal_notes ?? null,
         latestNoteAt,
         allNotesText,
       },

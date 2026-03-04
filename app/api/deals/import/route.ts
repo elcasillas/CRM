@@ -233,6 +233,7 @@ export async function POST(req: NextRequest) {
   }
 
   const now = new Date().toISOString()
+  type DealRow = { account_id: string; stage_id: string; deal_name: string; deal_description: string | null; deal_owner_id: string; value_amount: number | null; currency: string; close_date: string | null; last_activity_at: string; _deal_notes: string; _owner_id: string }
   const rows = parsedDeals.map(d => {
     const resolvedAccountId =
       (d.account_name && accountNameMap.get(normalizeString(d.account_name))) ||
@@ -246,24 +247,36 @@ export async function POST(req: NextRequest) {
       stage_id:         stageId,
       deal_name:        d.deal_name,
       deal_description: d.deal_description || null,
-      deal_notes:       d.deal_notes || null,
       deal_owner_id:    ownerId,
       value_amount:     d.value_amount > 0 ? d.value_amount : null,
       currency:         'CAD',
       close_date:       d.close_date,
       last_activity_at: now,
+      _deal_notes:      d.deal_notes,
+      _owner_id:        ownerId,
     }
-  }).filter((r): r is NonNullable<typeof r> => r !== null && !!r.stage_id)
+  }).filter((r): r is NonNullable<DealRow> => r !== null && !!r.stage_id)
 
   if (rows.length === 0) {
     return NextResponse.json({ error: 'No deals could be matched to a valid stage' }, { status: 422 })
   }
 
+  // Strip internal fields before inserting
+  const dbRows = rows.map(({ _deal_notes: _n, _owner_id: _o, ...r }) => r)
   const { data: inserted, error: insertErr } = await admin
     .from('deals')
-    .insert(rows)
+    .insert(dbRows)
     .select('id')
   if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 })
+
+  // Insert deal_notes as notes table entries
+  const noteRows = (inserted ?? [])
+    .map((ins, i) => ({ id: ins.id, notes: rows[i]._deal_notes, owner: rows[i]._owner_id }))
+    .filter(r => r.notes)
+    .map(r => ({ entity_type: 'deal', entity_id: r.id, note_text: r.notes, created_by: r.owner, created_at: now }))
+  if (noteRows.length > 0) {
+    await admin.from('notes').insert(noteRows)
+  }
 
   // Trigger health score computation for each inserted deal (fire-and-forget)
   const origin = req.nextUrl.origin

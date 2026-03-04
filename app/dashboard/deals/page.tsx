@@ -16,11 +16,10 @@ type FormData = {
   value_amount:          string
   currency:              string
   close_date:            string
-  deal_notes:            string
 }
 
 const EMPTY_FORM: FormData = {
-  deal_name: '', account_id: '', stage_id: '', deal_owner_id: '', solutions_engineer_id: '', value_amount: '', currency: 'USD', close_date: '', deal_notes: '',
+  deal_name: '', account_id: '', stage_id: '', deal_owner_id: '', solutions_engineer_id: '', value_amount: '', currency: 'USD', close_date: '',
 }
 
 const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm'
@@ -216,7 +215,6 @@ export default function DealsPage() {
       value_amount:          deal.value_amount != null ? String(deal.value_amount) : '',
       currency:              deal.currency,
       close_date:            deal.close_date ?? '',
-      deal_notes:            deal.deal_notes ?? '',
     })
     setDealNotes([]); setNoteText(''); setNoteConfirmDelete(null); setSummary(null)
     fetchDealNotes(deal.id)
@@ -260,7 +258,6 @@ export default function DealsPage() {
       value_amount: form.value_amount ? parseFloat(form.value_amount) : null,
       currency:     form.currency     || 'USD',
       close_date:   form.close_date   || null,
-      deal_notes:            form.deal_notes.trim() || null,
       solutions_engineer_id: form.solutions_engineer_id || null,
       ...(modal === 'edit' && form.deal_owner_id ? { deal_owner_id: form.deal_owner_id } : {}),
     }
@@ -774,11 +771,6 @@ export default function DealsPage() {
               <Field label="Close date">
                 <input type="date" value={form.close_date} onChange={set('close_date')} className={INPUT} />
               </Field>
-              {modal === 'add' && isAdmin && (
-                <Field label="Notes">
-                  <textarea value={form.deal_notes} onChange={set('deal_notes')} rows={3} className={`${INPUT} resize-none`} />
-                </Field>
-              )}
               {/* AI summary — edit mode only */}
               {modal === 'edit' && editing && (
                 <div className="border-t border-gray-100 pt-4">
@@ -836,7 +828,7 @@ export default function DealsPage() {
                   </div>
 
                   {/* Unified note list: submitted notes (newest first) + deal_notes last */}
-                  {dealNotes.length === 0 && !form.deal_notes ? (
+                  {dealNotes.length === 0 ? (
                     <p className="text-sm text-gray-400">No notes yet.</p>
                   ) : (
                     <ul className="space-y-3">
@@ -857,12 +849,6 @@ export default function DealsPage() {
                           </div>
                         </li>
                       ))}
-                      {form.deal_notes && (
-                        <li className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                          <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{form.deal_notes}</p>
-                          <p className="text-xs text-gray-400 mt-3">Initial note</p>
-                        </li>
-                      )}
                     </ul>
                   )}
                 </div>

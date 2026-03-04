@@ -91,7 +91,6 @@ export interface Deal {
   stage_id:         string
   deal_name:        string
   deal_description: string | null
-  deal_notes:       string | null
   deal_owner_id:          string
   solutions_engineer_id:  string | null
   value_amount:           number | null

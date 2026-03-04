@@ -63,7 +63,6 @@ export async function POST(
       value_amount:     deal.value_amount ? Number(deal.value_amount) : null,
       close_date:       deal.close_date ?? null,
       last_activity_at: deal.last_activity_at ?? null,
-      deal_notes:       deal.deal_notes ?? null,
       latestNoteAt,
       allNotesText,
     },

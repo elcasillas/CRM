@@ -57,7 +57,6 @@ export interface CRMDealInput {
   value_amount:     number | null
   close_date:       string | null   // ISO date string
   last_activity_at: string | null   // ISO timestamp
-  deal_notes:       string | null   // inline notes field
   latestNoteAt:     string | null   // created_at of most recent activity note
   allNotesText:     string          // all activity notes concatenated
 }
@@ -178,7 +177,7 @@ export function computeDealHealthScore(
   const positiveKws = config?.keywords.positive ?? DEFAULT_POSITIVE_KEYWORDS
   const negativeKws = config?.keywords.negative ?? DEFAULT_NEGATIVE_KEYWORDS
 
-  const allText = [deal.deal_notes ?? '', deal.allNotesText].join(' ')
+  const allText = deal.allNotesText
 
   // Days since last_activity_at (for velocity proxy)
   let daysSinceActivity: number | null = null
