@@ -374,13 +374,14 @@ export default function DealsPage() {
   const nowMs           = Date.now()
   const openDisplay     = displayDeals.filter(d => !d.deal_stages?.is_closed)
   const totalACV        = openDisplay.reduce((s, d) => s + (d.value_amount ?? 0), 0)
-  const activityDays    = displayDeals.map(d => d.last_activity_at
-    ? Math.floor((nowMs - new Date(d.last_activity_at).getTime()) / 86400000)
-    : null).filter((x): x is number => x !== null)
-  const avgDays         = activityDays.length
-    ? Math.round(activityDays.reduce((a, b) => a + b, 0) / activityDays.length)
+  const noteDays        = displayDeals.map(d => {
+    const ts = lastNoteDates.get(d.id)
+    return ts ? Math.floor((nowMs - new Date(ts).getTime()) / 86400000) : null
+  }).filter((x): x is number => x !== null)
+  const avgDays         = noteDays.length
+    ? Math.round(noteDays.reduce((a, b) => a + b, 0) / noteDays.length)
     : null
-  const staleCount      = activityDays.filter(d => d > 30).length
+  const staleCount      = noteDays.filter(d => d > 30).length
   const overdueCount    = displayDeals.filter(d =>
     d.close_date && d.close_date < todayStr && !d.deal_stages?.is_closed).length
   const healthScores    = displayDeals.map(d => d.health_score).filter((x): x is number => x != null)
@@ -498,7 +499,7 @@ export default function DealsPage() {
               <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalACV) ?? '—'}</p>
             </div>
             <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Avg Days Since Activity</p>
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Avg Days Since Update</p>
               <p className="text-2xl font-bold text-gray-900">{avgDays ?? '—'}</p>
             </div>
             <div className="bg-white border border-gray-200 border-l-4 border-l-amber-400 rounded-xl p-4 shadow-sm">
