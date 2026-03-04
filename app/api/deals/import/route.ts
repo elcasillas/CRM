@@ -79,6 +79,7 @@ interface ParsedDeal {
   close_date: string | null
   deal_notes: string
   deal_description: string
+  account_name: string
 }
 
 function parseCSVDeals(csvText: string): ParsedDeal[] {
@@ -99,6 +100,7 @@ function parseCSVDeals(csvText: string): ParsedDeal[] {
   const idx = (col: string) => headers.indexOf(col)
   const iDealOwner = idx('Deal Owner')
   const iDealName  = idx('Deal Name')
+  const iAcctName  = idx('Account Name')
   const iStage     = idx('Stage')
   const iACV       = idx('Annual Contract Value')
   const iClose     = idx('Closing Date')
@@ -122,6 +124,7 @@ function parseCSVDeals(csvText: string): ParsedDeal[] {
     const acv = parseACV(acvRaw)
     if (!acv.isCAD) continue
 
+    const acctName   = iAcctName >= 0 ? (row[iAcctName] ?? '').trim() : ''
     const stageName  = iStage >= 0 ? (row[iStage] ?? '').trim() : ''
     const closeRaw   = iClose >= 0 ? (row[iClose] ?? '').trim() : ''
     const noteRaw    = iNotes >= 0 ? (row[iNotes] ?? '').trim() : ''
@@ -143,12 +146,13 @@ function parseCSVDeals(csvText: string): ParsedDeal[] {
       const notesSet = new Set<string>()
       if (noteText) notesSet.add(noteText)
       dealMap.set(key, {
-        deal_name:       dealName,
-        deal_owner_name: dealOwner,
-        stage_name:      stageName,
-        value_amount:    acv.value,
-        close_date:      closeDate,
-        deal_notes:      '',
+        deal_name:        dealName,
+        deal_owner_name:  dealOwner,
+        account_name:     acctName,
+        stage_name:       stageName,
+        value_amount:     acv.value,
+        close_date:       closeDate,
+        deal_notes:       '',
         deal_description: descRaw,
         notesSet,
       })
@@ -173,7 +177,6 @@ export async function POST(req: NextRequest) {
   const accountId = formData.get('account_id') as string | null
 
   if (!file) return NextResponse.json({ error: 'No file provided' }, { status: 400 })
-  if (!accountId) return NextResponse.json({ error: 'account_id is required' }, { status: 400 })
 
   const csvText = await file.text()
   let parsedDeals: ParsedDeal[]
@@ -189,10 +192,11 @@ export async function POST(req: NextRequest) {
 
   const admin = createAdminClient()
 
-  // Resolve stages and profiles for matching
-  const [{ data: stages }, { data: profiles }] = await Promise.all([
+  // Resolve stages, profiles, and accounts for matching
+  const [{ data: stages }, { data: profiles }, { data: existingAccounts }] = await Promise.all([
     admin.from('deal_stages').select('id, stage_name, sort_order, is_closed').order('sort_order'),
     admin.from('profiles').select('id, full_name'),
+    admin.from('accounts').select('id, account_name'),
   ])
 
   const stageMap = new Map((stages ?? []).map((s: { id: string; stage_name: string }) =>
@@ -203,23 +207,53 @@ export async function POST(req: NextRequest) {
   ))
   const defaultStageId = (stages ?? []).find((s: { is_closed: boolean }) => !s.is_closed)?.id
 
+  // Build account name → id map; auto-create accounts not yet in the DB
+  const accountNameMap = new Map<string, string>(
+    (existingAccounts ?? []).map((a: { id: string; account_name: string }) =>
+      [normalizeString(a.account_name), a.id]
+    )
+  )
+  const missingNames = [...new Set(
+    parsedDeals
+      .map(d => d.account_name)
+      .filter(n => n && !accountNameMap.has(normalizeString(n)))
+  )]
+  if (missingNames.length > 0) {
+    const { data: newAccounts } = await admin
+      .from('accounts')
+      .insert(missingNames.map(name => ({
+        account_name:     name,
+        account_owner_id: user.id,
+        status:           'active',
+      })))
+      .select('id, account_name')
+    for (const a of newAccounts ?? []) {
+      accountNameMap.set(normalizeString(a.account_name), a.id)
+    }
+  }
+
   const now = new Date().toISOString()
   const rows = parsedDeals.map(d => {
-    const stageId   = stageMap.get(normalizeString(d.stage_name)) ?? defaultStageId
-    const ownerId   = profileMap.get(normalizeString(d.deal_owner_name)) ?? user.id
+    const resolvedAccountId =
+      (d.account_name && accountNameMap.get(normalizeString(d.account_name))) ||
+      accountId ||
+      null
+    if (!resolvedAccountId) return null
+    const stageId = stageMap.get(normalizeString(d.stage_name)) ?? defaultStageId
+    const ownerId = profileMap.get(normalizeString(d.deal_owner_name)) ?? user.id
     return {
-      account_id:      accountId,
-      stage_id:        stageId,
-      deal_name:       d.deal_name,
+      account_id:       resolvedAccountId,
+      stage_id:         stageId,
+      deal_name:        d.deal_name,
       deal_description: d.deal_description || null,
-      deal_notes:      d.deal_notes || null,
-      deal_owner_id:   ownerId,
-      value_amount:    d.value_amount > 0 ? d.value_amount : null,
-      currency:        'CAD',
-      close_date:      d.close_date,
+      deal_notes:       d.deal_notes || null,
+      deal_owner_id:    ownerId,
+      value_amount:     d.value_amount > 0 ? d.value_amount : null,
+      currency:         'CAD',
+      close_date:       d.close_date,
       last_activity_at: now,
     }
-  }).filter(r => r.stage_id)  // skip rows with no resolvable stage
+  }).filter((r): r is NonNullable<typeof r> => r !== null && !!r.stage_id)
 
   if (rows.length === 0) {
     return NextResponse.json({ error: 'No deals could be matched to a valid stage' }, { status: 422 })

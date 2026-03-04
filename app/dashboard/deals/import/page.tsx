@@ -53,12 +53,13 @@ function parseACV(value: string): { value: number; isCAD: boolean } {
 function normalize(s: string) { return (s || '').trim().toLowerCase().replace(/\s+/g, ' ') }
 
 interface PreviewRow {
-  deal_name:  string
-  owner:      string
-  stage:      string
-  acv:        number
-  close_date: string
-  notes_len:  number
+  deal_name:    string
+  account_name: string
+  owner:        string
+  stage:        string
+  acv:          number
+  close_date:   string
+  notes_len:    number
 }
 
 function previewCSV(csvText: string): PreviewRow[] | string {
@@ -73,6 +74,7 @@ function previewCSV(csvText: string): PreviewRow[] | string {
   if (headerIdx === -1) return 'Could not find header row with "Deal Owner" and "Deal Name" columns'
   const idx = (col: string) => headers.indexOf(col)
   const iOwner = idx('Deal Owner'); const iName = idx('Deal Name')
+  const iAcct  = idx('Account Name')
   const iStage = idx('Stage'); const iACV = idx('Annual Contract Value')
   const iClose = idx('Closing Date'); const iNotes = idx('Note Content')
   const dealMap = new Map<string, PreviewRow & { notesLen: number }>()
@@ -84,6 +86,7 @@ function previewCSV(csvText: string): PreviewRow[] | string {
     if (!owner || owner.length > 100 || owner.split(' ').length > 5) continue
     const acv = parseACV(iACV >= 0 ? (row[iACV] ?? '') : '')
     if (!acv.isCAD) continue
+    const acctName = iAcct >= 0 ? (row[iAcct] ?? '').trim() : ''
     const stage = iStage >= 0 ? (row[iStage] ?? '').trim() : ''
     const closeRaw = iClose >= 0 ? (row[iClose] ?? '').trim() : ''
     const noteLen = iNotes >= 0 ? (row[iNotes] ?? '').replace(/<[^>]*>/g, '').trim().length : 0
@@ -93,7 +96,7 @@ function previewCSV(csvText: string): PreviewRow[] | string {
     else {
       let closeDate = ''
       if (closeRaw) { const d = new Date(closeRaw); if (!isNaN(d.getTime())) closeDate = d.toISOString().split('T')[0] }
-      dealMap.set(key, { deal_name: name, owner, stage, acv: acv.value, close_date: closeDate, notes_len: noteLen, notesLen: noteLen })
+      dealMap.set(key, { deal_name: name, account_name: acctName, owner, stage, acv: acv.value, close_date: closeDate, notes_len: noteLen, notesLen: noteLen })
     }
   }
   return Array.from(dealMap.values()).map(({ notesLen, ...r }) => ({ ...r, notes_len: notesLen }))
@@ -150,12 +153,15 @@ export default function ImportDealsPage() {
     if (file) processFile(file)
   }
 
+  const allHaveAccount = !!preview && preview.length > 0 && preview.every(r => r.account_name)
+
   async function handleImport() {
-    if (!csvFile || !accountId) return
+    if (!csvFile) return
+    if (!allHaveAccount && !accountId) return
     setImporting(true); setImportError(null)
     const fd = new FormData()
     fd.append('file', csvFile)
-    fd.append('account_id', accountId)
+    if (accountId) fd.append('account_id', accountId)
     const res = await fetch('/api/deals/import', { method: 'POST', body: fd })
     const body = await res.json()
     if (!res.ok) { setImportError(body.error ?? 'Import failed'); setImporting(false); return }
@@ -196,7 +202,7 @@ export default function ImportDealsPage() {
             <p className="text-gray-500 text-sm">
               {csvFile ? <span className="font-medium text-gray-800">{csvFile.name}</span> : 'Drop a CSV file here or click to browse'}
             </p>
-            <p className="text-xs text-gray-400 mt-1">Expects columns: Deal Owner, Deal Name, Stage, Annual Contract Value, Closing Date, Note Content</p>
+            <p className="text-xs text-gray-400 mt-1">Expects columns: Deal Owner, Account Name, Deal Name, Stage, Annual Contract Value, Closing Date, Note Content</p>
           </div>
 
           {parseError && <p className="mt-3 text-red-600 text-sm font-medium">{parseError}</p>}
@@ -210,16 +216,22 @@ export default function ImportDealsPage() {
 
               {/* Account selector */}
               <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Target account *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  {allHaveAccount ? 'Default account (fallback for deals without an account name)' : 'Target account *'}
+                </label>
                 <select
                   value={accountId}
                   onChange={e => setAccountId(e.target.value)}
                   className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm"
                 >
-                  <option value="">— select account —</option>
+                  <option value="">— {allHaveAccount ? 'none (account names read from CSV)' : 'select account'} —</option>
                   {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
                 </select>
-                <p className="text-xs text-gray-400 mt-1">All imported deals will be linked to this account. Deal owners are matched by name to existing profiles; unmatched owners are assigned to you.</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {allHaveAccount
+                    ? 'Account names are read from the CSV and matched or created automatically. Select a fallback only if some rows have no account name.'
+                    : 'All imported deals will be linked to this account. Deal owners are matched by name to existing profiles; unmatched owners are assigned to you.'}
+                </p>
               </div>
 
               {/* Preview table */}
@@ -229,6 +241,7 @@ export default function ImportDealsPage() {
                     <thead className="sticky top-0 bg-gray-50 border-b border-gray-200">
                       <tr>
                         <th className="px-3 py-2.5 text-left font-medium text-gray-500">Deal name</th>
+                        <th className="px-3 py-2.5 text-left font-medium text-gray-500">Account</th>
                         <th className="px-3 py-2.5 text-left font-medium text-gray-500">Owner</th>
                         <th className="px-3 py-2.5 text-left font-medium text-gray-500">Stage</th>
                         <th className="px-3 py-2.5 text-right font-medium text-gray-500">ACV</th>
@@ -240,6 +253,7 @@ export default function ImportDealsPage() {
                       {preview.map((row, i) => (
                         <tr key={i} className="hover:bg-gray-50">
                           <td className="px-3 py-2 font-medium text-gray-900 max-w-[200px] truncate">{row.deal_name}</td>
+                          <td className="px-3 py-2 text-gray-600 max-w-[160px] truncate">{row.account_name || '—'}</td>
                           <td className="px-3 py-2 text-gray-600">{row.owner}</td>
                           <td className="px-3 py-2 text-gray-500">{row.stage || '—'}</td>
                           <td className="px-3 py-2 text-gray-700 font-medium text-right">{fmtCurrency(row.acv)}</td>
@@ -257,7 +271,7 @@ export default function ImportDealsPage() {
               <div className="mt-4 flex justify-end">
                 <button
                   onClick={handleImport}
-                  disabled={importing || !accountId}
+                  disabled={importing || (!allHaveAccount && !accountId)}
                   className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
                 >
                   {importing ? 'Importing…' : `Import ${preview.length} deal${preview.length !== 1 ? 's' : ''}`}
