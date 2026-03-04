@@ -774,20 +774,33 @@ export default function DealsPage() {
               <Field label="Close date">
                 <input type="date" value={form.close_date} onChange={set('close_date')} className={INPUT} />
               </Field>
-              <Field label="Notes">
-                {isAdmin ? (
+              {modal === 'add' && isAdmin && (
+                <Field label="Notes">
                   <textarea value={form.deal_notes} onChange={set('deal_notes')} rows={3} className={`${INPUT} resize-none`} />
-                ) : (
-                  <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 min-h-[72px] whitespace-pre-wrap">
-                    {form.deal_notes || <span className="text-gray-400">—</span>}
-                  </p>
-                )}
-              </Field>
-
+                </Field>
+              )}
               {/* Notes — only shown when editing an existing deal */}
               {modal === 'edit' && (
                 <div className="border-t border-gray-100 pt-4">
                   <p className="text-sm font-medium text-gray-700 mb-3">Notes</p>
+
+                  {/* Initial deal note — admin editable, read-only for others */}
+                  {(isAdmin || form.deal_notes) && (
+                    <div className="mb-4">
+                      {isAdmin ? (
+                        <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                          <p className="text-xs font-medium text-gray-400 mb-2">Deal note</p>
+                          <textarea value={form.deal_notes} onChange={set('deal_notes')} rows={3} className={`${INPUT} resize-none`} />
+                        </div>
+                      ) : (
+                        <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                          <p className="text-xs font-medium text-gray-400 mb-1">Deal note</p>
+                          <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{form.deal_notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4">
                     <textarea
                       value={noteText}
