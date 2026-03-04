@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
-const VALID_ROLES = ['admin', 'sales', 'service_manager', 'read_only'] as const
+const VALID_ROLES = ['admin', 'sales', 'solutions_engineer', 'service_manager', 'read_only'] as const
 
 async function assertAdmin() {
   const supabase = await createClient()

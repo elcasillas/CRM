@@ -6,13 +6,14 @@ import type { Profile, UserRole } from '@/lib/types'
 
 const supabase = createClient()
 
-const ROLES: UserRole[] = ['admin', 'sales', 'service_manager', 'read_only']
+const ROLES: UserRole[] = ['admin', 'sales', 'solutions_engineer', 'service_manager', 'read_only']
 
 const ROLE_CLASSES: Record<UserRole, string> = {
-  admin:           'bg-purple-50 text-purple-700 ring-1 ring-purple-200',
-  sales:           'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
-  service_manager: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
-  read_only:       'bg-gray-100 text-gray-600',
+  admin:               'bg-purple-50 text-purple-700 ring-1 ring-purple-200',
+  sales:               'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
+  solutions_engineer:  'bg-teal-50 text-teal-700 ring-1 ring-teal-200',
+  service_manager:     'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+  read_only:           'bg-gray-100 text-gray-600',
 }
 
 type AuthUser   = { id: string; email: string; created_at: string }
