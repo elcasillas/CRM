@@ -275,45 +275,67 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No deals could be matched to a valid stage' }, { status: 422 })
   }
 
-  // Strip internal fields before inserting
-  const dbRows = rows.map(({ _notes: _n, _owner_id: _o, ...r }) => r)
-  const { data: inserted, error: insertErr } = await admin
+  // Deduplicate: find deals already in DB with matching (account_id, deal_name)
+  const dealNames  = rows.map(r => r.deal_name)
+  const accountIds = [...new Set(rows.map(r => r.account_id))]
+  const { data: existingDeals } = await admin
     .from('deals')
-    .insert(dbRows)
-    .select('id')
+    .select('id, deal_name, account_id')
+    .in('deal_name', dealNames)
+    .in('account_id', accountIds)
+  const existingDealMap = new Map(
+    (existingDeals ?? []).map((d: { id: string; deal_name: string; account_id: string }) =>
+      [`${normalizeString(d.deal_name)}|${d.account_id}`, d.id]
+    )
+  )
+
+  const newRows      = rows.filter(r => !existingDealMap.has(`${normalizeString(r.deal_name)}|${r.account_id}`))
+  const existingRows = rows
+    .map(r => {
+      const id = existingDealMap.get(`${normalizeString(r.deal_name)}|${r.account_id}`)
+      return id ? { id, _notes: r._notes, _owner_id: r._owner_id } : null
+    })
+    .filter((r): r is { id: string; _notes: ParsedNote[]; _owner_id: string } => r !== null)
+
+  // Insert only new deals
+  const dbRows = newRows.map(({ _notes: _n, _owner_id: _o, ...r }) => r)
+  const { data: inserted, error: insertErr } = dbRows.length > 0
+    ? await admin.from('deals').insert(dbRows).select('id')
+    : { data: [], error: null }
   if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 })
 
-  // Load existing notes for inserted deals to deduplicate
-  const insertedIds = (inserted ?? []).map(r => r.id)
-  const { data: existingNotes } = insertedIds.length > 0
-    ? await admin
-        .from('notes')
-        .select('entity_id, note_text')
-        .eq('entity_type', 'deal')
-        .in('entity_id', insertedIds)
+  // Combine new + existing deals for note insertion
+  const allDealIds = [
+    ...(inserted ?? []).map((ins, i) => ({ id: ins.id, _notes: newRows[i]._notes, _owner_id: newRows[i]._owner_id })),
+    ...existingRows,
+  ]
+
+  // Load existing notes for all deals to deduplicate
+  const allIds = allDealIds.map(r => r.id)
+  const { data: existingNotes } = allIds.length > 0
+    ? await admin.from('notes').select('entity_id, note_text').eq('entity_type', 'deal').in('entity_id', allIds)
     : { data: [] }
   const existingNoteSet = new Set(
     (existingNotes ?? []).map((n: { entity_id: string; note_text: string }) => `${n.entity_id}::${n.note_text}`)
   )
 
   // Insert only new notes with their modified_at timestamps
-  const noteRows = (inserted ?? [])
-    .flatMap((ins, i) =>
-      rows[i]._notes
-        .filter(note => !existingNoteSet.has(`${ins.id}::${note.text}`))
-        .map(note => ({
-          entity_type: 'deal',
-          entity_id:   ins.id,
-          note_text:   note.text,
-          created_by:  rows[i]._owner_id,
-          created_at:  note.modified_at ?? now,
-        }))
-    )
+  const noteRows = allDealIds.flatMap(d =>
+    d._notes
+      .filter(note => !existingNoteSet.has(`${d.id}::${note.text}`))
+      .map(note => ({
+        entity_type: 'deal',
+        entity_id:   d.id,
+        note_text:   note.text,
+        created_by:  d._owner_id,
+        created_at:  note.modified_at ?? now,
+      }))
+  )
   if (noteRows.length > 0) {
     await admin.from('notes').insert(noteRows)
   }
 
-  // Trigger health score computation for each inserted deal (fire-and-forget)
+  // Trigger health score computation for each newly inserted deal (fire-and-forget)
   const origin = req.nextUrl.origin
   for (const { id } of inserted ?? []) {
     fetch(`${origin}/api/deals/${id}/health-score`, {
@@ -324,6 +346,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     inserted: inserted?.length ?? 0,
+    existing: existingRows.length,
     skipped:  parsedDeals.length - rows.length,
   })
 }
