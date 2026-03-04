@@ -71,15 +71,20 @@ function normalizeString(s: string) {
   return (s || '').trim().toLowerCase().replace(/\s+/g, ' ')
 }
 
+interface ParsedNote {
+  text: string
+  modified_at: string | null  // ISO timestamp parsed from "Modified Time" column
+}
+
 interface ParsedDeal {
   deal_name: string
   deal_owner_name: string
   stage_name: string
   value_amount: number
   close_date: string | null
-  deal_notes: string
   deal_description: string
   account_name: string
+  notes: ParsedNote[]
 }
 
 function parseCSVDeals(csvText: string): ParsedDeal[] {
@@ -98,17 +103,18 @@ function parseCSVDeals(csvText: string): ParsedDeal[] {
   if (headerRowIndex === -1) throw new Error('Could not find header row with "Deal Owner" and "Deal Name" columns')
 
   const idx = (col: string) => headers.indexOf(col)
-  const iDealOwner = idx('Deal Owner')
-  const iDealName  = idx('Deal Name')
-  const iAcctName  = idx('Account Name')
-  const iStage     = idx('Stage')
-  const iACV       = idx('Annual Contract Value')
-  const iClose     = idx('Closing Date')
-  const iNotes     = idx('Note Content')
-  const iDesc      = idx('Description')
+  const iDealOwner    = idx('Deal Owner')
+  const iDealName     = idx('Deal Name')
+  const iAcctName     = idx('Account Name')
+  const iStage        = idx('Stage')
+  const iACV          = idx('Annual Contract Value')
+  const iClose        = idx('Closing Date')
+  const iNotes        = idx('Note Content')
+  const iDesc         = idx('Description')
+  const iModifiedTime = idx('Modified Time')
 
-  // Collect rows per deal (dedup by normalized name)
-  const dealMap = new Map<string, ParsedDeal & { notesSet: Set<string> }>()
+  // Collect rows per deal; notes deduped by text within the CSV
+  const dealMap = new Map<string, ParsedDeal & { noteMap: Map<string, ParsedNote> }>()
 
   for (let i = headerRowIndex + 1; i < allRows.length; i++) {
     const row = allRows[i]
@@ -124,27 +130,35 @@ function parseCSVDeals(csvText: string): ParsedDeal[] {
     const acv = parseACV(acvRaw)
     if (!acv.isCAD) continue
 
-    const acctName   = iAcctName >= 0 ? (row[iAcctName] ?? '').trim() : ''
-    const stageName  = iStage >= 0 ? (row[iStage] ?? '').trim() : ''
-    const closeRaw   = iClose >= 0 ? (row[iClose] ?? '').trim() : ''
-    const noteRaw    = iNotes >= 0 ? (row[iNotes] ?? '').trim() : ''
-    const descRaw    = iDesc  >= 0 ? (row[iDesc]  ?? '').trim() : ''
+    const acctName    = iAcctName >= 0 ? (row[iAcctName] ?? '').trim() : ''
+    const stageName   = iStage    >= 0 ? (row[iStage]    ?? '').trim() : ''
+    const closeRaw    = iClose    >= 0 ? (row[iClose]    ?? '').trim() : ''
+    const noteRaw     = iNotes    >= 0 ? (row[iNotes]    ?? '').trim() : ''
+    const descRaw     = iDesc     >= 0 ? (row[iDesc]     ?? '').trim() : ''
+    const modifiedRaw = iModifiedTime >= 0 ? (row[iModifiedTime] ?? '').trim() : ''
 
-    // Strip HTML from notes
-    const noteText = noteRaw.replace(/<[^>]*>/g, '')
+    const noteText = noteRaw.replace(/<[^>]*>/g, '').trim()
+
+    let modifiedAt: string | null = null
+    if (modifiedRaw) {
+      const d = new Date(modifiedRaw)
+      if (!isNaN(d.getTime())) modifiedAt = d.toISOString()
+    }
 
     const key = normalizeString(dealName)
     const existing = dealMap.get(key)
     if (existing) {
-      if (noteText) existing.notesSet.add(noteText)
+      if (noteText && !existing.noteMap.has(noteText)) {
+        existing.noteMap.set(noteText, { text: noteText, modified_at: modifiedAt })
+      }
     } else {
       let closeDate: string | null = null
       if (closeRaw) {
         const d = new Date(closeRaw)
         if (!isNaN(d.getTime())) closeDate = d.toISOString().split('T')[0]
       }
-      const notesSet = new Set<string>()
-      if (noteText) notesSet.add(noteText)
+      const noteMap = new Map<string, ParsedNote>()
+      if (noteText) noteMap.set(noteText, { text: noteText, modified_at: modifiedAt })
       dealMap.set(key, {
         deal_name:        dealName,
         deal_owner_name:  dealOwner,
@@ -152,16 +166,16 @@ function parseCSVDeals(csvText: string): ParsedDeal[] {
         stage_name:       stageName,
         value_amount:     acv.value,
         close_date:       closeDate,
-        deal_notes:       '',
         deal_description: descRaw,
-        notesSet,
+        notes:            [],
+        noteMap,
       })
     }
   }
 
-  return Array.from(dealMap.values()).map(({ notesSet, ...d }) => ({
+  return Array.from(dealMap.values()).map(({ noteMap, ...d }) => ({
     ...d,
-    deal_notes: [...notesSet].join('\n\n'),
+    notes: [...noteMap.values()],
   }))
 }
 
@@ -233,7 +247,7 @@ export async function POST(req: NextRequest) {
   }
 
   const now = new Date().toISOString()
-  type DealRow = { account_id: string; stage_id: string; deal_name: string; deal_description: string | null; deal_owner_id: string; value_amount: number | null; currency: string; close_date: string | null; last_activity_at: string; _deal_notes: string; _owner_id: string }
+  type DealRow = { account_id: string; stage_id: string; deal_name: string; deal_description: string | null; deal_owner_id: string; value_amount: number | null; currency: string; close_date: string | null; last_activity_at: string; _notes: ParsedNote[]; _owner_id: string }
   const rows = parsedDeals.map(d => {
     const resolvedAccountId =
       (d.account_name && accountNameMap.get(normalizeString(d.account_name))) ||
@@ -252,7 +266,7 @@ export async function POST(req: NextRequest) {
       currency:         'CAD',
       close_date:       d.close_date,
       last_activity_at: now,
-      _deal_notes:      d.deal_notes,
+      _notes:           d.notes,
       _owner_id:        ownerId,
     }
   }).filter((r): r is NonNullable<DealRow> => r !== null && !!r.stage_id)
@@ -262,18 +276,39 @@ export async function POST(req: NextRequest) {
   }
 
   // Strip internal fields before inserting
-  const dbRows = rows.map(({ _deal_notes: _n, _owner_id: _o, ...r }) => r)
+  const dbRows = rows.map(({ _notes: _n, _owner_id: _o, ...r }) => r)
   const { data: inserted, error: insertErr } = await admin
     .from('deals')
     .insert(dbRows)
     .select('id')
   if (insertErr) return NextResponse.json({ error: insertErr.message }, { status: 500 })
 
-  // Insert deal_notes as notes table entries
+  // Load existing notes for inserted deals to deduplicate
+  const insertedIds = (inserted ?? []).map(r => r.id)
+  const { data: existingNotes } = insertedIds.length > 0
+    ? await admin
+        .from('notes')
+        .select('entity_id, note_text')
+        .eq('entity_type', 'deal')
+        .in('entity_id', insertedIds)
+    : { data: [] }
+  const existingNoteSet = new Set(
+    (existingNotes ?? []).map((n: { entity_id: string; note_text: string }) => `${n.entity_id}::${n.note_text}`)
+  )
+
+  // Insert only new notes with their modified_at timestamps
   const noteRows = (inserted ?? [])
-    .map((ins, i) => ({ id: ins.id, notes: rows[i]._deal_notes, owner: rows[i]._owner_id }))
-    .filter(r => r.notes)
-    .map(r => ({ entity_type: 'deal', entity_id: r.id, note_text: r.notes, created_by: r.owner, created_at: now }))
+    .flatMap((ins, i) =>
+      rows[i]._notes
+        .filter(note => !existingNoteSet.has(`${ins.id}::${note.text}`))
+        .map(note => ({
+          entity_type: 'deal',
+          entity_id:   ins.id,
+          note_text:   note.text,
+          created_by:  rows[i]._owner_id,
+          created_at:  note.modified_at ?? now,
+        }))
+    )
   if (noteRows.length > 0) {
     await admin.from('notes').insert(noteRows)
   }
