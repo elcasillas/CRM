@@ -37,6 +37,11 @@ export function AdminUsersClient() {
   const [addError, setAddError]   = useState<string | null>(null)
   const [addSaving, setAddSaving] = useState(false)
 
+  const [editingUser, setEditingUser] = useState<MergedUser | null>(null)
+  const [editForm, setEditForm]       = useState({ full_name: '', email: '', role: 'sales' as UserRole, new_password: '' })
+  const [editError, setEditError]     = useState<string | null>(null)
+  const [editSaving, setEditSaving]   = useState(false)
+
   const fetchUsers = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -87,6 +92,35 @@ export function AdminUsersClient() {
     if (res.ok) setUsers(prev => prev.map(u => u.id === id ? { ...u, role } : u))
     else console.error('role update failed')
     setUpdating(null)
+  }
+
+  function openEdit(u: MergedUser) {
+    setEditingUser(u)
+    setEditForm({ full_name: u.full_name ?? '', email: u.email ?? '', role: u.role, new_password: '' })
+    setEditError(null)
+  }
+
+  async function handleEditUser() {
+    if (!editingUser) return
+    setEditSaving(true)
+    setEditError(null)
+    const res = await fetch('/api/admin/users', {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ userId: editingUser.id, ...editForm }),
+    })
+    const json = await res.json()
+    if (!res.ok) {
+      setEditError(json.error ?? 'Failed to save changes')
+      setEditSaving(false)
+      return
+    }
+    setUsers(prev => prev.map(u => u.id === editingUser.id
+      ? { ...u, full_name: editForm.full_name.trim() || null, email: editForm.email.trim() || u.email, role: editForm.role }
+      : u
+    ))
+    setEditingUser(null)
+    setEditSaving(false)
   }
 
   async function handleAddUser() {
@@ -220,15 +254,18 @@ export function AdminUsersClient() {
                         <button onClick={() => setConfirmDelete(null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
                       </span>
                     ) : (
-                      <button
-                        onClick={() => setConfirmDelete(u.id)}
-                        className="text-gray-400 hover:text-red-600 transition-colors"
-                        title="Delete user"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
-                          <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C9.327 4.025 9.66 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
-                        </svg>
-                      </button>
+                      <span className="flex items-center justify-end gap-3">
+                        <button onClick={() => openEdit(u)} className="text-gray-400 hover:text-gray-700 transition-colors" title="Edit user">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                            <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+                          </svg>
+                        </button>
+                        <button onClick={() => setConfirmDelete(u.id)} className="text-gray-400 hover:text-red-600 transition-colors" title="Delete user">
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                            <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C9.327 4.025 9.66 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </span>
                     )}
                   </td>
                 </tr>
@@ -237,6 +274,75 @@ export function AdminUsersClient() {
           </table>
         </div>
       )}
+      {/* Edit user modal */}
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-900">Edit user</h3>
+              <button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Full name</label>
+                <input
+                  type="text"
+                  value={editForm.full_name}
+                  onChange={e => setEditForm(f => ({ ...f, full_name: e.target.value }))}
+                  className={INPUT}
+                  placeholder="Jane Smith"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))}
+                  className={INPUT}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
+                <select
+                  value={editForm.role}
+                  onChange={e => setEditForm(f => ({ ...f, role: e.target.value as UserRole }))}
+                  className={INPUT}
+                >
+                  {ROLES.map(r => (
+                    <option key={r} value={r}>{r.replace('_', ' ')}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  New password <span className="text-gray-400 font-normal">(leave blank to keep current)</span>
+                </label>
+                <input
+                  type="password"
+                  value={editForm.new_password}
+                  onChange={e => setEditForm(f => ({ ...f, new_password: e.target.value }))}
+                  className={INPUT}
+                  placeholder="Min. 6 characters"
+                />
+              </div>
+              {editError && <p className="text-red-600 text-sm font-medium">{editError}</p>}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button onClick={() => setEditingUser(null)} className="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
+              <button
+                onClick={handleEditUser}
+                disabled={editSaving || !editForm.email.trim()}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+              >
+                {editSaving ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add user modal */}
       {addModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
