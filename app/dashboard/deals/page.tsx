@@ -604,7 +604,7 @@ export default function DealsPage() {
                       {deal.deal_owner?.full_name ?? '—'}
                     </td>
                     <td className="px-4 py-3.5 text-gray-400 text-xs">
-                      {formatClose(lastNoteDates.get(deal.id) ?? null) ?? '—'}
+                      {(() => { const ts = lastNoteDates.get(deal.id); return ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—' })()}
                     </td>
                     <td className="px-4 py-3.5">
                       {deal.health_score != null ? (
