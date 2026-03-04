@@ -784,14 +784,7 @@ export default function DealsPage() {
                 <div className="border-t border-gray-100 pt-4">
                   <p className="text-sm font-medium text-gray-700 mb-3">Notes</p>
 
-                  {/* Initial deal note — read-only for everyone */}
-                  {form.deal_notes && (
-                    <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm mb-4">
-                      <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{form.deal_notes}</p>
-                      <p className="text-xs text-gray-400 mt-3">Deal note</p>
-                    </div>
-                  )}
-
+                  {/* Add note input */}
                   <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4">
                     <textarea
                       value={noteText}
@@ -810,7 +803,9 @@ export default function DealsPage() {
                       </button>
                     </div>
                   </div>
-                  {dealNotes.length === 0 ? (
+
+                  {/* Unified note list: submitted notes (newest first) + deal_notes last */}
+                  {dealNotes.length === 0 && !form.deal_notes ? (
                     <p className="text-sm text-gray-400">No notes yet.</p>
                   ) : (
                     <ul className="space-y-3">
@@ -831,6 +826,12 @@ export default function DealsPage() {
                           </div>
                         </li>
                       ))}
+                      {form.deal_notes && (
+                        <li className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                          <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{form.deal_notes}</p>
+                          <p className="text-xs text-gray-400 mt-3">Initial note</p>
+                        </li>
+                      )}
                     </ul>
                   )}
                 </div>
