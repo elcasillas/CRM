@@ -556,11 +556,10 @@ export default function DealsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
-                  <Th col="deal"     label="Deal" />
-                  <Th col="account"  label="Account" />
+                  <Th col="deal"     label="Deal Name" />
                   <Th col="stage"    label="Stage" />
-                  <Th col="acv"      label="ACV" />
-                  <Th col="close"    label="Close" />
+                  <Th col="acv"      label="ACV (CAD)" />
+                  <Th col="close"    label="Close Date" />
                   <Th col="owner"    label="Deal Owner" />
                   <Th col="se"       label="SE" />
                   <Th col="activity" label="Activity" />
@@ -573,9 +572,6 @@ export default function DealsPage() {
                   <tr key={deal.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3.5 font-medium text-gray-900 max-w-[220px]">
                       <span className="truncate block">{deal.deal_name}</span>
-                    </td>
-                    <td className="px-4 py-3.5 text-gray-500">
-                      {deal.accounts?.account_name ?? '—'}
                     </td>
                     <td className="px-4 py-3.5">
                       <select
