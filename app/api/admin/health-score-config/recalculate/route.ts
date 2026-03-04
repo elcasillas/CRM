@@ -72,7 +72,8 @@ export async function POST() {
     const notes = notesByDeal.get(deal.id) ?? []
     const latestNoteAt = notes[0]?.created_at ?? null
     const allNotesText = notes.map(n => n.note_text).join(' ')
-    const stage = deal.deal_stages as { stage_name: string; win_probability: number | null } | null
+    const stageRaw = deal.deal_stages
+    const stage = (Array.isArray(stageRaw) ? stageRaw[0] : stageRaw) as { stage_name: string; win_probability: number | null } | null
 
     const result = computeDealHealthScore(
       {
