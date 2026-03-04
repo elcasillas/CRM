@@ -26,7 +26,8 @@ export function AdminUsersClient() {
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
 
-  const [updating, setUpdating]       = useState<string | null>(null)
+  const [updating, setUpdating]         = useState<string | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviting, setInviting]       = useState(false)
   const [inviteMsg, setInviteMsg]     = useState<{ ok: boolean; text: string } | null>(null)
@@ -68,6 +69,13 @@ export function AdminUsersClient() {
   }, [])
 
   useEffect(() => { fetchUsers() }, [fetchUsers])
+
+  async function deleteUser(id: string) {
+    const res = await fetch(`/api/admin/users?userId=${id}`, { method: 'DELETE' })
+    if (res.ok) setUsers(prev => prev.filter(u => u.id !== id))
+    else console.error('delete failed')
+    setConfirmDelete(null)
+  }
 
   async function updateRole(id: string, role: UserRole) {
     setUpdating(id)
@@ -177,6 +185,7 @@ export function AdminUsersClient() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                <th className="px-6 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -202,6 +211,25 @@ export function AdminUsersClient() {
                   </td>
                   <td className="px-6 py-3.5 text-gray-400 text-xs">
                     {new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </td>
+                  <td className="px-6 py-3.5 text-right">
+                    {confirmDelete === u.id ? (
+                      <span className="flex items-center justify-end gap-2">
+                        <span className="text-xs text-gray-400">Delete?</span>
+                        <button onClick={() => deleteUser(u.id)} className="text-xs text-red-600 hover:text-red-700 font-medium">Confirm</button>
+                        <button onClick={() => setConfirmDelete(null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => setConfirmDelete(u.id)}
+                        className="text-gray-400 hover:text-red-600 transition-colors"
+                        title="Delete user"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+                          <path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C9.327 4.025 9.66 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" />
+                        </svg>
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

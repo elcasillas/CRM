@@ -114,3 +114,19 @@ export async function PATCH(request: NextRequest) {
 
   return NextResponse.json({ success: true })
 }
+
+// DELETE /api/admin/users?userId=<id> — permanently delete a user
+export async function DELETE(request: NextRequest) {
+  const caller = await assertAdmin()
+  if (!caller) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const userId = request.nextUrl.searchParams.get('userId')
+  if (!userId) return NextResponse.json({ error: 'userId is required' }, { status: 400 })
+  if (userId === caller.id) return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 })
+
+  const admin = createAdminClient()
+  const { error } = await admin.auth.admin.deleteUser(userId)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ success: true })
+}
