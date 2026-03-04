@@ -58,6 +58,8 @@ export default function AccountsPage() {
   // Filter state
   const [search, setSearch]         = useState('')
   const [filterStatus, setFilterStatus] = useState('')
+  const [sortCol, setSortCol] = useState('')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   const fetchAccounts = useCallback(async () => {
     setLoading(true)
@@ -89,6 +91,49 @@ export default function AccountsPage() {
     const matchStatus = !filterStatus || a.status === filterStatus
     return matchSearch && matchStatus
   })
+
+  function toggleSort(col: string) {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortCol(col); setSortDir('asc') }
+  }
+
+  function sortVal(a: AccountWithOwners): string | null {
+    switch (sortCol) {
+      case 'name':     return a.account_name
+      case 'website':  return a.account_website ?? null
+      case 'location': return [a.city, a.country].filter(Boolean).join(', ') || null
+      case 'owner':    return a.account_owner?.full_name ?? null
+      case 'manager':  return a.service_manager?.full_name ?? null
+      case 'status':   return a.status
+      default:         return null
+    }
+  }
+
+  const sorted = sortCol
+    ? [...filtered].sort((a, b) => {
+        const va = sortVal(a), vb = sortVal(b)
+        if (va == null && vb == null) return 0
+        if (va == null) return 1
+        if (vb == null) return -1
+        const r = va.localeCompare(vb)
+        return sortDir === 'asc' ? r : -r
+      })
+    : filtered
+
+  function Th({ col, label }: { col: string; label: string }) {
+    const active = sortCol === col
+    return (
+      <th
+        onClick={() => toggleSort(col)}
+        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
+      >
+        {label}
+        <span className={`ml-1 ${active ? 'text-gray-700' : 'text-gray-300'}`}>
+          {active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+        </span>
+      </th>
+    )
+  }
 
   function openAdd() {
     setForm(EMPTY_FORM); setEditing(null); setFormError(null); setModal('add')
@@ -207,17 +252,17 @@ export default function AccountsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Website</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Service Manager</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <Th col="name"    label="Account" />
+                <Th col="website" label="Website" />
+                <Th col="location" label="Location" />
+                <Th col="owner"   label="Owner" />
+                <Th col="manager" label="Service Manager" />
+                <Th col="status"  label="Status" />
                 <th className="px-6 py-3"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filtered.map(a => (
+              {sorted.map(a => (
                 <tr key={a.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-3.5">
                     <Link href={`/dashboard/accounts/${a.id}`} className="font-medium text-gray-900 hover:text-blue-600 transition-colors">

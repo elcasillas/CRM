@@ -99,6 +99,8 @@ export default function DealsPage() {
   // Filters
   const [search, setSearch]         = useState('')
   const [filterStage, setFilterStage] = useState('')
+  const [sortCol, setSortCol] = useState('')
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
 
   // Modal
   const [modal, setModal]         = useState<'add' | 'edit' | null>(null)
@@ -302,6 +304,52 @@ export default function DealsPage() {
     return matchSearch && matchStage
   })
 
+  function toggleSort(col: string) {
+    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    else { setSortCol(col); setSortDir('asc') }
+  }
+
+  function sortValD(d: DealWithRelations): string | number | null {
+    switch (sortCol) {
+      case 'deal':     return d.deal_name
+      case 'account':  return d.accounts?.account_name ?? null
+      case 'stage':    return d.deal_stages?.sort_order ?? null
+      case 'acv':      return d.value_amount ?? null
+      case 'close':    return d.close_date ?? null
+      case 'owner':    return d.deal_owner?.full_name ?? null
+      case 'se':       return d.solutions_engineer?.full_name ?? null
+      case 'activity': return d.last_activity_at ?? null
+      case 'health':   return d.health_score ?? null
+      default:         return null
+    }
+  }
+
+  const sorted = sortCol
+    ? [...filtered].sort((a, b) => {
+        const va = sortValD(a), vb = sortValD(b)
+        if (va == null && vb == null) return 0
+        if (va == null) return 1
+        if (vb == null) return -1
+        const r = typeof va === 'string' ? va.localeCompare(vb as string) : (va as number) - (vb as number)
+        return sortDir === 'asc' ? r : -r
+      })
+    : filtered
+
+  function Th({ col, label, right }: { col: string; label: string; right?: boolean }) {
+    const active = sortCol === col
+    return (
+      <th
+        onClick={() => toggleSort(col)}
+        className={`px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 ${right ? 'text-right' : 'text-left'}`}
+      >
+        {label}
+        <span className={`ml-1 ${active ? 'text-gray-700' : 'text-gray-300'}`}>
+          {active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}
+        </span>
+      </th>
+    )
+  }
+
   const byStage = (stageId: string) => filtered.filter(d => d.stage_id === stageId)
 
   const stageTotal = (stageId: string) => {
@@ -384,20 +432,20 @@ export default function DealsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deal</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Account</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stage</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACV</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Close</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deal Owner</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SE</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Activity</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Health</th>
+                  <Th col="deal"     label="Deal" />
+                  <Th col="account"  label="Account" />
+                  <Th col="stage"    label="Stage" />
+                  <Th col="acv"      label="ACV" />
+                  <Th col="close"    label="Close" />
+                  <Th col="owner"    label="Deal Owner" />
+                  <Th col="se"       label="SE" />
+                  <Th col="activity" label="Activity" />
+                  <Th col="health"   label="Health" />
                   <th className="px-4 py-3"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filtered.map(deal => (
+                {sorted.map(deal => (
                   <tr key={deal.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3.5 font-medium text-gray-900 max-w-[220px]">
                       <span className="truncate block">{deal.deal_name}</span>
