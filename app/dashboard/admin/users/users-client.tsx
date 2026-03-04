@@ -30,6 +30,11 @@ export function AdminUsersClient() {
   const [inviting, setInviting]       = useState(false)
   const [inviteMsg, setInviteMsg]     = useState<{ ok: boolean; text: string } | null>(null)
 
+  const [addModal, setAddModal]   = useState(false)
+  const [addForm, setAddForm]     = useState({ email: '', full_name: '', password: '', role: 'sales' as UserRole })
+  const [addError, setAddError]   = useState<string | null>(null)
+  const [addSaving, setAddSaving] = useState(false)
+
   const fetchUsers = useCallback(async () => {
     setLoading(true)
     setError(null)
@@ -75,6 +80,27 @@ export function AdminUsersClient() {
     setUpdating(null)
   }
 
+  async function handleAddUser() {
+    setAddSaving(true)
+    setAddError(null)
+    const res = await fetch('/api/admin/users', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify(addForm),
+    })
+    const json = await res.json()
+    if (!res.ok) {
+      setAddError(json.error ?? 'Failed to create user')
+      setAddSaving(false)
+      return
+    }
+    setAddModal(false)
+    setAddForm({ email: '', full_name: '', password: '', role: 'sales' })
+    setAddError(null)
+    setAddSaving(false)
+    fetchUsers()
+  }
+
   async function sendInvite() {
     if (!inviteEmail.trim()) return
     setInviting(true)
@@ -96,9 +122,17 @@ export function AdminUsersClient() {
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-8">
-      <div className="mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Users</h2>
-        <p className="text-sm text-gray-500 mt-0.5">Manage roles and invite new team members.</p>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-xl font-semibold text-gray-900">Users</h2>
+          <p className="text-sm text-gray-500 mt-0.5">Manage roles and invite new team members.</p>
+        </div>
+        <button
+          onClick={() => { setAddForm({ email: '', full_name: '', password: '', role: 'sales' }); setAddError(null); setAddModal(true) }}
+          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+        >
+          + Add user
+        </button>
       </div>
 
       {/* Invite form */}
@@ -172,6 +206,73 @@ export function AdminUsersClient() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {/* Add user modal */}
+      {addModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-900">Add user</h3>
+              <button onClick={() => setAddModal(false)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email *</label>
+                <input
+                  type="email"
+                  value={addForm.email}
+                  onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))}
+                  className={INPUT}
+                  placeholder="user@example.com"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Full name</label>
+                <input
+                  type="text"
+                  value={addForm.full_name}
+                  onChange={e => setAddForm(f => ({ ...f, full_name: e.target.value }))}
+                  className={INPUT}
+                  placeholder="Jane Smith"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Password *</label>
+                <input
+                  type="password"
+                  value={addForm.password}
+                  onChange={e => setAddForm(f => ({ ...f, password: e.target.value }))}
+                  className={INPUT}
+                  placeholder="Min. 6 characters"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
+                <select
+                  value={addForm.role}
+                  onChange={e => setAddForm(f => ({ ...f, role: e.target.value as UserRole }))}
+                  className={INPUT}
+                >
+                  {ROLES.map(r => (
+                    <option key={r} value={r}>{r.replace('_', ' ')}</option>
+                  ))}
+                </select>
+              </div>
+              {addError && <p className="text-red-600 text-sm font-medium">{addError}</p>}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button onClick={() => setAddModal(false)} className="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
+              <button
+                onClick={handleAddUser}
+                disabled={addSaving || !addForm.email.trim() || !addForm.password.trim()}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+              >
+                {addSaving ? 'Creating…' : 'Create user'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
