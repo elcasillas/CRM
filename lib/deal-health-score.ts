@@ -5,7 +5,7 @@ const MS_PER_DAY = 86_400_000
 
 const PUSH_SIGNALS = ['pushed', 'delayed', 'moved out', 'rescheduled']
 
-const POSITIVE_KEYWORDS = [
+const DEFAULT_POSITIVE_KEYWORDS = [
   'budget confirmed',
   'legal engaged',
   'exec sponsor',
@@ -14,7 +14,7 @@ const POSITIVE_KEYWORDS = [
   'procurement',
 ]
 
-const NEGATIVE_KEYWORDS = [
+const DEFAULT_NEGATIVE_KEYWORDS = [
   'no response',
   'circling back',
   'waiting on approval',
@@ -23,6 +23,23 @@ const NEGATIVE_KEYWORDS = [
   'delayed',
   'stalled',
 ]
+
+// ── Scoring config (overrides defaults when provided) ─────────────────────────
+
+export interface ScoringConfig {
+  weights: {
+    stageProbability:   number
+    velocity:           number
+    activityRecency:    number
+    closeDateIntegrity: number
+    acv:                number
+    notesSignal:        number
+  }
+  keywords: {
+    positive: string[]
+    negative: string[]
+  }
+}
 
 // Default stage benchmark (days expected in stage) — used for velocity
 const STAGE_BENCHMARKS: Record<string, number> = {
@@ -128,15 +145,15 @@ function scoreAcv(valueAmount: number | null, acvDistribution: number[]): number
   return 40
 }
 
-function scoreNotesSignal(notesText: string): { score: number; positive: string[]; negative: string[] } {
+function scoreNotesSignal(notesText: string, positiveKws: string[], negativeKws: string[]): { score: number; positive: string[]; negative: string[] } {
   const text = notesText.toLowerCase()
   let score = 50
   const positive: string[] = []
   const negative: string[] = []
-  for (const kw of POSITIVE_KEYWORDS) {
+  for (const kw of positiveKws) {
     if (text.includes(kw)) { positive.push(kw); score += 10 }
   }
-  for (const kw of NEGATIVE_KEYWORDS) {
+  for (const kw of negativeKws) {
     if (text.includes(kw)) { negative.push(kw); score -= 10 }
   }
   return { score: Math.max(0, Math.min(100, score)), positive, negative }
@@ -147,8 +164,9 @@ function scoreNotesSignal(notesText: string): { score: number; positive: string[
 export function computeDealHealthScore(
   deal: CRMDealInput,
   acvDistribution: number[],
+  config?: ScoringConfig,
 ): HealthScoreResult {
-  const weights = {
+  const weights = config?.weights ?? {
     stageProbability:   25,
     velocity:           20,
     activityRecency:    15,
@@ -156,6 +174,9 @@ export function computeDealHealthScore(
     acv:                15,
     notesSignal:        15,
   }
+
+  const positiveKws = config?.keywords.positive ?? DEFAULT_POSITIVE_KEYWORDS
+  const negativeKws = config?.keywords.negative ?? DEFAULT_NEGATIVE_KEYWORDS
 
   const allText = [deal.deal_notes ?? '', deal.allNotesText].join(' ')
 
@@ -169,7 +190,7 @@ export function computeDealHealthScore(
     ))
   }
 
-  const notesResult = scoreNotesSignal(allText)
+  const notesResult = scoreNotesSignal(allText, positiveKws, negativeKws)
 
   const components: HealthScoreComponents = {
     stageProbability:   scoreStageProbability(deal.win_probability),

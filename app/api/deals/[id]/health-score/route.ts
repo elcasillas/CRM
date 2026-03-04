@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { computeDealHealthScore } from '@/lib/deal-health-score'
+import { computeDealHealthScore, ScoringConfig } from '@/lib/deal-health-score'
 
 export async function POST(
   _req: NextRequest,
@@ -46,7 +46,15 @@ export async function POST(
   const latestNoteAt = notesList[0]?.created_at ?? null
   const allNotesText = notesList.map((n: { note_text: string }) => n.note_text).join(' ')
 
-  // 4. Compute score
+  // 4. Load scoring config
+  const { data: configRow } = await admin
+    .from('health_score_config')
+    .select('weights, keywords')
+    .limit(1)
+    .single()
+  const config = configRow as ScoringConfig | undefined
+
+  // 5. Compute score
   const stage = deal.deal_stages as { stage_name: string; win_probability: number | null } | null
   const result = computeDealHealthScore(
     {
@@ -59,10 +67,11 @@ export async function POST(
       latestNoteAt,
       allNotesText,
     },
-    acvDistribution
+    acvDistribution,
+    config ?? undefined
   )
 
-  // 5. Persist
+  // 6. Persist
   const { error: updateErr } = await admin
     .from('deals')
     .update({
