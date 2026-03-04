@@ -117,6 +117,9 @@ export default function DealsPage() {
   const [noteConfirmDelete, setNoteConfirmDelete] = useState<string | null>(null)
   const [userId, setUserId]           = useState('')
 
+  // Last note date per deal (for Modified Date column)
+  const [lastNoteDates, setLastNoteDates] = useState<Map<string, string>>(new Map())
+
   // AI summary
   const [summary, setSummary]               = useState<string | null>(null)
   const [loadingSummary, setLoadingSummary] = useState(false)
@@ -177,9 +180,22 @@ export default function DealsPage() {
     setDealNotes((data ?? []) as NoteWithAuthor[])
   }, [])
 
+  const fetchLastNoteDates = useCallback(async () => {
+    const { data } = await supabase
+      .from('notes')
+      .select('entity_id, created_at')
+      .eq('entity_type', 'deal')
+      .order('created_at', { ascending: false })
+    const map = new Map<string, string>()
+    for (const n of data ?? []) {
+      if (!map.has(n.entity_id)) map.set(n.entity_id, n.created_at)
+    }
+    setLastNoteDates(map)
+  }, [])
+
   useEffect(() => {
-    Promise.all([fetchStages(), fetchDeals(), fetchAccounts(), fetchProfiles()]).then(() => setLoading(false))
-  }, [fetchStages, fetchDeals, fetchAccounts, fetchProfiles])
+    Promise.all([fetchStages(), fetchDeals(), fetchAccounts(), fetchProfiles(), fetchLastNoteDates()]).then(() => setLoading(false))
+  }, [fetchStages, fetchDeals, fetchAccounts, fetchProfiles, fetchLastNoteDates])
 
   async function changeStage(deal: DealWithRelations, newStageId: string) {
     if (!newStageId || newStageId === deal.stage_id) return
@@ -232,13 +248,13 @@ export default function DealsPage() {
       note_text:   noteText.trim(),
       created_by:  userId,
     })
-    if (!error) { setNoteText(''); fetchDealNotes(editing.id); triggerHealthScore(editing.id) }
+    if (!error) { setNoteText(''); fetchDealNotes(editing.id); fetchLastNoteDates(); triggerHealthScore(editing.id) }
     setLoggingNote(false)
   }
 
   async function deleteDealNote(noteId: string) {
     const { error } = await supabase.from('notes').delete().eq('id', noteId)
-    if (!error) setDealNotes(prev => prev.filter(n => n.id !== noteId))
+    if (!error) { setDealNotes(prev => prev.filter(n => n.id !== noteId)); fetchLastNoteDates() }
     setNoteConfirmDelete(null)
   }
 
@@ -320,7 +336,7 @@ export default function DealsPage() {
       case 'close':    return d.close_date ?? null
       case 'owner':    return d.deal_owner?.full_name ?? null
       case 'se':       return d.solutions_engineer?.full_name ?? null
-      case 'activity': return d.last_activity_at ?? null
+      case 'modified': return lastNoteDates.get(d.id) ?? null
       case 'health':   return d.health_score ?? null
       default:         return null
     }
@@ -558,7 +574,7 @@ export default function DealsPage() {
                   <Th col="acv"      label="ACV (CAD)" />
                   <Th col="close"    label="Close Date" />
                   <Th col="owner"    label="Deal Owner" />
-                  <Th col="activity" label="Activity" />
+                  <Th col="modified" label="Modified Date" />
                   <Th col="health"   label="Health" />
                   <th className="px-4 py-3"></th>
                 </tr>
@@ -588,7 +604,7 @@ export default function DealsPage() {
                       {deal.deal_owner?.full_name ?? '—'}
                     </td>
                     <td className="px-4 py-3.5 text-gray-400 text-xs">
-                      {formatRelative(deal.last_activity_at)}
+                      {formatClose(lastNoteDates.get(deal.id) ?? null) ?? '—'}
                     </td>
                     <td className="px-4 py-3.5">
                       {deal.health_score != null ? (
