@@ -561,7 +561,6 @@ export default function DealsPage() {
                   <Th col="acv"      label="ACV (CAD)" />
                   <Th col="close"    label="Close Date" />
                   <Th col="owner"    label="Deal Owner" />
-                  <Th col="se"       label="SE" />
                   <Th col="activity" label="Activity" />
                   <Th col="health"   label="Health" />
                   <th className="px-4 py-3"></th>
@@ -590,9 +589,6 @@ export default function DealsPage() {
                     </td>
                     <td className="px-4 py-3.5 text-gray-500">
                       {deal.deal_owner?.full_name ?? '—'}
-                    </td>
-                    <td className="px-4 py-3.5 text-gray-500">
-                      {deal.solutions_engineer?.full_name ?? '—'}
                     </td>
                     <td className="px-4 py-3.5 text-gray-400 text-xs">
                       {formatRelative(deal.last_activity_at)}
