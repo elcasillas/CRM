@@ -310,19 +310,23 @@ export async function POST(req: NextRequest) {
     ...existingRows,
   ]
 
-  // Load existing notes for all deals to deduplicate
+  // Load existing notes (id + text) for all deals to deduplicate and fix timestamps
   const allIds = allDealIds.map(r => r.id)
   const { data: existingNotes } = allIds.length > 0
-    ? await admin.from('notes').select('entity_id, note_text').eq('entity_type', 'deal').in('entity_id', allIds)
+    ? await admin.from('notes').select('id, entity_id, note_text').eq('entity_type', 'deal').in('entity_id', allIds)
     : { data: [] }
-  const existingNoteSet = new Set(
-    (existingNotes ?? []).map((n: { entity_id: string; note_text: string }) => `${n.entity_id}::${n.note_text}`)
+
+  // Map: "entity_id::note_text" → note row id (for timestamp updates)
+  const existingNoteMap = new Map(
+    (existingNotes ?? []).map((n: { id: string; entity_id: string; note_text: string }) =>
+      [`${n.entity_id}::${n.note_text}`, n.id]
+    )
   )
 
   // Insert only new notes with their modified_at timestamps
   const noteRows = allDealIds.flatMap(d =>
     d._notes
-      .filter(note => !existingNoteSet.has(`${d.id}::${note.text}`))
+      .filter(note => !existingNoteMap.has(`${d.id}::${note.text}`))
       .map(note => ({
         entity_type: 'deal',
         entity_id:   d.id,
@@ -333,6 +337,16 @@ export async function POST(req: NextRequest) {
   )
   if (noteRows.length > 0) {
     await admin.from('notes').insert(noteRows)
+  }
+
+  // Fix created_at on existing notes that have a real timestamp in the CSV
+  const timestampFixes = allDealIds.flatMap(d =>
+    d._notes
+      .filter(note => note.modified_at && existingNoteMap.has(`${d.id}::${note.text}`))
+      .map(note => ({ id: existingNoteMap.get(`${d.id}::${note.text}`)!, created_at: note.modified_at! }))
+  )
+  for (const fix of timestampFixes) {
+    await admin.from('notes').update({ created_at: fix.created_at }).eq('id', fix.id)
   }
 
   // Trigger health score computation for each newly inserted deal (fire-and-forget)
