@@ -1,299 +1,177 @@
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import type { Profile, UserRole } from '@/lib/types'
 
-type User = {
-  id: string
-  full_name: string | null
-  role: string
-  created_at: string
-  email: string | null
+const supabase = createClient()
+
+const ROLES: UserRole[] = ['admin', 'sales', 'service_manager', 'read_only']
+
+const ROLE_CLASSES: Record<UserRole, string> = {
+  admin:           'bg-purple-50 text-purple-700 ring-1 ring-purple-200',
+  sales:           'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
+  service_manager: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+  read_only:       'bg-gray-100 text-gray-600',
 }
 
-const ROLES = [
-  { value: 'sales',                label: 'Sales' },
-  { value: 'solutions_engineer',   label: 'Solutions Engineer' },
-  { value: 'service_manager',      label: 'Service Manager' },
-  { value: 'read_only',            label: 'Read Only' },
-  { value: 'admin',                label: 'Admin' },
-]
+type AuthUser   = { id: string; email: string; created_at: string }
+type MergedUser = Profile & { email: string | null }
 
 const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm'
 
-function roleBadgeClass(role: string) {
-  switch (role) {
-    case 'admin':                return 'bg-purple-50 text-purple-700 ring-1 ring-purple-200'
-    case 'sales':                return 'bg-blue-50 text-blue-700 ring-1 ring-blue-200'
-    case 'solutions_engineer':   return 'bg-teal-50 text-teal-700 ring-1 ring-teal-200'
-    case 'service_manager':      return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
-    default:                     return 'bg-gray-100 text-gray-600'
-  }
-}
+export function AdminUsersClient() {
+  const [users, setUsers]     = useState<MergedUser[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState<string | null>(null)
 
-function roleLabel(value: string) {
-  return ROLES.find(r => r.value === value)?.label ?? value
-}
+  const [updating, setUpdating]       = useState<string | null>(null)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviting, setInviting]       = useState(false)
+  const [inviteMsg, setInviteMsg]     = useState<{ ok: boolean; text: string } | null>(null)
 
-function formatDate(ts: string) {
-  return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
+  const fetchUsers = useCallback(async () => {
+    setLoading(true)
+    setError(null)
 
-type AddForm  = { email: string; full_name: string; password: string; role: string }
-type EditForm = { full_name: string; email: string; role: string; new_password: string }
+    const [profilesRes, authRes] = await Promise.all([
+      supabase.from('profiles').select('*').order('full_name'),
+      fetch('/api/admin/users').then(r => r.json()),
+    ])
 
-const EMPTY_ADD: AddForm   = { email: '', full_name: '', password: '', role: 'sales' }
-const EMPTY_EDIT: EditForm = { full_name: '', email: '', role: 'sales', new_password: '' }
-
-export function UsersClient({
-  users: initialUsers,
-  currentUserId,
-}: {
-  users: User[]
-  currentUserId: string
-}) {
-  const [users, setUsers]         = useState(initialUsers)
-  const [modal, setModal]         = useState<'add' | 'edit' | null>(null)
-  const [addForm, setAddForm]     = useState<AddForm>(EMPTY_ADD)
-  const [editForm, setEditForm]   = useState<EditForm>(EMPTY_EDIT)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [saving, setSaving]       = useState(false)
-  const [formError, setFormError] = useState<string | null>(null)
-
-  function setAdd(field: keyof AddForm) {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setAddForm(f => ({ ...f, [field]: e.target.value }))
-  }
-
-  function setEdit(field: keyof EditForm) {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-      setEditForm(f => ({ ...f, [field]: e.target.value }))
-  }
-
-  function openAdd() {
-    setAddForm(EMPTY_ADD)
-    setFormError(null)
-    setModal('add')
-  }
-
-  function openEdit(user: User) {
-    setEditForm({
-      full_name:    user.full_name ?? '',
-      email:        user.email ?? '',
-      role:         user.role,
-      new_password: '',
-    })
-    setEditingId(user.id)
-    setFormError(null)
-    setModal('edit')
-  }
-
-  function closeModal() {
-    setModal(null)
-    setEditingId(null)
-    setFormError(null)
-  }
-
-  async function handleAdd() {
-    setSaving(true)
-    setFormError(null)
-    const res = await fetch('/api/admin/users', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(addForm),
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      setFormError(data.error)
-    } else {
-      setUsers(prev => [{
-        id:         data.userId,
-        full_name:  addForm.full_name.trim() || null,
-        role:       addForm.role,
-        created_at: new Date().toISOString(),
-        email:      addForm.email.trim(),
-      }, ...prev])
-      closeModal()
+    if (profilesRes.error) {
+      setError(profilesRes.error.message)
+      setLoading(false)
+      return
     }
-    setSaving(false)
+
+    if (authRes.error) {
+      setError(authRes.error)
+      setLoading(false)
+      return
+    }
+
+    const authMap = new Map<string, AuthUser>((authRes as AuthUser[]).map(u => [u.id, u]))
+    const merged: MergedUser[] = (profilesRes.data ?? []).map((p: Profile) => ({
+      ...p,
+      email: authMap.get(p.id)?.email ?? null,
+    }))
+
+    setUsers(merged)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { fetchUsers() }, [fetchUsers])
+
+  async function updateRole(id: string, role: UserRole) {
+    setUpdating(id)
+    const res = await fetch('/api/admin/users', {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ userId: id, role }),
+    })
+    if (res.ok) setUsers(prev => prev.map(u => u.id === id ? { ...u, role } : u))
+    else console.error('role update failed')
+    setUpdating(null)
   }
 
-  async function handleEdit() {
-    if (!editingId) return
-    setSaving(true)
-    setFormError(null)
-    const res = await fetch('/api/admin/users', {
-      method: 'PATCH',
+  async function sendInvite() {
+    if (!inviteEmail.trim()) return
+    setInviting(true)
+    setInviteMsg(null)
+    const res = await fetch('/api/invite', {
+      method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId:       editingId,
-        full_name:    editForm.full_name,
-        email:        editForm.email,
-        role:         editForm.role,
-        new_password: editForm.new_password || undefined,
-      }),
+      body:    JSON.stringify({ email: inviteEmail.trim() }),
     })
-    const data = await res.json()
-    if (!res.ok) {
-      setFormError(data.error)
+    const json = await res.json()
+    if (res.ok) {
+      setInviteMsg({ ok: true, text: `Invite sent to ${inviteEmail.trim()}` })
+      setInviteEmail('')
     } else {
-      setUsers(prev => prev.map(u =>
-        u.id === editingId
-          ? { ...u, full_name: editForm.full_name.trim() || null, email: editForm.email.trim(), role: editForm.role }
-          : u
-      ))
-      closeModal()
+      setInviteMsg({ ok: false, text: json.error ?? 'Failed to send invite' })
     }
-    setSaving(false)
+    setInviting(false)
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h2 className="text-xl font-semibold text-gray-900">Users</h2>
-          <p className="text-sm text-gray-400 mt-0.5">
-            {users.length} member{users.length !== 1 ? 's' : ''}
-          </p>
-        </div>
-        <button
-          onClick={openAdd}
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-        >
-          + Add user
-        </button>
+    <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="mb-6">
+        <h2 className="text-xl font-semibold text-gray-900">Users</h2>
+        <p className="text-sm text-gray-500 mt-0.5">Manage roles and invite new team members.</p>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
-              <th className="px-4 py-3"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {users.map(u => (
-              <tr key={u.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium text-gray-900">{u.full_name || '—'}</span>
-                    {u.id === currentUserId && (
-                      <span className="text-xs text-gray-400">(you)</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-4 py-3.5 text-gray-500">{u.email ?? '—'}</td>
-                <td className="px-4 py-3.5">
-                  <span className={`text-xs font-medium px-2 py-1 rounded-md ${roleBadgeClass(u.role)}`}>
-                    {roleLabel(u.role)}
-                  </span>
-                </td>
-                <td className="px-4 py-3.5 text-gray-400 text-xs">{formatDate(u.created_at)}</td>
-                <td className="px-4 py-3.5 text-right">
-                  <button
-                    onClick={() => openEdit(u)}
-                    className="text-xs text-gray-500 hover:text-gray-800 font-medium"
-                  >
-                    Edit
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {users.length === 0 && (
-          <p className="text-gray-500 text-sm px-4 py-6 text-center">No users yet.</p>
+      {/* Invite form */}
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-5 mb-6">
+        <h3 className="text-sm font-semibold text-gray-900 mb-3">Invite new user</h3>
+        <div className="flex items-center gap-3">
+          <input
+            type="email"
+            placeholder="email@example.com"
+            value={inviteEmail}
+            onChange={e => setInviteEmail(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && sendInvite()}
+            className={`${INPUT} max-w-sm`}
+          />
+          <button
+            onClick={sendInvite}
+            disabled={inviting || !inviteEmail.trim()}
+            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+          >
+            {inviting ? 'Sending…' : 'Send invite'}
+          </button>
+        </div>
+        {inviteMsg && (
+          <p className={`text-sm mt-2 font-medium ${inviteMsg.ok ? 'text-green-600' : 'text-red-600'}`}>
+            {inviteMsg.text}
+          </p>
         )}
       </div>
 
-      {/* Add User Modal */}
-      {modal === 'add' && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Add user</h3>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
-            </div>
-            <div className="px-6 py-5 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email *</label>
-                <input type="email" value={addForm.email} onChange={setAdd('email')} className={INPUT} placeholder="user@example.com" autoFocus />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Full name</label>
-                <input type="text" value={addForm.full_name} onChange={setAdd('full_name')} className={INPUT} placeholder="Jane Smith" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Password *</label>
-                <input type="password" value={addForm.password} onChange={setAdd('password')} className={INPUT} placeholder="Min. 6 characters" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
-                <select value={addForm.role} onChange={setAdd('role')} className={INPUT}>
-                  {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </select>
-              </div>
-              {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
-            </div>
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-              <button onClick={closeModal} className="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
-              <button
-                onClick={handleAdd}
-                disabled={saving || !addForm.email.trim() || !addForm.password.trim()}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-              >
-                {saving ? 'Creating…' : 'Create user'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit User Modal */}
-      {modal === 'edit' && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Edit user</h3>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
-            </div>
-            <div className="px-6 py-5 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Full name</label>
-                <input type="text" value={editForm.full_name} onChange={setEdit('full_name')} className={INPUT} placeholder="Jane Smith" autoFocus />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
-                <input type="email" value={editForm.email} onChange={setEdit('email')} className={INPUT} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
-                <select value={editForm.role} onChange={setEdit('role')} className={INPUT}>
-                  {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  New password <span className="text-gray-400 font-normal">(leave blank to keep current)</span>
-                </label>
-                <input type="password" value={editForm.new_password} onChange={setEdit('new_password')} className={INPUT} placeholder="Min. 6 characters" />
-              </div>
-              {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
-            </div>
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-              <button onClick={closeModal} className="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
-              <button
-                onClick={handleEdit}
-                disabled={saving || !editForm.email.trim()}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-              >
-                {saving ? 'Saving…' : 'Save changes'}
-              </button>
-            </div>
-          </div>
+      {/* Users table */}
+      {loading ? (
+        <p className="text-gray-400 text-sm">Loading…</p>
+      ) : error ? (
+        <p className="text-red-600 text-sm">{error}</p>
+      ) : (
+        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50">
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {users.map(u => (
+                <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-3.5 font-medium text-gray-900">
+                    {u.full_name ?? <span className="text-gray-400 font-normal italic">No name</span>}
+                  </td>
+                  <td className="px-6 py-3.5 text-gray-500">
+                    {u.email ?? <span className="text-gray-400 italic">—</span>}
+                  </td>
+                  <td className="px-6 py-3.5">
+                    <select
+                      value={u.role}
+                      disabled={updating === u.id}
+                      onChange={e => updateRole(u.id, e.target.value as UserRole)}
+                      className={`text-xs font-medium px-2 py-1 rounded-md border-0 focus:outline-none focus:ring-2 focus:ring-blue-300 cursor-pointer disabled:opacity-60 ${ROLE_CLASSES[u.role as UserRole] ?? 'bg-gray-100 text-gray-600'}`}
+                    >
+                      {ROLES.map(r => (
+                        <option key={r} value={r}>{r.replace('_', ' ')}</option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="px-6 py-3.5 text-gray-400 text-xs">
+                    {new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>

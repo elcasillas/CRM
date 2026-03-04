@@ -16,6 +16,24 @@ async function assertAdmin() {
   return profile?.role === 'admin' ? user : null
 }
 
+// GET /api/admin/users — list auth users (id, email, created_at)
+export async function GET() {
+  const caller = await assertAdmin()
+  if (!caller) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const admin = createAdminClient()
+  const { data, error } = await admin.auth.admin.listUsers({ perPage: 1000 })
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json(
+    (data.users ?? []).map(u => ({
+      id:         u.id,
+      email:      u.email ?? '',
+      created_at: u.created_at,
+    }))
+  )
+}
+
 // POST /api/admin/users — create a new user
 export async function POST(request: NextRequest) {
   const caller = await assertAdmin()
@@ -45,13 +63,11 @@ export async function POST(request: NextRequest) {
   }
 
   if (newUser.user) {
-    // The handle_new_user trigger auto-creates the profile row with role='sales'.
-    // Upsert here to set the requested role and full_name.
     await admin
       .from('profiles')
       .upsert({
-        id: newUser.user.id,
-        role: targetRole,
+        id:        newUser.user.id,
+        role:      targetRole,
         full_name: full_name?.trim() || null,
       }, { onConflict: 'id' })
   }
@@ -78,7 +94,6 @@ export async function PATCH(request: NextRequest) {
 
   const admin = createAdminClient()
 
-  // Update profiles table (full_name, role)
   const profilePatch: Record<string, string | null> = {}
   if (role) profilePatch.role = role
   if (full_name !== undefined) profilePatch.full_name = full_name?.trim() || null
@@ -88,7 +103,6 @@ export async function PATCH(request: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 400 })
   }
 
-  // Update auth.users (email, password) via admin API
   const authPatch: { email?: string; password?: string } = {}
   if (email?.trim()) authPatch.email = email.trim()
   if (new_password?.trim()) authPatch.password = new_password.trim()
