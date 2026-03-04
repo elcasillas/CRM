@@ -111,7 +111,7 @@ function parseCSVDeals(csvText: string): ParsedDeal[] {
   const iClose        = idx('Closing Date')
   const iNotes        = idx('Note Content')
   const iDesc         = idx('Description')
-  const iModifiedTime = idx('Modified Time')
+  const iModifiedTime = idx('Modified Time (Notes)')
 
   // Collect rows per deal; notes deduped by text within the CSV
   const dealMap = new Map<string, ParsedDeal & { noteMap: Map<string, ParsedNote> }>()
