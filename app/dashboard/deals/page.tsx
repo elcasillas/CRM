@@ -99,8 +99,9 @@ export default function DealsPage() {
   // Filters
   const [search, setSearch]         = useState('')
   const [filterStage, setFilterStage] = useState('')
-  const [sortCol, setSortCol] = useState('')
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [sortCol, setSortCol]       = useState('')
+  const [sortDir, setSortDir]       = useState<'asc' | 'desc'>('asc')
+  const [filterOwner, setFilterOwner] = useState('')
 
   // Modal
   const [modal, setModal]         = useState<'add' | 'edit' | null>(null)
@@ -304,6 +305,10 @@ export default function DealsPage() {
     return matchSearch && matchStage
   })
 
+  const displayDeals = filterOwner
+    ? filtered.filter(d => d.deal_owner_id === filterOwner)
+    : filtered
+
   function toggleSort(col: string) {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
     else { setSortCol(col); setSortDir('asc') }
@@ -325,7 +330,7 @@ export default function DealsPage() {
   }
 
   const sorted = sortCol
-    ? [...filtered].sort((a, b) => {
+    ? [...displayDeals].sort((a, b) => {
         const va = sortValD(a), vb = sortValD(b)
         if (va == null && vb == null) return 0
         if (va == null) return 1
@@ -333,7 +338,7 @@ export default function DealsPage() {
         const r = typeof va === 'string' ? va.localeCompare(vb as string) : (va as number) - (vb as number)
         return sortDir === 'asc' ? r : -r
       })
-    : filtered
+    : displayDeals
 
   function Th({ col, label, right }: { col: string; label: string; right?: boolean }) {
     const active = sortCol === col
@@ -350,7 +355,51 @@ export default function DealsPage() {
     )
   }
 
-  const byStage = (stageId: string) => filtered.filter(d => d.stage_id === stageId)
+  // ── Summary metrics (from displayDeals) ──────────────────────────────────
+  const todayStr        = new Date().toISOString().split('T')[0]
+  const nowMs           = Date.now()
+  const openDisplay     = displayDeals.filter(d => !d.deal_stages?.is_closed)
+  const totalACV        = openDisplay.reduce((s, d) => s + (d.value_amount ?? 0), 0)
+  const activityDays    = displayDeals.map(d => d.last_activity_at
+    ? Math.floor((nowMs - new Date(d.last_activity_at).getTime()) / 86400000)
+    : null).filter((x): x is number => x !== null)
+  const avgDays         = activityDays.length
+    ? Math.round(activityDays.reduce((a, b) => a + b, 0) / activityDays.length)
+    : null
+  const staleCount      = activityDays.filter(d => d > 30).length
+  const overdueCount    = displayDeals.filter(d =>
+    d.close_date && d.close_date < todayStr && !d.deal_stages?.is_closed).length
+  const healthScores    = displayDeals.map(d => d.health_score).filter((x): x is number => x != null)
+  const avgHealth       = healthScores.length
+    ? Math.round(healthScores.reduce((a, b) => a + b, 0) / healthScores.length)
+    : null
+
+  // ── Owner summaries (from filtered, so all owners stay visible) ──────────
+  type OwnerSummary = { id: string; name: string; count: number; acv: number; avgDays: number | null; overdue: number }
+  const ownerMap = new Map<string, OwnerSummary>()
+  for (const d of filtered) {
+    const oid  = d.deal_owner_id
+    const name = d.deal_owner?.full_name ?? 'Unknown'
+    const cur  = ownerMap.get(oid) ?? { id: oid, name, count: 0, acv: 0, avgDays: null, overdue: 0 }
+    cur.count++
+    cur.acv += d.value_amount ?? 0
+    if (d.close_date && d.close_date < todayStr && !d.deal_stages?.is_closed) cur.overdue++
+    ownerMap.set(oid, cur)
+  }
+  for (const [oid, summary] of ownerMap) {
+    const ownerDays = filtered
+      .filter(d => d.deal_owner_id === oid)
+      .map(d => d.last_activity_at
+        ? Math.floor((nowMs - new Date(d.last_activity_at).getTime()) / 86400000)
+        : null)
+      .filter((x): x is number => x !== null)
+    summary.avgDays = ownerDays.length
+      ? Math.round(ownerDays.reduce((a, b) => a + b, 0) / ownerDays.length)
+      : null
+  }
+  const ownerSummaries = [...ownerMap.values()].sort((a, b) => b.acv - a.acv)
+
+  const byStage = (stageId: string) => displayDeals.filter(d => d.stage_id === stageId)
 
   const stageTotal = (stageId: string) => {
     const total = byStage(stageId).reduce((s, d) => s + (d.value_amount != null ? Number(d.value_amount) : 0), 0)
@@ -416,16 +465,91 @@ export default function DealsPage() {
             Clear
           </button>
         )}
-        {!loading && (search || filterStage) && (
-          <span className="text-sm text-gray-400">{filtered.length} of {deals.length}</span>
+        {!loading && (search || filterStage || filterOwner) && (
+          <span className="text-sm text-gray-400">{displayDeals.length} of {deals.length}</span>
         )}
       </div>
+
+      {/* ── Summary cards ──────────────────────────────────────────────── */}
+      {!loading && deals.length > 0 && (
+        <>
+          {/* Overall Summary */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Total Deals</p>
+              <p className="text-2xl font-bold text-gray-900">{displayDeals.length}</p>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Pipeline ACV</p>
+              <p className="text-2xl font-bold text-gray-900">{formatCurrency(totalACV) ?? '—'}</p>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Avg Days Since Activity</p>
+              <p className="text-2xl font-bold text-gray-900">{avgDays ?? '—'}</p>
+            </div>
+            <div className="bg-white border border-gray-200 border-l-4 border-l-amber-400 rounded-xl p-4 shadow-sm">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Stale (30+ days)</p>
+              <p className="text-2xl font-bold text-gray-900">{staleCount}</p>
+            </div>
+            <div className="bg-white border border-gray-200 border-l-4 border-l-red-400 rounded-xl p-4 shadow-sm">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Overdue</p>
+              <p className="text-2xl font-bold text-gray-900">{overdueCount}</p>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Avg Health Score</p>
+              <p className="text-2xl font-bold text-gray-900">{avgHealth ?? '—'}</p>
+            </div>
+          </div>
+
+          {/* By Deal Owner */}
+          {ownerSummaries.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-4">
+              {ownerSummaries.map(o => (
+                <button
+                  key={o.id}
+                  onClick={() => setFilterOwner(f => f === o.id ? '' : o.id)}
+                  className={`text-left bg-white border rounded-xl p-4 shadow-sm transition-colors ${
+                    filterOwner === o.id
+                      ? 'border-l-4 border-blue-400 bg-blue-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <p className="font-medium text-gray-900 text-sm mb-2 truncate">{o.name}</p>
+                  <div className="grid grid-cols-4 gap-1 text-center">
+                    <div>
+                      <p className="text-base font-bold text-gray-900">{o.count}</p>
+                      <p className="text-xs text-gray-400">Deals</p>
+                    </div>
+                    <div>
+                      <p className="text-base font-bold text-gray-900">{formatCurrency(o.acv) ?? '—'}</p>
+                      <p className="text-xs text-gray-400">ACV</p>
+                    </div>
+                    <div>
+                      <p className="text-base font-bold text-gray-900">{o.avgDays ?? '—'}</p>
+                      <p className="text-xs text-gray-400">Avg Days</p>
+                    </div>
+                    <div>
+                      <p className={`text-base font-bold ${o.overdue > 0 ? 'text-red-600' : 'text-gray-900'}`}>{o.overdue}</p>
+                      <p className="text-xs text-gray-400">Overdue</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+          {filterOwner && (
+            <button onClick={() => setFilterOwner('')} className="text-xs text-gray-400 hover:text-gray-600 mb-3">
+              ✕ Clear owner filter
+            </button>
+          )}
+        </>
+      )}
 
       {loading ? (
         <p className="text-gray-400 text-sm">Loading…</p>
       ) : view === 'table' ? (
         // ── Table view ──────────────────────────────────────────────────────
-        filtered.length === 0 ? (
+        displayDeals.length === 0 ? (
           <p className="text-gray-500 text-sm">No deals match your filters.</p>
         ) : (
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
