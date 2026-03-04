@@ -775,7 +775,13 @@ export default function DealsPage() {
                 <input type="date" value={form.close_date} onChange={set('close_date')} className={INPUT} />
               </Field>
               <Field label="Notes">
-                <textarea value={form.deal_notes} onChange={set('deal_notes')} rows={3} className={`${INPUT} resize-none`} />
+                {isAdmin ? (
+                  <textarea value={form.deal_notes} onChange={set('deal_notes')} rows={3} className={`${INPUT} resize-none`} />
+                ) : (
+                  <p className="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 min-h-[72px] whitespace-pre-wrap">
+                    {form.deal_notes || <span className="text-gray-400">—</span>}
+                  </p>
+                )}
               </Field>
 
               {/* Notes — only shown when editing an existing deal */}
