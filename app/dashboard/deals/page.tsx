@@ -134,6 +134,7 @@ export default function DealsPage() {
   const [feedbackNotes, setFeedbackNotes]             = useState<NoteWithAuthor[]>([])
   const [feedbackSummary, setFeedbackSummary]         = useState<string | null>(null)
   const [loadingFeedbackSummary, setLoadingFeedbackSummary] = useState(false)
+  const [copied, setCopied] = useState(false)
 
   const fetchStages = useCallback(async () => {
     const { data, error } = await supabase
@@ -870,20 +871,16 @@ export default function DealsPage() {
                 )}
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
-              <button
-                onClick={() => {
-                  const ownerEmail = emailMap.get(feedbackDeal.deal_owner_id) ?? ''
-                  const ts = lastNoteDates.get(feedbackDeal.id)
-                  const modifiedDate = ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
-                  const daysSince = ts ? `${Math.floor((Date.now() - new Date(ts).getTime()) / 86400000)} days` : 'N/A'
-                  const closeDate = feedbackDeal.close_date ? new Date(feedbackDeal.close_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
-                  const acv = feedbackDeal.value_amount != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(feedbackDeal.value_amount) : 'N/A'
-                  const notesBlock = feedbackNotes.length > 0
-                    ? feedbackNotes.map(n => `• ${new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — ${n.note_text}`).join('\n')
-                    : 'No notes recorded.'
-                  const subject = encodeURIComponent(`Deal Update: ${feedbackDeal.deal_name}`)
-                  const body = encodeURIComponent(
+            {(() => {
+              const ts = lastNoteDates.get(feedbackDeal.id)
+              const modifiedDate = ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
+              const daysSince = ts ? `${Math.floor((Date.now() - new Date(ts).getTime()) / 86400000)} days` : 'N/A'
+              const closeDate = feedbackDeal.close_date ? new Date(feedbackDeal.close_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
+              const acv = feedbackDeal.value_amount != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(feedbackDeal.value_amount) : 'N/A'
+              const notesBlock = feedbackNotes.length > 0
+                ? feedbackNotes.map(n => `• ${new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — ${n.note_text}`).join('\n')
+                : 'No notes recorded.'
+              const bodyText =
 `Hi ${feedbackDeal.deal_owner?.full_name ?? 'there'},
 
 Here is a summary for deal "${feedbackDeal.deal_name}":
@@ -902,39 +899,57 @@ Recent Notes:
 ${notesBlock}
 
 Please review and let me know if any updates are needed.`
-                  )
-                  window.location.href = `mailto:${ownerEmail}?subject=${subject}&body=${body}`
-                }}
-                className="inline-flex items-center gap-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                  <path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z" />
-                  <path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" />
-                </svg>
-                Email Owner
-              </button>
-              <div className="flex items-center gap-3">
-                {(() => {
-                  const ownerProfile = profiles.find(p => p.id === feedbackDeal.deal_owner_id)
-                  const slackId = ownerProfile?.slack_member_id
-                  if (!slackId) return null
-                  const href = `slack://user?team=T02FCU97B&id=${slackId}`
-                  return (
-                    <a
-                      href={href}
-                      className="inline-flex items-center gap-2 text-sm font-medium text-white bg-[#4A154B] hover:bg-[#3a1039] px-4 py-2 rounded-lg transition-colors"
-                      title={`Open Slack DM with ${ownerProfile?.full_name ?? 'owner'}`}
+              const ownerProfile = profiles.find(p => p.id === feedbackDeal.deal_owner_id)
+              return (
+                <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {/* Email */}
+                    <button
+                      onClick={() => {
+                        const ownerEmail = emailMap.get(feedbackDeal.deal_owner_id) ?? ''
+                        window.location.href = `mailto:${ownerEmail}?subject=${encodeURIComponent(`Deal Update: ${feedbackDeal.deal_name}`)}&body=${encodeURIComponent(bodyText)}`
+                      }}
+                      className="inline-flex items-center gap-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
                     >
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                        <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                        <path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z" />
+                        <path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" />
                       </svg>
-                      Slack Owner
-                    </a>
-                  )
-                })()}
-                <button onClick={closeFeedback} className="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">Close</button>
-              </div>
-            </div>
+                      Email Owner
+                    </button>
+                    {/* Slack */}
+                    {ownerProfile?.slack_member_id && (
+                      <a
+                        href={`slack://user?team=T02FCU97B&id=${ownerProfile.slack_member_id}`}
+                        className="inline-flex items-center gap-2 text-sm font-medium text-white bg-[#4A154B] hover:bg-[#3a1039] px-4 py-2 rounded-lg transition-colors"
+                      >
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                          <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/>
+                        </svg>
+                        Slack Owner
+                      </a>
+                    )}
+                    {/* Copy Info */}
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(bodyText).then(() => {
+                          setCopied(true)
+                          setTimeout(() => setCopied(false), 2000)
+                        })
+                      }}
+                      className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg transition-colors"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                        <path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12A1.5 1.5 0 0117 6.622V12.5a1.5 1.5 0 01-1.5 1.5h-1v-3.379a3 3 0 00-.879-2.121L10.5 5.379A3 3 0 008.379 4.5H7v-1z" />
+                        <path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-5.879a1.5 1.5 0 00-.44-1.06L9.44 6.439A1.5 1.5 0 008.378 6H4.5z" />
+                      </svg>
+                      {copied ? 'Copied!' : 'Copy Info'}
+                    </button>
+                  </div>
+                  <button onClick={closeFeedback} className="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">Close</button>
+                </div>
+              )
+            })()}
           </div>
         </div>
       )}
