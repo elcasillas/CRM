@@ -92,7 +92,8 @@ export default function DealsPage() {
   const [deals, setDeals]       = useState<DealWithRelations[]>([])
   const [accounts, setAccounts] = useState<Pick<Account, 'id' | 'account_name'>[]>([])
   const [profiles, setProfiles] = useState<{ id: string; full_name: string | null }[]>([])
-  const [isAdmin, setIsAdmin]   = useState(false)
+  const [isAdmin, setIsAdmin]           = useState(false)
+  const [isSalesManager, setIsSalesManager] = useState(false)
   const [loading, setLoading]   = useState(true)
 
   // Filters
@@ -162,6 +163,7 @@ export default function DealsPage() {
     setProfiles(data ?? [])
     const me = (data ?? []).find(p => p.id === user?.id)
     setIsAdmin(me?.role === 'admin')
+    setIsSalesManager(me?.role === 'sales_manager')
   }, [])
 
   function triggerHealthScore(dealId: string) {
@@ -793,8 +795,8 @@ export default function DealsPage() {
               <Field label="Close date">
                 <input type="date" value={form.close_date} onChange={set('close_date')} className={INPUT} />
               </Field>
-              {/* AI summary — edit mode only */}
-              {modal === 'edit' && editing && (
+              {/* AI summary — admin and sales manager only */}
+              {(isAdmin || isSalesManager) && modal === 'edit' && editing && (
                 <div className="border-t border-gray-100 pt-4">
                   <div className="flex items-center justify-between mb-2">
                     <p className="text-sm font-medium text-gray-700">AI summary</p>

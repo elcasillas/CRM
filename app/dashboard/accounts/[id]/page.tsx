@@ -214,7 +214,8 @@ export default function AccountDetailPage() {
     setStages(data ?? [])
   }, [])
 
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [isAdmin, setIsAdmin]               = useState(false)
+  const [isSalesManager, setIsSalesManager] = useState(false)
 
   const fetchProfiles = useCallback(async () => {
     const { data } = await supabase.from('profiles').select('id, full_name, role').order('full_name')
@@ -222,6 +223,7 @@ export default function AccountDetailPage() {
     const { data: { user } } = await supabase.auth.getUser()
     const me = (data ?? []).find((p: { id: string; role?: string }) => p.id === user?.id)
     setIsAdmin(me?.role === 'admin')
+    setIsSalesManager(me?.role === 'sales_manager')
   }, [])
 
   const fetchDealNotes = useCallback(async (dealId: string) => {
@@ -929,8 +931,8 @@ export default function AccountDetailPage() {
                 <input type="date" value={dealForm.close_date} onChange={e => setDealForm(f => ({ ...f, close_date: e.target.value }))} className={INPUT} />
               </Field>
 
-              {/* AI Summary */}
-              <div className="border-t border-gray-100 pt-4">
+              {/* AI Summary — admin and sales manager only */}
+              {(isAdmin || isSalesManager) && <div className="border-t border-gray-100 pt-4">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-medium text-gray-700">AI summary</p>
                   <button
@@ -954,7 +956,7 @@ export default function AccountDetailPage() {
                 ) : (
                   <p className="text-xs text-gray-400">Click Summarize to generate an AI summary of this deal&apos;s notes using Claude.</p>
                 )}
-              </div>
+              </div>}
 
               {/* Notes */}
               <div className="border-t border-gray-100 pt-4">
