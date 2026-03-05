@@ -605,11 +605,11 @@ export default function DealsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
+                  <Th col="owner"    label="Deal Owner" />
                   <Th col="deal"     label="Deal Name" />
                   <Th col="stage"    label="Stage" />
                   <Th col="acv"      label="ACV (CAD)" />
                   <Th col="close"    label="Close Date" />
-                  <Th col="owner"    label="Deal Owner" />
                   <Th col="modified" label="Modified Date" />
                   <Th col="days"     label="Days Since" />
                   <Th col="health"   label="Health" />
@@ -619,6 +619,9 @@ export default function DealsPage() {
               <tbody className="divide-y divide-gray-100">
                 {sorted.map(deal => (
                   <tr key={deal.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3.5 text-gray-500">
+                      {deal.deal_owner?.full_name ?? '—'}
+                    </td>
                     <td className="px-4 py-3.5 font-medium text-gray-900 max-w-[220px]">
                       <span className="truncate block">{deal.deal_name}</span>
                     </td>
@@ -636,9 +639,6 @@ export default function DealsPage() {
                     </td>
                     <td className="px-4 py-3.5 text-gray-500">
                       {formatClose(deal.close_date) ?? '—'}
-                    </td>
-                    <td className="px-4 py-3.5 text-gray-500">
-                      {deal.deal_owner?.full_name ?? '—'}
                     </td>
                     <td className="px-4 py-3.5 text-gray-400 text-xs">
                       {(() => { const ts = lastNoteDates.get(deal.id); return ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—' })()}
