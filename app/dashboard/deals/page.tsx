@@ -649,9 +649,8 @@ export default function DealsPage() {
                         if (!ts) return <span className="text-gray-400">—</span>
                         const days = Math.floor((Date.now() - new Date(ts).getTime()) / 86400000)
                         if (days >= 30) return (
-                          <span className="inline-flex items-center gap-1 bg-red-50 text-red-600 font-semibold px-2 py-0.5 rounded-full ring-1 ring-red-200">
-                            {days}d
-                            <span className="text-red-400 font-normal">stale</span>
+                          <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 font-semibold px-2 py-0.5 rounded-full ring-1 ring-amber-300">
+                            {days} <span className="font-normal">Stale</span>
                           </span>
                         )
                         return <span className="text-gray-400">{days}</span>
