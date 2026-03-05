@@ -126,6 +126,10 @@ export default function DealsPage() {
   const [summary, setSummary]               = useState<string | null>(null)
   const [loadingSummary, setLoadingSummary] = useState(false)
 
+  // Feedback modal
+  const [feedbackDeal, setFeedbackDeal]   = useState<DealWithRelations | null>(null)
+  const [feedbackNotes, setFeedbackNotes] = useState<NoteWithAuthor[]>([])
+
   const fetchStages = useCallback(async () => {
     const { data, error } = await supabase
       .from('deal_stages')
@@ -242,6 +246,19 @@ export default function DealsPage() {
   }
 
   function closeModal() { setModal(null); setEditing(null); setFormError(null); setDealNotes([]); setNoteText(''); setSummary(null) }
+
+  async function openFeedback(deal: DealWithRelations) {
+    setFeedbackDeal(deal)
+    setFeedbackNotes([])
+    const { data } = await supabase
+      .from('notes')
+      .select('*, author:profiles!created_by(full_name)')
+      .eq('entity_type', 'deal')
+      .eq('entity_id', deal.id)
+      .order('created_at', { ascending: false })
+      .limit(5)
+    setFeedbackNotes((data ?? []) as NoteWithAuthor[])
+  }
 
   async function addDealNote() {
     if (!noteText.trim() || !editing) return
@@ -637,6 +654,7 @@ export default function DealsPage() {
                         ) : (
                           <>
                             <button onClick={() => openEdit(deal)} title="Edit" className="text-gray-500 hover:text-gray-700"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" /></svg></button>
+                            <button onClick={() => openFeedback(deal)} title="Deal summary" className="text-gray-400 hover:text-gray-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M15.988 3.012A2.25 2.25 0 0118 5.25v6.5A2.25 2.25 0 0115.75 14H13.5V7A2.5 2.5 0 0011 4.5H8.128a2.252 2.252 0 011.884-1.488A2.25 2.25 0 0112.25 2h1.5a2.25 2.25 0 012.238 1.012zM11.5 3.25a.75.75 0 01.75-.75h1.5a.75.75 0 01.75.75v.25h-3v-.25z" clipRule="evenodd" /><path fillRule="evenodd" d="M2 7a1 1 0 011-1h8a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V7zm2 3.25a.75.75 0 01.75-.75h4.5a.75.75 0 010 1.5h-4.5a.75.75 0 01-.75-.75zm0 3.5a.75.75 0 01.75-.75h4.5a.75.75 0 010 1.5h-4.5a.75.75 0 01-.75-.75z" clipRule="evenodd" /></svg></button>
                             {isAdmin && <button onClick={() => setConfirmDelete(deal.id)} title="Delete" className="text-gray-500 hover:text-red-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C9.327 4.025 9.66 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg></button>}
                           </>
                         )}
@@ -735,6 +753,86 @@ export default function DealsPage() {
                 </div>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Feedback / Deal summary modal */}
+      {feedbackDeal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-lg">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-900">Deal Summary</h3>
+              <button onClick={() => { setFeedbackDeal(null); setFeedbackNotes([]) }} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+            </div>
+            <div className="px-6 py-5 space-y-4 max-h-[75vh] overflow-y-auto">
+              {/* Top info grid */}
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                <div>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Deal Name</p>
+                  <p className="text-gray-900 font-medium">{feedbackDeal.deal_name}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Deal Owner</p>
+                  <p className="text-gray-900">{feedbackDeal.deal_owner?.full_name ?? '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Stage</p>
+                  <p className="text-gray-900">{feedbackDeal.deal_stages?.stage_name ?? '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">ACV (CAD)</p>
+                  <p className="text-gray-900 font-medium">{feedbackDeal.value_amount != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(feedbackDeal.value_amount) : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Closing Date</p>
+                  <p className="text-gray-900">{feedbackDeal.close_date ? new Date(feedbackDeal.close_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Health Score</p>
+                  <p>{feedbackDeal.health_score != null ? (
+                    <span className={`inline-flex items-center justify-center w-8 h-6 rounded text-xs font-semibold ${healthBadgeClass(feedbackDeal.health_score)}`}>{feedbackDeal.health_score}</span>
+                  ) : <span className="text-gray-400">—</span>}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Modified Date</p>
+                  <p className="text-gray-900">{(() => { const ts = lastNoteDates.get(feedbackDeal.id); return ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' })()}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Days Since Update</p>
+                  <p className="text-gray-900">{(() => { const ts = lastNoteDates.get(feedbackDeal.id); return ts ? `${Math.floor((Date.now() - new Date(ts).getTime()) / 86400000)} days` : '—' })()}</p>
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1.5">Description</p>
+                <p className="text-sm text-gray-700 leading-relaxed">{feedbackDeal.deal_description ?? <span className="text-gray-400 italic">No description</span>}</p>
+              </div>
+
+              {/* Notes */}
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">Recent Notes</p>
+                {feedbackNotes.length === 0 ? (
+                  <p className="text-sm text-gray-400 italic">No notes yet</p>
+                ) : (
+                  <div className="space-y-3">
+                    {feedbackNotes.map(note => (
+                      <div key={note.id} className="bg-gray-50 rounded-lg p-3">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-gray-500">{note.author?.full_name ?? 'Unknown'}</span>
+                          <span className="text-xs text-gray-400">{new Date(note.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                        </div>
+                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{note.note_text}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
+              <button onClick={() => { setFeedbackDeal(null); setFeedbackNotes([]) }} className="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">Close</button>
+            </div>
           </div>
         </div>
       )}
