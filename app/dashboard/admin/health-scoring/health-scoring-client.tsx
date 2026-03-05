@@ -29,6 +29,7 @@ export default function HealthScoringClient() {
   })
   const [positiveKws, setPositiveKws]       = useState('')
   const [negativeKws, setNegativeKws]       = useState('')
+  const [staleDays, setStaleDays]           = useState(30)
   const [loading, setLoading]               = useState(true)
   const [saving, setSaving]                 = useState(false)
   const [recalculating, setRecalculating]   = useState(false)
@@ -45,6 +46,7 @@ export default function HealthScoringClient() {
           setPositiveKws((data.keywords.positive ?? []).join('\n'))
           setNegativeKws((data.keywords.negative ?? []).join('\n'))
         }
+        if (data.stale_days != null) setStaleDays(data.stale_days)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -68,7 +70,7 @@ export default function HealthScoringClient() {
     const res = await fetch('/api/admin/health-score-config', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: configId, weights, keywords }),
+      body: JSON.stringify({ id: configId, weights, keywords, stale_days: staleDays }),
     })
     const body = await res.json()
     setSaveMsg(res.ok ? { type: 'ok', text: 'Settings saved.' } : { type: 'err', text: body.error ?? 'Save failed.' })
@@ -149,6 +151,24 @@ export default function HealthScoringClient() {
               placeholder="no response&#10;circling back&#10;stalled"
             />
           </div>
+        </div>
+      </div>
+
+      {/* Stale Deal Threshold */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        <h3 className="text-sm font-semibold text-gray-700 mb-1">Stale Deal Threshold</h3>
+        <p className="text-xs text-gray-400 mb-4">Number of days since the last note before a deal is considered stale. Stale deals are highlighted in the Deals table.</p>
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            min="1"
+            max="365"
+            step="1"
+            value={staleDays}
+            onChange={e => { setStaleDays(Number(e.target.value) || 30); setSaveMsg(null) }}
+            className="w-32 bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm"
+          />
+          <span className="text-sm text-gray-500">days</span>
         </div>
       </div>
 

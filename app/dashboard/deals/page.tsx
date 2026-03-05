@@ -105,6 +105,7 @@ export default function DealsPage() {
   const [filterOwner, setFilterOwner] = useState('')
   const [filterStale, setFilterStale]     = useState(false)
   const [filterOverdue, setFilterOverdue] = useState(false)
+  const [staleDaysThreshold, setStaleDaysThreshold] = useState(30)
 
   // Modal
   const [modal, setModal]         = useState<'add' | 'edit' | null>(null)
@@ -211,6 +212,9 @@ export default function DealsPage() {
   useEffect(() => {
     fetch('/api/users').then(r => r.json()).then((users: { id: string; email: string }[]) => {
       setEmailMap(new Map(users.map(u => [u.id, u.email])))
+    }).catch(() => {})
+    fetch('/api/settings').then(r => r.json()).then(s => {
+      if (s.stale_days) setStaleDaysThreshold(s.stale_days)
     }).catch(() => {})
     Promise.all([fetchStages(), fetchDeals(), fetchAccounts(), fetchProfiles(), fetchLastNoteDates()]).then(() => setLoading(false))
   }, [fetchStages, fetchDeals, fetchAccounts, fetchProfiles, fetchLastNoteDates])
@@ -360,7 +364,7 @@ export default function DealsPage() {
     .filter(d => !filterOwner || d.deal_owner_id === filterOwner)
     .filter(d => !filterStale || (() => {
       const ts = lastNoteDates.get(d.id)
-      return ts ? Math.floor((Date.now() - new Date(ts).getTime()) / 86400000) >= 30 : false
+      return ts ? Math.floor((Date.now() - new Date(ts).getTime()) / 86400000) >= staleDaysThreshold : false
     })())
     .filter(d => !filterOverdue || (!!d.close_date && d.close_date < todayStr && !d.deal_stages?.is_closed))
 
@@ -422,7 +426,7 @@ export default function DealsPage() {
   const avgDays         = noteDays.length
     ? Math.round(noteDays.reduce((a, b) => a + b, 0) / noteDays.length)
     : null
-  const staleCount      = noteDays.filter(d => d >= 30).length
+  const staleCount      = noteDays.filter(d => d >= staleDaysThreshold).length
   const overdueCount    = displayDeals.filter(d =>
     d.close_date && d.close_date < todayStr && !d.deal_stages?.is_closed).length
   const healthScores    = displayDeals.map(d => d.health_score).filter((x): x is number => x != null)
@@ -548,7 +552,7 @@ export default function DealsPage() {
               onClick={() => setFilterStale(f => !f)}
               className={`text-left border border-gray-200 border-l-4 border-l-amber-400 rounded-xl p-4 shadow-sm transition-colors ${filterStale ? 'bg-amber-50 ring-2 ring-amber-300' : 'bg-white hover:bg-amber-50'}`}
             >
-              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Stale (30+ days)</p>
+              <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Stale ({staleDaysThreshold}+ days)</p>
               <p className="text-2xl font-bold text-gray-900">{staleCount}</p>
             </button>
             <button
@@ -685,7 +689,7 @@ export default function DealsPage() {
                         const ts = lastNoteDates.get(deal.id)
                         if (!ts) return <span className="text-gray-400">—</span>
                         const days = Math.floor((Date.now() - new Date(ts).getTime()) / 86400000)
-                        if (days >= 30) return (
+                        if (days >= staleDaysThreshold) return (
                           <span className="inline-flex items-center gap-1 bg-amber-50 text-amber-700 font-semibold px-2 py-0.5 rounded-full ring-1 ring-amber-300">
                             {days} <span className="font-normal">Stale</span>
                           </span>
