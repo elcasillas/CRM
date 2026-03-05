@@ -1,16 +1,16 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
+const MODEL_ID  = "anthropic/claude-haiku-4-5";
+const MODEL_TAG = "haiku";
+const MAX_DEALS_PER_REQUEST = 100;
+const MAX_NOTES_CANONICAL_LENGTH = 50_000;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
-
-const MODEL_ID = "claude-haiku-4-5-20251001";
-const MODEL_TAG = "haiku";
-const MAX_DEALS_PER_REQUEST = 100;
-const MAX_NOTES_CANONICAL_LENGTH = 50_000;
 
 interface CRMDeal {
   deal_id: string;
@@ -19,33 +19,32 @@ interface CRMDeal {
   dealName: string;
 }
 
-async function callClaude(
+async function callOpenRouter(
   apiKey: string,
   dealsList: string,
   dealCount: number
 ): Promise<Record<string, string>> {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
+  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
+      "Authorization": `Bearer ${apiKey}`,
+      "HTTP-Referer": "https://crm-six-roan.vercel.app",
+      "X-Title": "CRM Deal Summarizer",
     },
     body: JSON.stringify({
       model: MODEL_ID,
       max_tokens: 4096,
       messages: [
         {
-          role: "user",
-          content: `You are summarizing CRM deal notes for a sales dashboard. For each deal below, write a 3-5 sentence summary that covers: (1) current status and stage of the deal, (2) key activities and interactions so far, (3) blockers or risks, and (4) next steps and expected timeline. Be factual and specific—include names, dates, and action items where available.
-
-Return a JSON object where keys are the deal numbers ("1", "2", etc.) and values are the summary strings. You must include all ${dealCount} deals.
-
-${dealsList}`,
+          role: "system",
+          content: "You are summarizing CRM deal notes for a sales dashboard. For each deal, write a 3-5 sentence summary covering: (1) current status and stage, (2) key activities and interactions, (3) blockers or risks, and (4) next steps and expected timeline. Be factual and specific—include names, dates, and action items where available. Respond only with a JSON object where keys are the deal numbers (\"1\", \"2\", etc.) and values are the summary strings.",
         },
         {
-          role: "assistant",
-          content: "{",
+          role: "user",
+          content: `Summarize the following ${dealCount} deal(s). Return a JSON object with keys "1" through "${dealCount}".
+
+${dealsList}`,
         },
       ],
     }),
@@ -53,13 +52,12 @@ ${dealsList}`,
 
   if (!response.ok) {
     const errText = await response.text();
-    console.error("Claude API error:", response.status, errText);
-    throw new Error(`Claude API call failed: ${response.status}`);
+    console.error("OpenRouter API error:", response.status, errText);
+    throw new Error(`OpenRouter API call failed: ${response.status}`);
   }
 
   const result = await response.json();
-  const rawText = result.content?.[0]?.text || "}";
-  const text = "{" + rawText;
+  const text = result.choices?.[0]?.message?.content ?? "{}";
 
   try {
     return JSON.parse(text);
@@ -78,10 +76,10 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
+    const apiKey = Deno.env.get("OPENROUTER_API_KEY");
     if (!apiKey) {
       return new Response(
-        JSON.stringify({ error: "ANTHROPIC_API_KEY not configured" }),
+        JSON.stringify({ error: "OPENROUTER_API_KEY not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -161,7 +159,7 @@ Deno.serve(async (req) => {
 
     console.log(`Cache: ${results.length} hits, ${misses.length} misses`);
 
-    // 3. Call Claude for misses
+    // 3. Call OpenRouter for misses
     if (misses.length > 0) {
       const dealsList = misses.map((d, i) => {
         const noteLines = d.notes_canonical
@@ -171,7 +169,7 @@ Deno.serve(async (req) => {
         return `Deal ${i + 1}: "${d.dealName}"\nNotes:\n${noteLines}`;
       }).join("\n\n");
 
-      const newSummaries = await callClaude(apiKey, dealsList, misses.length);
+      const newSummaries = await callOpenRouter(apiKey, dealsList, misses.length);
       const rowsToInsert: { deal_id: string; notes_hash: string; model: string; summary: string }[] = [];
 
       for (let i = 0; i < misses.length; i++) {

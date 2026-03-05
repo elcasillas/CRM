@@ -14,6 +14,49 @@ function sha256Hex(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex')
 }
 
+async function callOpenRouter(canonical: string, dealName: string): Promise<string> {
+  const apiKey = process.env.OPENROUTER_API_KEY
+  if (!apiKey) throw new Error('OPENROUTER_API_KEY not configured')
+  const model = process.env.OPENROUTER_MODEL || 'anthropic/claude-haiku-4-5'
+
+  const noteLines = canonical
+    .split('\n---\n')
+    .map(n => `- ${n.trim()}`)
+    .join('\n')
+
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
+      'HTTP-Referer': 'https://crm-six-roan.vercel.app',
+      'X-Title': 'CRM Deal Summarizer',
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 1024,
+      messages: [
+        {
+          role: 'system',
+          content: 'You are summarizing CRM deal notes for a sales dashboard. Write a 3-5 sentence summary covering: (1) current status and stage, (2) key activities and interactions, (3) blockers or risks, and (4) next steps and expected timeline. Be factual and specific—include names, dates, and action items where available. Respond with plain text only.',
+        },
+        {
+          role: 'user',
+          content: `Deal: "${dealName}"\nNotes:\n${noteLines}`,
+        },
+      ],
+    }),
+  })
+
+  if (!res.ok) {
+    const txt = await res.text()
+    throw new Error(`OpenRouter error ${res.status}: ${txt}`)
+  }
+
+  const json = await res.json()
+  return (json.choices?.[0]?.message?.content ?? '').trim()
+}
+
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -56,33 +99,13 @@ export async function POST(
     .maybeSingle()
   if (cached?.summary) return NextResponse.json({ summary: cached.summary, cached: true })
 
-  // 3. Call edge function
-  const edgeFnUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/summarize-notes`
-  const edgeRes = await fetch(edgeFnUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
-    },
-    body: JSON.stringify({
-      deals: [{
-        deal_id:         id,
-        notes_hash:      notesHash,
-        notes_canonical: canonical,
-        dealName:        deal.deal_name,
-      }],
-    }),
-  })
-
-  if (!edgeRes.ok) {
-    const txt = await edgeRes.text()
-    return NextResponse.json({ error: `Edge function error: ${txt}` }, { status: 502 })
+  // 3. Call OpenRouter
+  let summary: string
+  try {
+    summary = await callOpenRouter(canonical, deal.deal_name)
+  } catch (err) {
+    return NextResponse.json({ error: String(err) }, { status: 502 })
   }
-
-  const { summaries } = await edgeRes.json() as {
-    summaries: { deal_id: string; summary: string }[]
-  }
-  const summary = summaries?.[0]?.summary ?? ''
   if (!summary) return NextResponse.json({ error: 'No summary returned' }, { status: 502 })
 
   // 4. Cache result
