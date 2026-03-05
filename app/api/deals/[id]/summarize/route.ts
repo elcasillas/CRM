@@ -17,7 +17,7 @@ function sha256Hex(text: string): string {
 async function callOpenRouter(canonical: string, dealName: string): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) throw new Error('OPENROUTER_API_KEY not configured')
-  const model = process.env.OPENROUTER_MODEL || 'anthropic/claude-haiku-4-5'
+  const model = (process.env.OPENROUTER_MODEL || 'anthropic/claude-haiku-4-5').trim()
 
   const noteLines = canonical
     .split('\n---\n')
