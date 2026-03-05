@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { DealStage, DealWithRelations, NoteWithAuthor } from '@/lib/types'
@@ -66,54 +66,116 @@ function stageHeaderClass(s: DealStage): string {
   return 'text-orange-600'
 }
 
-export default function DealsClient({ initialData }: { initialData: DealsInitialData }) {
-  const [view, setView]     = useState<'table' | 'kanban'>('table')
-  const [deals, setDeals]   = useState<DealWithRelations[]>(initialData.deals)
-  const stages              = initialData.stages
-  const accounts            = initialData.accounts
-  const profiles            = initialData.profiles
-  const isAdmin             = initialData.currentUserRole === 'admin'
-  const isSalesManager      = initialData.currentUserRole === 'sales_manager'
-  const userId              = initialData.currentUserId
-  const staleDaysThreshold  = initialData.staleDays
-  const emailMap            = new Map(Object.entries(initialData.emailMap))
+// ── State shape types ─────────────────────────────────────────────────────────
 
+type FiltersState = {
+  view:          'table' | 'kanban'
+  search:        string
+  filterStage:   string
+  filterOwner:   string
+  filterStale:   boolean
+  filterOverdue: boolean
+  sortCol:       string
+  sortDir:       'asc' | 'desc'
+}
+
+type UIState = {
+  modal:                  'add' | 'edit' | null
+  editing:                DealWithRelations | null
+  form:                   DealFormData
+  saving:                 boolean
+  formError:              string | null
+  confirmDelete:          string | null
+  feedbackDeal:           DealWithRelations | null
+  feedbackSummary:        string | null
+  loadingFeedbackSummary: boolean
+  copied:                 boolean
+}
+
+type NotesState = {
+  dealNotes:         NoteWithAuthor[]
+  noteText:          string
+  loggingNote:       boolean
+  noteConfirmDelete: string | null
+  feedbackNotes:     NoteWithAuthor[]
+}
+
+const INITIAL_FILTERS: FiltersState = {
+  view: 'table', search: '', filterStage: '', filterOwner: '',
+  filterStale: false, filterOverdue: false, sortCol: '', sortDir: 'asc',
+}
+
+const INITIAL_UI: UIState = {
+  modal: null, editing: null, form: EMPTY_FORM, saving: false,
+  formError: null, confirmDelete: null, feedbackDeal: null,
+  feedbackSummary: null, loadingFeedbackSummary: false, copied: false,
+}
+
+const INITIAL_NOTES: NotesState = {
+  dealNotes: [], noteText: '', loggingNote: false, noteConfirmDelete: null, feedbackNotes: [],
+}
+
+export default function DealsClient({ initialData }: { initialData: DealsInitialData }) {
+
+  // ── Data state ───────────────────────────────────────────────────────────────
+  const [deals, setDeals]             = useState<DealWithRelations[]>(initialData.deals)
   const [lastNoteDates, setLastNoteDates] = useState<Map<string, string>>(
     () => new Map(Object.entries(initialData.lastNoteDates))
   )
 
-  // Filters
-  const [search, setSearch]               = useState('')
-  const [filterStage, setFilterStage]     = useState('')
-  const [sortCol, setSortCol]             = useState('')
-  const [sortDir, setSortDir]             = useState<'asc' | 'desc'>('asc')
-  const [filterOwner, setFilterOwner]     = useState('')
-  const [filterStale, setFilterStale]     = useState(false)
-  const [filterOverdue, setFilterOverdue] = useState(false)
+  // ── UI state (3 grouped hooks) ───────────────────────────────────────────────
+  const [filters, setFiltersState] = useState<FiltersState>(INITIAL_FILTERS)
+  const [ui, setUIState]           = useState<UIState>(INITIAL_UI)
+  const [notes, setNotesState]     = useState<NotesState>(INITIAL_NOTES)
 
-  // Deal modal
-  const [modal, setModal]                 = useState<'add' | 'edit' | null>(null)
-  const [editing, setEditing]             = useState<DealWithRelations | null>(null)
-  const [form, setForm]                   = useState<DealFormData>(EMPTY_FORM)
-  const [saving, setSaving]               = useState(false)
-  const [formError, setFormError]         = useState<string | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  // Destructure for readable access throughout the component
+  const { view, search, filterStage, filterOwner, filterStale, filterOverdue, sortCol, sortDir } = filters
+  const { modal, editing, form, saving, formError, confirmDelete,
+          feedbackDeal, feedbackSummary, loadingFeedbackSummary, copied } = ui
+  const { dealNotes, noteText, loggingNote, noteConfirmDelete, feedbackNotes } = notes
 
-  // Deal notes
-  const [dealNotes, setDealNotes]                   = useState<NoteWithAuthor[]>([])
-  const [noteText, setNoteText]                     = useState('')
-  const [loggingNote, setLoggingNote]               = useState(false)
-  const [noteConfirmDelete, setNoteConfirmDelete]   = useState<string | null>(null)
+  // ── Props-derived constants ──────────────────────────────────────────────────
+  const stages             = initialData.stages
+  const accounts           = initialData.accounts
+  const profiles           = initialData.profiles
+  const isAdmin            = initialData.currentUserRole === 'admin'
+  const isSalesManager     = initialData.currentUserRole === 'sales_manager'
+  const userId             = initialData.currentUserId
+  const staleDaysThreshold = initialData.staleDays
+  const emailMap           = useMemo(
+    () => new Map(Object.entries(initialData.emailMap)),
+    [initialData.emailMap]
+  )
 
-  // Feedback modal
-  const [feedbackDeal, setFeedbackDeal]                         = useState<DealWithRelations | null>(null)
-  const [feedbackNotes, setFeedbackNotes]                       = useState<NoteWithAuthor[]>([])
-  const [feedbackSummary, setFeedbackSummary]                   = useState<string | null>(null)
-  const [loadingFeedbackSummary, setLoadingFeedbackSummary]     = useState(false)
-  const [copied, setCopied]                                     = useState(false)
+  // ── Typed setter helpers ─────────────────────────────────────────────────────
+  function setFilter<K extends keyof FiltersState>(key: K, value: FiltersState[K]) {
+    setFiltersState(prev => ({ ...prev, [key]: value }))
+  }
+  function setUI<K extends keyof UIState>(key: K, value: UIState[K]) {
+    setUIState(prev => ({ ...prev, [key]: value }))
+  }
+  function setNotesUI<K extends keyof NotesState>(key: K, value: NotesState[K]) {
+    setNotesState(prev => ({ ...prev, [key]: value }))
+  }
 
-  // ── Data refresh (post-mutation) ─────────────────────────────────────────
+  // ── Reset / close helpers ────────────────────────────────────────────────────
+  function resetDealForm() {
+    setUIState(prev => ({ ...prev, form: EMPTY_FORM, formError: null }))
+  }
+  function resetNotesForm() {
+    setNotesState(prev => ({ ...prev, dealNotes: [], noteText: '', noteConfirmDelete: null }))
+  }
+  function closeModal() {
+    setUIState(prev => ({ ...prev, modal: null, editing: null, formError: null, form: EMPTY_FORM }))
+    resetNotesForm()
+  }
+  function closeFeedback() {
+    setUIState(prev => ({ ...prev, feedbackDeal: null, feedbackSummary: null, loadingFeedbackSummary: false }))
+    setNotesState(prev => ({ ...prev, feedbackNotes: [] }))
+  }
+  function closeAllModals() { closeModal(); closeFeedback() }
 
+  // ── Data refresh (post-mutation) ─────────────────────────────────────────────
   async function fetchDeals() {
     const { data, error } = await supabase
       .from('deals')
@@ -136,7 +198,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
       .eq('entity_type', 'deal')
       .eq('entity_id', dealId)
       .order('created_at', { ascending: false })
-    setDealNotes((data ?? []) as NoteWithAuthor[])
+    setNotesUI('dealNotes', (data ?? []) as NoteWithAuthor[])
   }
 
   async function fetchLastNoteDates() {
@@ -152,8 +214,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     setLastNoteDates(map)
   }
 
-  // ── Stage change ─────────────────────────────────────────────────────────
-
+  // ── Stage change ─────────────────────────────────────────────────────────────
   async function changeStage(deal: DealWithRelations, newStageId: string) {
     if (!newStageId || newStageId === deal.stage_id) return
     const { data: { user: u } } = await supabase.auth.getUser()
@@ -167,38 +228,38 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     fetchDeals()
   }
 
-  // ── Deal modal helpers ───────────────────────────────────────────────────
-
+  // ── Deal modal helpers ────────────────────────────────────────────────────────
   function openAdd(stageId = '') {
-    setForm({ ...EMPTY_FORM, stage_id: stageId || (stages[1]?.id ?? '') })
-    setEditing(null); setFormError(null); setModal('add')
+    setUIState(prev => ({
+      ...prev,
+      form: { ...EMPTY_FORM, stage_id: stageId || (stages[1]?.id ?? '') },
+      editing: null, formError: null, modal: 'add',
+    }))
   }
 
   function openEdit(deal: DealWithRelations) {
-    setForm({
-      deal_name:             deal.deal_name,
-      deal_description:      deal.deal_description ?? '',
-      account_id:            deal.account_id ?? '',
-      stage_id:              deal.stage_id,
-      deal_owner_id:         deal.deal_owner_id,
-      solutions_engineer_id: deal.solutions_engineer_id ?? '',
-      value_amount:          deal.value_amount != null ? String(deal.value_amount) : '',
-      currency:              deal.currency,
-      close_date:            deal.close_date ?? '',
-    })
-    setDealNotes([]); setNoteText(''); setNoteConfirmDelete(null)
+    setUIState(prev => ({
+      ...prev,
+      form: {
+        deal_name:             deal.deal_name,
+        deal_description:      deal.deal_description ?? '',
+        account_id:            deal.account_id ?? '',
+        stage_id:              deal.stage_id,
+        deal_owner_id:         deal.deal_owner_id,
+        solutions_engineer_id: deal.solutions_engineer_id ?? '',
+        value_amount:          deal.value_amount != null ? String(deal.value_amount) : '',
+        currency:              deal.currency,
+        close_date:            deal.close_date ?? '',
+      },
+      editing: deal, formError: null, modal: 'edit',
+    }))
+    resetNotesForm()
     fetchDealNotes(deal.id)
-    setEditing(deal); setFormError(null); setModal('edit')
-  }
-
-  function closeModal() {
-    setModal(null); setEditing(null); setFormError(null); setDealNotes([]); setNoteText('')
   }
 
   async function openFeedback(deal: DealWithRelations) {
-    setFeedbackDeal(deal)
-    setFeedbackNotes([])
-    setFeedbackSummary(null)
+    setUIState(prev => ({ ...prev, feedbackDeal: deal, feedbackSummary: null }))
+    setNotesUI('feedbackNotes', [])
     const { data } = await supabase
       .from('notes')
       .select('*, author:profiles!created_by(full_name)')
@@ -206,38 +267,37 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
       .eq('entity_id', deal.id)
       .order('created_at', { ascending: false })
       .limit(3)
-    setFeedbackNotes((data ?? []) as NoteWithAuthor[])
+    setNotesUI('feedbackNotes', (data ?? []) as NoteWithAuthor[])
   }
 
-  function closeFeedback() { setFeedbackDeal(null); setFeedbackNotes([]); setFeedbackSummary(null) }
-
-  // ── Note CRUD ────────────────────────────────────────────────────────────
-
+  // ── Note CRUD ────────────────────────────────────────────────────────────────
   async function addDealNote() {
     if (!noteText.trim() || !editing) return
-    setLoggingNote(true)
+    setNotesUI('loggingNote', true)
     const { error } = await supabase.from('notes').insert({
       entity_type: 'deal', entity_id: editing.id, note_text: noteText.trim(), created_by: userId,
     })
-    if (!error) { setNoteText(''); fetchDealNotes(editing.id); fetchLastNoteDates(); triggerHealthScore(editing.id) }
-    setLoggingNote(false)
+    if (!error) { setNotesUI('noteText', ''); fetchDealNotes(editing.id); fetchLastNoteDates(); triggerHealthScore(editing.id) }
+    setNotesUI('loggingNote', false)
   }
 
   async function deleteDealNote(noteId: string) {
     const { error } = await supabase.from('notes').delete().eq('id', noteId)
-    if (!error) { setDealNotes(prev => prev.filter(n => n.id !== noteId)); fetchLastNoteDates() }
-    setNoteConfirmDelete(null)
+    if (!error) {
+      setNotesState(prev => ({ ...prev, dealNotes: prev.dealNotes.filter(n => n.id !== noteId) }))
+      fetchLastNoteDates()
+    }
+    setNotesUI('noteConfirmDelete', null)
   }
 
-  // ── Deal CRUD ────────────────────────────────────────────────────────────
-
+  // ── Deal CRUD ────────────────────────────────────────────────────────────────
   function set(field: keyof DealFormData) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-      setForm(f => ({ ...f, [field]: e.target.value }))
+      setUIState(prev => ({ ...prev, form: { ...prev.form, [field]: e.target.value } }))
   }
 
   async function handleSave() {
-    setSaving(true); setFormError(null)
+    setUIState(prev => ({ ...prev, saving: true, formError: null }))
     const { data: { user: u } } = await supabase.auth.getUser()
     const payload = {
       deal_name:        form.deal_name.trim(),
@@ -252,12 +312,12 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     }
     if (modal === 'add') {
       const { data: inserted, error } = await supabase.from('deals').insert({ ...payload, deal_owner_id: u!.id }).select('id').single()
-      if (error) { setFormError(error.message) } else { closeModal(); fetchDeals(); if (inserted) triggerHealthScore(inserted.id) }
+      if (error) { setUI('formError', error.message) } else { closeModal(); fetchDeals(); if (inserted) triggerHealthScore(inserted.id) }
     } else if (modal === 'edit' && editing) {
       const stageChanged = form.stage_id !== editing.stage_id
       const { error } = await supabase.from('deals').update({ ...payload, last_activity_at: new Date().toISOString() }).eq('id', editing.id)
       if (error) {
-        setFormError(error.message)
+        setUI('formError', error.message)
       } else {
         if (stageChanged) {
           await supabase.from('deal_stage_history').insert({
@@ -267,66 +327,119 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
         closeModal(); fetchDeals(); triggerHealthScore(editing.id)
       }
     }
-    setSaving(false)
+    setUI('saving', false)
   }
 
   async function handleDelete(id: string) {
     const { error } = await supabase.from('deals').delete().eq('id', id)
     if (error) console.error('delete deal:', error.message)
     else setDeals(prev => prev.filter(d => d.id !== id))
-    setConfirmDelete(null)
+    setUI('confirmDelete', null)
   }
 
-  // ── Filtering & sorting ──────────────────────────────────────────────────
-
-  const todayStr = new Date().toISOString().split('T')[0]
-
-  const filtered = deals.filter(d => {
-    const q = search.toLowerCase()
-    const matchSearch = !q || d.deal_name.toLowerCase().includes(q) || (d.accounts?.account_name ?? '').toLowerCase().includes(q)
-    const matchStage  = !filterStage || d.stage_id === filterStage
-    return matchSearch && matchStage
-  })
-
-  const displayDeals = filtered
-    .filter(d => !filterOwner || d.deal_owner_id === filterOwner)
-    .filter(d => !filterStale || (() => {
-      const ts = lastNoteDates.get(d.id)
-      return ts ? Math.floor((Date.now() - new Date(ts).getTime()) / 86400000) >= staleDaysThreshold : false
-    })())
-    .filter(d => !filterOverdue || (!!d.close_date && d.close_date < todayStr && !d.deal_stages?.is_closed))
-
+  // ── Sort ─────────────────────────────────────────────────────────────────────
   function toggleSort(col: string) {
-    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
-    else { setSortCol(col); setSortDir('asc') }
+    setFiltersState(prev => ({
+      ...prev,
+      sortCol: col,
+      sortDir: prev.sortCol === col ? (prev.sortDir === 'asc' ? 'desc' : 'asc') : 'asc',
+    }))
   }
 
-  function sortValD(d: DealWithRelations): string | number | null {
-    switch (sortCol) {
-      case 'deal':     return d.deal_name
-      case 'account':  return d.accounts?.account_name ?? null
-      case 'stage':    return d.deal_stages?.sort_order ?? null
-      case 'acv':      return d.value_amount ?? null
-      case 'close':    return d.close_date ?? null
-      case 'owner':    return d.deal_owner?.full_name ?? null
-      case 'se':       return d.solutions_engineer?.full_name ?? null
-      case 'modified': return lastNoteDates.get(d.id) ?? null
-      case 'days':     return lastNoteDates.get(d.id) ? Math.floor((Date.now() - new Date(lastNoteDates.get(d.id)!).getTime()) / 86400000) : null
-      case 'health':   return d.health_score ?? null
-      default:         return null
-    }
-  }
+  // ── Derived data (memoized) ──────────────────────────────────────────────────
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], [])
 
-  const sorted = sortCol
-    ? [...displayDeals].sort((a, b) => {
-        const va = sortValD(a), vb = sortValD(b)
-        if (va == null && vb == null) return 0
-        if (va == null) return 1; if (vb == null) return -1
-        const r = typeof va === 'string' ? va.localeCompare(vb as string) : (va as number) - (vb as number)
-        return sortDir === 'asc' ? r : -r
+  const filtered = useMemo(() =>
+    deals.filter(d => {
+      const q = search.toLowerCase()
+      const matchSearch = !q || d.deal_name.toLowerCase().includes(q) || (d.accounts?.account_name ?? '').toLowerCase().includes(q)
+      const matchStage  = !filterStage || d.stage_id === filterStage
+      return matchSearch && matchStage
+    }),
+    [deals, search, filterStage]
+  )
+
+  const displayDeals = useMemo(() =>
+    filtered
+      .filter(d => !filterOwner || d.deal_owner_id === filterOwner)
+      .filter(d => {
+        if (!filterStale) return true
+        const ts = lastNoteDates.get(d.id)
+        return ts ? Math.floor((Date.now() - new Date(ts).getTime()) / 86400000) >= staleDaysThreshold : false
       })
-    : displayDeals
+      .filter(d => !filterOverdue || (!!d.close_date && d.close_date < todayStr && !d.deal_stages?.is_closed)),
+    [filtered, filterOwner, filterStale, filterOverdue, lastNoteDates, staleDaysThreshold, todayStr]
+  )
 
+  const sorted = useMemo(() => {
+    if (!sortCol) return displayDeals
+    function getSortVal(d: DealWithRelations): string | number | null {
+      switch (sortCol) {
+        case 'deal':     return d.deal_name
+        case 'account':  return d.accounts?.account_name ?? null
+        case 'stage':    return d.deal_stages?.sort_order ?? null
+        case 'acv':      return d.value_amount ?? null
+        case 'close':    return d.close_date ?? null
+        case 'owner':    return d.deal_owner?.full_name ?? null
+        case 'se':       return d.solutions_engineer?.full_name ?? null
+        case 'modified': return lastNoteDates.get(d.id) ?? null
+        case 'days':     return lastNoteDates.get(d.id) ? Math.floor((Date.now() - new Date(lastNoteDates.get(d.id)!).getTime()) / 86400000) : null
+        case 'health':   return d.health_score ?? null
+        default:         return null
+      }
+    }
+    return [...displayDeals].sort((a, b) => {
+      const va = getSortVal(a), vb = getSortVal(b)
+      if (va == null && vb == null) return 0
+      if (va == null) return 1; if (vb == null) return -1
+      const r = typeof va === 'string' ? va.localeCompare(vb as string) : (va as number) - (vb as number)
+      return sortDir === 'asc' ? r : -r
+    })
+  }, [displayDeals, sortCol, sortDir, lastNoteDates])
+
+  const metrics = useMemo(() => {
+    const nowMs        = Date.now()
+    const openDisplay  = displayDeals.filter(d => !d.deal_stages?.is_closed)
+    const totalACV     = openDisplay.reduce((s, d) => s + (d.value_amount ?? 0), 0)
+    const noteDays     = displayDeals
+      .map(d => { const ts = lastNoteDates.get(d.id); return ts ? Math.floor((nowMs - new Date(ts).getTime()) / 86400000) : null })
+      .filter((x): x is number => x !== null)
+    const avgDays      = noteDays.length ? Math.round(noteDays.reduce((a, b) => a + b, 0) / noteDays.length) : null
+    const staleCount   = noteDays.filter(d => d >= staleDaysThreshold).length
+    const overdueCount = displayDeals.filter(d => d.close_date && d.close_date < todayStr && !d.deal_stages?.is_closed).length
+    const healthScores = displayDeals.map(d => d.health_score).filter((x): x is number => x != null)
+    const avgHealth    = healthScores.length ? Math.round(healthScores.reduce((a, b) => a + b, 0) / healthScores.length) : null
+    return { totalACV, avgDays, staleCount, overdueCount, avgHealth }
+  }, [displayDeals, lastNoteDates, staleDaysThreshold, todayStr])
+
+  const { totalACV, avgDays, staleCount, overdueCount, avgHealth } = metrics
+
+  const ownerSummaries = useMemo(() => {
+    type OwnerSummary = { id: string; name: string; count: number; acv: number; avgDays: number | null; overdue: number }
+    const nowMs    = Date.now()
+    const ownerMap = new Map<string, OwnerSummary>()
+    for (const d of filtered) {
+      const oid = d.deal_owner_id
+      const cur = ownerMap.get(oid) ?? { id: oid, name: d.deal_owner?.full_name ?? 'Unknown', count: 0, acv: 0, avgDays: null, overdue: 0 }
+      cur.count++
+      cur.acv += d.value_amount ?? 0
+      if (d.close_date && d.close_date < todayStr && !d.deal_stages?.is_closed) cur.overdue++
+      ownerMap.set(oid, cur)
+    }
+    for (const [oid, ownerSummary] of ownerMap) {
+      const ownerDays = filtered
+        .filter(d => d.deal_owner_id === oid)
+        .map(d => { const ts = lastNoteDates.get(d.id); return ts ? Math.floor((nowMs - new Date(ts).getTime()) / 86400000) : null })
+        .filter((x): x is number => x !== null)
+      ownerSummary.avgDays = ownerDays.length ? Math.round(ownerDays.reduce((a, b) => a + b, 0) / ownerDays.length) : null
+    }
+    return [...ownerMap.values()].sort((a, b) => b.acv - a.acv)
+  }, [filtered, lastNoteDates, todayStr])
+
+  const byStage    = (sid: string) => displayDeals.filter(d => d.stage_id === sid)
+  const stageTotal = (sid: string) => { const t = byStage(sid).reduce((s, d) => s + (d.value_amount != null ? Number(d.value_amount) : 0), 0); return t > 0 ? formatCurrency(t) : null }
+
+  // ── Sort header component ────────────────────────────────────────────────────
   function Th({ col, label }: { col: string; label: string }) {
     const active = sortCol === col
     return (
@@ -336,49 +449,15 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     )
   }
 
-  // ── Summary metrics ──────────────────────────────────────────────────────
-
-  const nowMs        = Date.now()
-  const openDisplay  = displayDeals.filter(d => !d.deal_stages?.is_closed)
-  const totalACV     = openDisplay.reduce((s, d) => s + (d.value_amount ?? 0), 0)
-  const noteDays     = displayDeals.map(d => { const ts = lastNoteDates.get(d.id); return ts ? Math.floor((nowMs - new Date(ts).getTime()) / 86400000) : null }).filter((x): x is number => x !== null)
-  const avgDays      = noteDays.length ? Math.round(noteDays.reduce((a, b) => a + b, 0) / noteDays.length) : null
-  const staleCount   = noteDays.filter(d => d >= staleDaysThreshold).length
-  const overdueCount = displayDeals.filter(d => d.close_date && d.close_date < todayStr && !d.deal_stages?.is_closed).length
-  const healthScores = displayDeals.map(d => d.health_score).filter((x): x is number => x != null)
-  const avgHealth    = healthScores.length ? Math.round(healthScores.reduce((a, b) => a + b, 0) / healthScores.length) : null
-
-  // ── Owner summaries ──────────────────────────────────────────────────────
-
-  type OwnerSummary = { id: string; name: string; count: number; acv: number; avgDays: number | null; overdue: number }
-  const ownerMap = new Map<string, OwnerSummary>()
-  for (const d of filtered) {
-    const oid = d.deal_owner_id
-    const cur = ownerMap.get(oid) ?? { id: oid, name: d.deal_owner?.full_name ?? 'Unknown', count: 0, acv: 0, avgDays: null, overdue: 0 }
-    cur.count++
-    cur.acv += d.value_amount ?? 0
-    if (d.close_date && d.close_date < todayStr && !d.deal_stages?.is_closed) cur.overdue++
-    ownerMap.set(oid, cur)
-  }
-  for (const [oid, summary] of ownerMap) {
-    const ownerDays = filtered.filter(d => d.deal_owner_id === oid).map(d => { const ts = lastNoteDates.get(d.id); return ts ? Math.floor((nowMs - new Date(ts).getTime()) / 86400000) : null }).filter((x): x is number => x !== null)
-    summary.avgDays = ownerDays.length ? Math.round(ownerDays.reduce((a, b) => a + b, 0) / ownerDays.length) : null
-  }
-  const ownerSummaries = [...ownerMap.values()].sort((a, b) => b.acv - a.acv)
-
-  const byStage    = (sid: string) => displayDeals.filter(d => d.stage_id === sid)
-  const stageTotal = (sid: string) => { const t = byStage(sid).reduce((s, d) => s + (d.value_amount != null ? Number(d.value_amount) : 0), 0); return t > 0 ? formatCurrency(t) : null }
-
-  // ── Render ───────────────────────────────────────────────────────────────
-
+  // ── Render ───────────────────────────────────────────────────────────────────
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Deals</h2>
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
-            <button onClick={() => setView('table')} className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${view === 'table' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Table</button>
-            <button onClick={() => setView('kanban')} className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${view === 'kanban' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Kanban</button>
+            <button onClick={() => setFilter('view', 'table')} className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${view === 'table' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Table</button>
+            <button onClick={() => setFilter('view', 'kanban')} className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${view === 'kanban' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Kanban</button>
           </div>
           <Link href="/dashboard/deals/import" className="text-sm text-gray-500 hover:text-gray-700 font-medium border border-gray-300 px-3 py-2 rounded-lg transition-colors">Import CSV</Link>
           <button onClick={() => openAdd()} className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">+ New deal</button>
@@ -387,12 +466,12 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
 
       {/* Filter bar */}
       <div className="flex items-center gap-3 mb-4">
-        <input type="text" placeholder="Search deals…" value={search} onChange={e => setSearch(e.target.value)} className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 w-64" />
-        <select value={filterStage} onChange={e => setFilterStage(e.target.value)} className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200">
+        <input type="text" placeholder="Search deals…" value={search} onChange={e => setFilter('search', e.target.value)} className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 w-64" />
+        <select value={filterStage} onChange={e => setFilter('filterStage', e.target.value)} className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200">
           <option value="">All stages</option>
           {stages.map(s => <option key={s.id} value={s.id}>{s.stage_name}</option>)}
         </select>
-        {(search || filterStage) && <button onClick={() => { setSearch(''); setFilterStage('') }} className="text-sm text-gray-400 hover:text-gray-600">Clear</button>}
+        {(search || filterStage) && <button onClick={() => setFiltersState(prev => ({ ...prev, search: '', filterStage: '' }))} className="text-sm text-gray-400 hover:text-gray-600">Clear</button>}
         {(search || filterStage || filterOwner) && <span className="text-sm text-gray-400">{displayDeals.length} of {deals.length}</span>}
       </div>
 
@@ -412,11 +491,11 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
               <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Avg Days Since Update</p>
               <p className="text-2xl font-bold text-gray-900">{avgDays ?? '—'}</p>
             </div>
-            <button onClick={() => setFilterStale(f => !f)} className={`text-left border border-gray-200 border-l-4 border-l-amber-400 rounded-xl p-4 shadow-sm transition-colors ${filterStale ? 'bg-amber-50 ring-2 ring-amber-300' : 'bg-white hover:bg-amber-50'}`}>
+            <button onClick={() => setFilter('filterStale', !filterStale)} className={`text-left border border-gray-200 border-l-4 border-l-amber-400 rounded-xl p-4 shadow-sm transition-colors ${filterStale ? 'bg-amber-50 ring-2 ring-amber-300' : 'bg-white hover:bg-amber-50'}`}>
               <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Stale ({staleDaysThreshold}+ days)</p>
               <p className="text-2xl font-bold text-gray-900">{staleCount}</p>
             </button>
-            <button onClick={() => setFilterOverdue(f => !f)} className={`text-left border border-gray-200 border-l-4 border-l-red-400 rounded-xl p-4 shadow-sm transition-colors ${filterOverdue ? 'bg-red-50 ring-2 ring-red-300' : 'bg-white hover:bg-red-50'}`}>
+            <button onClick={() => setFilter('filterOverdue', !filterOverdue)} className={`text-left border border-gray-200 border-l-4 border-l-red-400 rounded-xl p-4 shadow-sm transition-colors ${filterOverdue ? 'bg-red-50 ring-2 ring-red-300' : 'bg-white hover:bg-red-50'}`}>
               <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Overdue</p>
               <p className="text-2xl font-bold text-gray-900">{overdueCount}</p>
             </button>
@@ -429,7 +508,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
           {ownerSummaries.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-4">
               {ownerSummaries.map(o => (
-                <button key={o.id} onClick={() => setFilterOwner(f => f === o.id ? '' : o.id)} className={`text-left bg-white border rounded-xl p-4 shadow-sm transition-colors ${filterOwner === o.id ? 'border-l-4 border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                <button key={o.id} onClick={() => setFilter('filterOwner', filterOwner === o.id ? '' : o.id)} className={`text-left bg-white border rounded-xl p-4 shadow-sm transition-colors ${filterOwner === o.id ? 'border-l-4 border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
                   <p className="font-medium text-gray-900 text-sm mb-2 truncate">{o.name}</p>
                   <div className="grid grid-cols-4 gap-1 text-center">
                     <div><p className="text-base font-bold text-gray-900">{o.count}</p><p className="text-xs text-gray-400">Deals</p></div>
@@ -444,9 +523,9 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
 
           {(filterOwner || filterStale || filterOverdue) && (
             <div className="flex items-center gap-3 mb-3">
-              {filterOwner   && <button onClick={() => setFilterOwner('')}    className="text-xs text-gray-400 hover:text-gray-600">✕ Clear owner filter</button>}
-              {filterStale   && <button onClick={() => setFilterStale(false)} className="text-xs text-amber-600 hover:text-amber-800">✕ Clear stale filter</button>}
-              {filterOverdue && <button onClick={() => setFilterOverdue(false)} className="text-xs text-red-600 hover:text-red-800">✕ Clear overdue filter</button>}
+              {filterOwner   && <button onClick={() => setFilter('filterOwner', '')}     className="text-xs text-gray-400 hover:text-gray-600">✕ Clear owner filter</button>}
+              {filterStale   && <button onClick={() => setFilter('filterStale', false)}  className="text-xs text-amber-600 hover:text-amber-800">✕ Clear stale filter</button>}
+              {filterOverdue && <button onClick={() => setFilter('filterOverdue', false)} className="text-xs text-red-600 hover:text-red-800">✕ Clear overdue filter</button>}
             </div>
           )}
         </>
@@ -506,13 +585,13 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                           <>
                             <span className="text-xs text-gray-400">Delete?</span>
                             <button onClick={() => handleDelete(deal.id)} className="text-xs text-red-600 hover:text-red-700 font-medium">Confirm</button>
-                            <button onClick={() => setConfirmDelete(null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+                            <button onClick={() => setUI('confirmDelete', null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
                           </>
                         ) : (
                           <>
                             <button onClick={() => openEdit(deal)} title="Edit" className="text-gray-500 hover:text-gray-700"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" /></svg></button>
                             <button onClick={() => openFeedback(deal)} title="Deal summary" className="text-gray-400 hover:text-gray-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M15.988 3.012A2.25 2.25 0 0118 5.25v6.5A2.25 2.25 0 0115.75 14H13.5V7A2.5 2.5 0 0011 4.5H8.128a2.252 2.252 0 011.884-1.488A2.25 2.25 0 0112.25 2h1.5a2.25 2.25 0 012.238 1.012zM11.5 3.25a.75.75 0 01.75-.75h1.5a.75.75 0 01.75.75v.25h-3v-.25z" clipRule="evenodd" /><path fillRule="evenodd" d="M2 7a1 1 0 011-1h8a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V7zm2 3.25a.75.75 0 01.75-.75h4.5a.75.75 0 010 1.5h-4.5a.75.75 0 01-.75-.75zm0 3.5a.75.75 0 01.75-.75h4.5a.75.75 0 010 1.5h-4.5a.75.75 0 01-.75-.75z" clipRule="evenodd" /></svg></button>
-                            {isAdmin && <button onClick={() => setConfirmDelete(deal.id)} title="Delete" className="text-gray-500 hover:text-red-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C9.327 4.025 9.66 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg></button>}
+                            {isAdmin && <button onClick={() => setUI('confirmDelete', deal.id)} title="Delete" className="text-gray-500 hover:text-red-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C9.327 4.025 9.66 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg></button>}
                           </>
                         )}
                       </div>
@@ -524,7 +603,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
           </div>
         )
       ) : (
-        // ── Kanban view ────────────────────────────────────────────────────
+        // ── Kanban view ──────────────────────────────────────────────────────────
         <div className="overflow-x-auto pb-4">
           <div className="flex gap-3" style={{ minWidth: `${stages.length * 220 + (stages.length - 1) * 12}px` }}>
             {stages.map(stage => {
@@ -561,9 +640,9 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                         </div>
                         <div className="flex items-center gap-3 mt-2 pt-2 border-t border-gray-100">
                           {isAdmin && confirmDelete === deal.id ? (
-                            <><span className="text-xs text-gray-400">Delete?</span><button onClick={() => handleDelete(deal.id)} className="text-xs text-red-600 hover:text-red-700 font-medium">Confirm</button><button onClick={() => setConfirmDelete(null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button></>
+                            <><span className="text-xs text-gray-400">Delete?</span><button onClick={() => handleDelete(deal.id)} className="text-xs text-red-600 hover:text-red-700 font-medium">Confirm</button><button onClick={() => setUI('confirmDelete', null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button></>
                           ) : (
-                            <><button onClick={() => openEdit(deal)} className="text-xs text-gray-500 hover:text-gray-700">Edit</button>{isAdmin && <button onClick={() => setConfirmDelete(deal.id)} className="text-xs text-gray-500 hover:text-red-600">Delete</button>}</>
+                            <><button onClick={() => openEdit(deal)} className="text-xs text-gray-500 hover:text-gray-700">Edit</button>{isAdmin && <button onClick={() => setUI('confirmDelete', deal.id)} className="text-xs text-gray-500 hover:text-red-600">Delete</button>}</>
                           )}
                         </div>
                       </div>
@@ -606,12 +685,12 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                     <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">AI Summary</p>
                     <button
                       onClick={async () => {
-                        setLoadingFeedbackSummary(true)
+                        setUI('loadingFeedbackSummary', true)
                         try {
                           const res = await fetch(`/api/deals/${feedbackDeal.id}/summarize`, { method: 'POST' })
                           const body = await res.json()
-                          setFeedbackSummary(res.ok ? body.summary : `Error: ${body.error}`)
-                        } finally { setLoadingFeedbackSummary(false) }
+                          setUI('feedbackSummary', res.ok ? body.summary : `Error: ${body.error}`)
+                        } finally { setUI('loadingFeedbackSummary', false) }
                       }}
                       disabled={loadingFeedbackSummary}
                       className="text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50 font-medium"
@@ -687,7 +766,7 @@ Please review and let me know if any updates are needed.`
                       </a>
                     )}
                     <button
-                      onClick={() => { navigator.clipboard.writeText(bodyText).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000) }) }}
+                      onClick={() => { navigator.clipboard.writeText(bodyText).then(() => { setUI('copied', true); setTimeout(() => setUI('copied', false), 2000) }) }}
                       className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg transition-colors"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12A1.5 1.5 0 0117 6.622V12.5a1.5 1.5 0 01-1.5 1.5h-1v-3.379a3 3 0 00-.879-2.121L10.5 5.379A3 3 0 008.379 4.5H7v-1z" /><path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-5.879a1.5 1.5 0 00-.44-1.06L9.44 6.439A1.5 1.5 0 008.378 6H4.5z" /></svg>
@@ -758,7 +837,7 @@ Please review and let me know if any updates are needed.`
                 <div className="border-t border-gray-100 pt-4">
                   <p className="text-sm font-medium text-gray-700 mb-3">Notes</p>
                   <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4">
-                    <textarea value={noteText} onChange={e => setNoteText(e.target.value)} rows={3} placeholder="Add a note…" className={`${INPUT} resize-none mb-3`} />
+                    <textarea value={noteText} onChange={e => setNotesUI('noteText', e.target.value)} rows={3} placeholder="Add a note…" className={`${INPUT} resize-none mb-3`} />
                     <div className="flex justify-end">
                       <button onClick={addDealNote} disabled={loggingNote || !noteText.trim()} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
                         {loggingNote ? 'Saving…' : 'Add note'}
@@ -778,10 +857,10 @@ Please review and let me know if any updates are needed.`
                               <div className="flex items-center gap-2">
                                 <span className="text-xs text-gray-400">Delete?</span>
                                 <button onClick={() => deleteDealNote(n.id)} className="text-xs text-red-600 hover:text-red-700 font-medium">Confirm</button>
-                                <button onClick={() => setNoteConfirmDelete(null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+                                <button onClick={() => setNotesUI('noteConfirmDelete', null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
                               </div>
                             ) : (
-                              <button onClick={() => setNoteConfirmDelete(n.id)} title="Delete" className="text-gray-400 hover:text-red-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C9.327 4.025 9.66 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg></button>
+                              <button onClick={() => setNotesUI('noteConfirmDelete', n.id)} title="Delete" className="text-gray-400 hover:text-red-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C9.327 4.025 9.66 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg></button>
                             )}
                           </div>
                         </li>
