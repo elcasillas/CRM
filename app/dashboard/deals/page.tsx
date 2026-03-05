@@ -445,9 +445,10 @@ export default function DealsPage() {
   for (const [oid, summary] of ownerMap) {
     const ownerDays = filtered
       .filter(d => d.deal_owner_id === oid)
-      .map(d => d.last_activity_at
-        ? Math.floor((nowMs - new Date(d.last_activity_at).getTime()) / 86400000)
-        : null)
+      .map(d => {
+        const ts = lastNoteDates.get(d.id)
+        return ts ? Math.floor((nowMs - new Date(ts).getTime()) / 86400000) : null
+      })
       .filter((x): x is number => x !== null)
     summary.avgDays = ownerDays.length
       ? Math.round(ownerDays.reduce((a, b) => a + b, 0) / ownerDays.length)
