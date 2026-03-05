@@ -664,8 +664,17 @@ export default function DealsPage() {
                     <td className="px-4 py-3.5 text-gray-700 font-medium">
                       {formatCurrency(deal.value_amount) ?? '—'}
                     </td>
-                    <td className="px-4 py-3.5 text-gray-500">
-                      {formatClose(deal.close_date) ?? '—'}
+                    <td className="px-4 py-3.5 text-xs">
+                      {(() => {
+                        const isOverdue = deal.close_date && deal.close_date < todayStr && !deal.deal_stages?.is_closed
+                        if (!deal.close_date) return <span className="text-gray-400">—</span>
+                        if (isOverdue) return (
+                          <span className="inline-flex items-center gap-1 bg-red-50 text-red-700 font-semibold px-2 py-0.5 rounded-full ring-1 ring-red-300">
+                            {formatClose(deal.close_date)} <span className="font-normal">Overdue</span>
+                          </span>
+                        )
+                        return <span className="text-gray-500">{formatClose(deal.close_date)}</span>
+                      })()}
                     </td>
                     <td className="px-4 py-3.5 text-gray-400 text-xs">
                       {(() => { const ts = lastNoteDates.get(deal.id); return ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—' })()}
