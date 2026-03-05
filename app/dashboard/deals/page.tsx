@@ -9,6 +9,7 @@ const supabase = createClient()
 
 type FormData = {
   deal_name:             string
+  deal_description:      string
   account_id:            string
   stage_id:              string
   deal_owner_id:         string
@@ -19,7 +20,7 @@ type FormData = {
 }
 
 const EMPTY_FORM: FormData = {
-  deal_name: '', account_id: '', stage_id: '', deal_owner_id: '', solutions_engineer_id: '', value_amount: '', currency: 'USD', close_date: '',
+  deal_name: '', deal_description: '', account_id: '', stage_id: '', deal_owner_id: '', solutions_engineer_id: '', value_amount: '', currency: 'USD', close_date: '',
 }
 
 const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm'
@@ -226,6 +227,7 @@ export default function DealsPage() {
   function openEdit(deal: DealWithRelations) {
     setForm({
       deal_name:             deal.deal_name,
+      deal_description:      deal.deal_description ?? '',
       account_id:            deal.account_id ?? '',
       stage_id:              deal.stage_id,
       deal_owner_id:         deal.deal_owner_id,
@@ -270,12 +272,13 @@ export default function DealsPage() {
     setFormError(null)
     const { data: { user } } = await supabase.auth.getUser()
     const payload = {
-      deal_name:    form.deal_name.trim(),
-      account_id:   form.account_id   || null,
-      stage_id:     form.stage_id,
-      value_amount: form.value_amount ? parseFloat(form.value_amount) : null,
-      currency:     form.currency     || 'USD',
-      close_date:   form.close_date   || null,
+      deal_name:        form.deal_name.trim(),
+      deal_description: form.deal_description.trim() || null,
+      account_id:       form.account_id   || null,
+      stage_id:         form.stage_id,
+      value_amount:     form.value_amount ? parseFloat(form.value_amount) : null,
+      currency:         form.currency     || 'USD',
+      close_date:       form.close_date   || null,
       solutions_engineer_id: form.solutions_engineer_id || null,
       ...(modal === 'edit' && form.deal_owner_id ? { deal_owner_id: form.deal_owner_id } : {}),
     }
@@ -747,6 +750,9 @@ export default function DealsPage() {
             <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
               <Field label="Deal name *">
                 <input type="text" value={form.deal_name} onChange={set('deal_name')} className={INPUT} />
+              </Field>
+              <Field label="Description">
+                <textarea value={form.deal_description} onChange={set('deal_description')} rows={2} placeholder="Optional description…" className={`${INPUT} resize-none`} />
               </Field>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Account">

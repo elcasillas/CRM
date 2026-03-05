@@ -59,12 +59,12 @@ function stageBadgeClass(s: { is_won: boolean; is_lost: boolean; sort_order: num
 type ContactForm = { first_name: string; last_name: string; email: string; phone: string; title: string; is_primary: boolean }
 type HidForm     = { hid_number: string; dc_location: string; cluster_id: string; start_date: string; domain_name: string }
 type ContractForm = { effective_date: string; renewal_date: string; renewal_term_months: string; auto_renew: boolean; status: string }
-type DealForm    = { deal_name: string; stage_id: string; deal_owner_id: string; solutions_engineer_id: string; value_amount: string; currency: string; close_date: string }
+type DealForm    = { deal_name: string; deal_description: string; stage_id: string; deal_owner_id: string; solutions_engineer_id: string; value_amount: string; currency: string; close_date: string }
 
 const EMPTY_CONTACT: ContactForm  = { first_name: '', last_name: '', email: '', phone: '', title: '', is_primary: false }
 const EMPTY_HID: HidForm          = { hid_number: '', dc_location: '', cluster_id: '', start_date: '', domain_name: '' }
 const EMPTY_CONTRACT: ContractForm = { effective_date: '', renewal_date: '', renewal_term_months: '', auto_renew: false, status: 'active' }
-const EMPTY_DEAL: DealForm        = { deal_name: '', stage_id: '', deal_owner_id: '', solutions_engineer_id: '', value_amount: '', currency: 'USD', close_date: '' }
+const EMPTY_DEAL: DealForm        = { deal_name: '', deal_description: '', stage_id: '', deal_owner_id: '', solutions_engineer_id: '', value_amount: '', currency: 'USD', close_date: '' }
 
 type Tab = 'contacts' | 'hids' | 'contracts' | 'deals' | 'notes'
 
@@ -319,7 +319,7 @@ export default function AccountDetailPage() {
 
   function openAddDeal()                    { setDealForm({ ...EMPTY_DEAL, stage_id: stages[1]?.id ?? '', deal_owner_id: userId }); setEditingDeal(null); clearError(); setDealModal('add') }
   function openEditDeal(d: DealWithRelations) {
-    setDealForm({ deal_name: d.deal_name, stage_id: d.stage_id, deal_owner_id: d.deal_owner_id, solutions_engineer_id: d.solutions_engineer_id ?? '', value_amount: d.value_amount != null ? String(d.value_amount) : '', currency: d.currency, close_date: d.close_date ?? '' })
+    setDealForm({ deal_name: d.deal_name, deal_description: d.deal_description ?? '', stage_id: d.stage_id, deal_owner_id: d.deal_owner_id, solutions_engineer_id: d.solutions_engineer_id ?? '', value_amount: d.value_amount != null ? String(d.value_amount) : '', currency: d.currency, close_date: d.close_date ?? '' })
     setDealNotes([]); setDealNoteText(''); setDealNoteConfirmDelete(null); setDealSummary(null)
     fetchDealNotes(d.id)
     setEditingDeal(d); clearError(); setDealModal('edit')
@@ -332,7 +332,7 @@ export default function AccountDetailPage() {
 
   async function saveDeal() {
     setSaving(true); clearError()
-    const payload = { account_id: id, stage_id: dealForm.stage_id, deal_name: dealForm.deal_name.trim(), deal_owner_id: dealForm.deal_owner_id || userId, solutions_engineer_id: dealForm.solutions_engineer_id || null, value_amount: dealForm.value_amount ? parseFloat(dealForm.value_amount) : null, currency: dealForm.currency || 'USD', close_date: dealForm.close_date || null }
+    const payload = { account_id: id, stage_id: dealForm.stage_id, deal_name: dealForm.deal_name.trim(), deal_description: dealForm.deal_description.trim() || null, deal_owner_id: dealForm.deal_owner_id || userId, solutions_engineer_id: dealForm.solutions_engineer_id || null, value_amount: dealForm.value_amount ? parseFloat(dealForm.value_amount) : null, currency: dealForm.currency || 'USD', close_date: dealForm.close_date || null }
     if (dealModal === 'add') {
       const { error } = await supabase.from('deals').insert(payload)
       if (error) setFormError(error.message)
@@ -851,6 +851,7 @@ export default function AccountDetailPage() {
           saving={saving} disabled={!dealForm.deal_name.trim() || !dealForm.stage_id} error={formError}
         >
           <Field label="Deal name *"><input type="text" value={dealForm.deal_name} onChange={e => setDealForm(f => ({ ...f, deal_name: e.target.value }))} className={INPUT} /></Field>
+          <Field label="Description"><textarea value={dealForm.deal_description} onChange={e => setDealForm(f => ({ ...f, deal_description: e.target.value }))} rows={2} placeholder="Optional description…" className={`${INPUT} resize-none`} /></Field>
           <Field label="Stage *">
             <select value={dealForm.stage_id} onChange={e => setDealForm(f => ({ ...f, stage_id: e.target.value }))} className={INPUT}>
               <option value="">— select —</option>
@@ -895,6 +896,9 @@ export default function AccountDetailPage() {
             <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
               <Field label="Deal name *">
                 <input type="text" value={dealForm.deal_name} onChange={e => setDealForm(f => ({ ...f, deal_name: e.target.value }))} className={INPUT} />
+              </Field>
+              <Field label="Description">
+                <textarea value={dealForm.deal_description} onChange={e => setDealForm(f => ({ ...f, deal_description: e.target.value }))} rows={2} placeholder="Optional description…" className={`${INPUT} resize-none`} />
               </Field>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="Stage">
