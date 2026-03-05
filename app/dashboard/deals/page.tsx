@@ -127,8 +127,10 @@ export default function DealsPage() {
   const [loadingSummary, setLoadingSummary] = useState(false)
 
   // Feedback modal
-  const [feedbackDeal, setFeedbackDeal]   = useState<DealWithRelations | null>(null)
-  const [feedbackNotes, setFeedbackNotes] = useState<NoteWithAuthor[]>([])
+  const [feedbackDeal, setFeedbackDeal]               = useState<DealWithRelations | null>(null)
+  const [feedbackNotes, setFeedbackNotes]             = useState<NoteWithAuthor[]>([])
+  const [feedbackSummary, setFeedbackSummary]         = useState<string | null>(null)
+  const [loadingFeedbackSummary, setLoadingFeedbackSummary] = useState(false)
 
   const fetchStages = useCallback(async () => {
     const { data, error } = await supabase
@@ -250,15 +252,18 @@ export default function DealsPage() {
   async function openFeedback(deal: DealWithRelations) {
     setFeedbackDeal(deal)
     setFeedbackNotes([])
+    setFeedbackSummary(null)
     const { data } = await supabase
       .from('notes')
       .select('*, author:profiles!created_by(full_name)')
       .eq('entity_type', 'deal')
       .eq('entity_id', deal.id)
       .order('created_at', { ascending: false })
-      .limit(5)
+      .limit(3)
     setFeedbackNotes((data ?? []) as NoteWithAuthor[])
   }
+
+  function closeFeedback() { setFeedbackDeal(null); setFeedbackNotes([]); setFeedbackSummary(null) }
 
   async function addDealNote() {
     if (!noteText.trim() || !editing) return
@@ -763,7 +768,7 @@ export default function DealsPage() {
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-lg">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <h3 className="font-semibold text-gray-900">Deal Summary</h3>
-              <button onClick={() => { setFeedbackDeal(null); setFeedbackNotes([]) }} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+              <button onClick={closeFeedback} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
             </div>
             <div className="px-6 py-5 space-y-4 max-h-[75vh] overflow-y-auto">
               {/* Top info grid */}
@@ -810,6 +815,35 @@ export default function DealsPage() {
                 <p className="text-sm text-gray-700 leading-relaxed">{feedbackDeal.deal_description ?? <span className="text-gray-400 italic">No description</span>}</p>
               </div>
 
+              {/* AI Summary — admin and sales manager only */}
+              {(isAdmin || isSalesManager) && (
+                <div className="border-t border-gray-100 pt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">AI Summary</p>
+                    <button
+                      onClick={async () => {
+                        setLoadingFeedbackSummary(true)
+                        try {
+                          const res = await fetch(`/api/deals/${feedbackDeal.id}/summarize`, { method: 'POST' })
+                          const body = await res.json()
+                          if (res.ok) setFeedbackSummary(body.summary)
+                          else setFeedbackSummary(`Error: ${body.error}`)
+                        } finally { setLoadingFeedbackSummary(false) }
+                      }}
+                      disabled={loadingFeedbackSummary}
+                      className="text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50 font-medium"
+                    >
+                      {loadingFeedbackSummary ? 'Summarizing…' : feedbackSummary ? 'Refresh' : 'Summarize'}
+                    </button>
+                  </div>
+                  {feedbackSummary ? (
+                    <p className="text-sm text-gray-700 bg-blue-50 rounded-lg p-3 leading-relaxed">{feedbackSummary}</p>
+                  ) : (
+                    <p className="text-xs text-gray-400">Click Summarize to generate an AI summary of this deal&apos;s notes.</p>
+                  )}
+                </div>
+              )}
+
               {/* Notes */}
               <div className="border-t border-gray-100 pt-4">
                 <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">Recent Notes</p>
@@ -831,7 +865,7 @@ export default function DealsPage() {
               </div>
             </div>
             <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
-              <button onClick={() => { setFeedbackDeal(null); setFeedbackNotes([]) }} className="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">Close</button>
+              <button onClick={closeFeedback} className="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">Close</button>
             </div>
           </div>
         </div>
@@ -903,37 +937,6 @@ export default function DealsPage() {
               <Field label="Close date">
                 <input type="date" value={form.close_date} onChange={set('close_date')} className={INPUT} />
               </Field>
-              {/* AI summary — admin and sales manager only */}
-              {(isAdmin || isSalesManager) && modal === 'edit' && editing && (
-                <div className="border-t border-gray-100 pt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm font-medium text-gray-700">AI summary</p>
-                    <button
-                      onClick={async () => {
-                        setLoadingSummary(true)
-                        try {
-                          const res = await fetch(`/api/deals/${editing.id}/summarize`, { method: 'POST' })
-                          const body = await res.json()
-                          if (res.ok) setSummary(body.summary)
-                          else setSummary(`Error: ${body.error}`)
-                        } finally {
-                          setLoadingSummary(false)
-                        }
-                      }}
-                      disabled={loadingSummary}
-                      className="text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50 font-medium"
-                    >
-                      {loadingSummary ? 'Summarizing…' : summary ? 'Refresh' : 'Summarize'}
-                    </button>
-                  </div>
-                  {summary ? (
-                    <p className="text-sm text-gray-700 bg-blue-50 rounded-lg p-3 leading-relaxed">{summary}</p>
-                  ) : (
-                    <p className="text-xs text-gray-400">Click Summarize to generate an AI summary of this deal&apos;s notes using Claude.</p>
-                  )}
-                </div>
-              )}
-
               {/* Notes — only shown when editing an existing deal */}
               {modal === 'edit' && (
                 <div className="border-t border-gray-100 pt-4">
