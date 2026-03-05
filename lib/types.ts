@@ -1,5 +1,5 @@
 // ── Profiles ────────────────────────────────────────────────────────────────
-export type UserRole = 'admin' | 'sales' | 'solutions_engineer' | 'service_manager' | 'read_only'
+export type UserRole = 'admin' | 'sales' | 'sales_manager' | 'solutions_engineer' | 'service_manager' | 'read_only'
 
 export interface Profile {
   id:         string
