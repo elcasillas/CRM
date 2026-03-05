@@ -214,9 +214,14 @@ export default function AccountDetailPage() {
     setStages(data ?? [])
   }, [])
 
+  const [isAdmin, setIsAdmin] = useState(false)
+
   const fetchProfiles = useCallback(async () => {
-    const { data } = await supabase.from('profiles').select('id, full_name').order('full_name')
+    const { data } = await supabase.from('profiles').select('id, full_name, role').order('full_name')
     setProfiles(data ?? [])
+    const { data: { user } } = await supabase.auth.getUser()
+    const me = (data ?? []).find((p: { id: string; role?: string }) => p.id === user?.id)
+    setIsAdmin(me?.role === 'admin')
   }, [])
 
   const fetchDealNotes = useCallback(async (dealId: string) => {
@@ -385,7 +390,8 @@ export default function AccountDetailPage() {
 
   // ── Delete row actions ──────────────────────────────────────────────────────
 
-  function DeleteActions({ entity, rowId }: { entity: string; rowId: string }) {
+  function DeleteActions({ entity, rowId, adminOnly }: { entity: string; rowId: string; adminOnly?: boolean }) {
+    if (adminOnly && !isAdmin) return null
     const isConfirming = confirmDelete?.entity === entity && confirmDelete?.id === rowId
     return isConfirming ? (
       <>
@@ -705,7 +711,7 @@ export default function AccountDetailPage() {
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3 justify-end">
                           <button onClick={() => openEditDeal(d)} title="Edit" className="text-gray-500 hover:text-gray-700"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" /></svg></button>
-                          <DeleteActions entity="deal" rowId={d.id} />
+                          <DeleteActions entity="deal" rowId={d.id} adminOnly />
                         </div>
                       </td>
                     </tr>
