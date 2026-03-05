@@ -765,7 +765,7 @@ export default function DealsPage() {
       {/* Feedback / Deal summary modal */}
       {feedbackDeal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-lg">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-2xl">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <h3 className="font-semibold text-gray-900">Deal Summary</h3>
               <button onClick={closeFeedback} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
