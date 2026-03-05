@@ -345,6 +345,8 @@ export default function DealsPage() {
     setConfirmDelete(null)
   }
 
+  const todayStr = new Date().toISOString().split('T')[0]
+
   const filtered = deals.filter(d => {
     const q = search.toLowerCase()
     const matchSearch = !q
@@ -410,7 +412,6 @@ export default function DealsPage() {
   }
 
   // ── Summary metrics (from displayDeals) ──────────────────────────────────
-  const todayStr        = new Date().toISOString().split('T')[0]
   const nowMs           = Date.now()
   const openDisplay     = displayDeals.filter(d => !d.deal_stages?.is_closed)
   const totalACV        = openDisplay.reduce((s, d) => s + (d.value_amount ?? 0), 0)
