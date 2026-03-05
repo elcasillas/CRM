@@ -103,6 +103,7 @@ export default function DealsPage() {
   const [sortCol, setSortCol]       = useState('')
   const [sortDir, setSortDir]       = useState<'asc' | 'desc'>('asc')
   const [filterOwner, setFilterOwner] = useState('')
+  const [filterStale, setFilterStale] = useState(false)
 
   // Modal
   const [modal, setModal]         = useState<'add' | 'edit' | null>(null)
@@ -352,9 +353,12 @@ export default function DealsPage() {
     return matchSearch && matchStage
   })
 
-  const displayDeals = filterOwner
-    ? filtered.filter(d => d.deal_owner_id === filterOwner)
-    : filtered
+  const displayDeals = filtered
+    .filter(d => !filterOwner || d.deal_owner_id === filterOwner)
+    .filter(d => !filterStale || (() => {
+      const ts = lastNoteDates.get(d.id)
+      return ts ? Math.floor((Date.now() - new Date(ts).getTime()) / 86400000) >= 30 : false
+    })())
 
   function toggleSort(col: string) {
     if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -415,7 +419,7 @@ export default function DealsPage() {
   const avgDays         = noteDays.length
     ? Math.round(noteDays.reduce((a, b) => a + b, 0) / noteDays.length)
     : null
-  const staleCount      = noteDays.filter(d => d > 30).length
+  const staleCount      = noteDays.filter(d => d >= 30).length
   const overdueCount    = displayDeals.filter(d =>
     d.close_date && d.close_date < todayStr && !d.deal_stages?.is_closed).length
   const healthScores    = displayDeals.map(d => d.health_score).filter((x): x is number => x != null)
@@ -536,10 +540,13 @@ export default function DealsPage() {
               <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Avg Days Since Update</p>
               <p className="text-2xl font-bold text-gray-900">{avgDays ?? '—'}</p>
             </div>
-            <div className="bg-white border border-gray-200 border-l-4 border-l-amber-400 rounded-xl p-4 shadow-sm">
+            <button
+              onClick={() => setFilterStale(f => !f)}
+              className={`text-left border border-gray-200 border-l-4 border-l-amber-400 rounded-xl p-4 shadow-sm transition-colors ${filterStale ? 'bg-amber-50 ring-2 ring-amber-300' : 'bg-white hover:bg-amber-50'}`}
+            >
               <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Stale (30+ days)</p>
               <p className="text-2xl font-bold text-gray-900">{staleCount}</p>
-            </div>
+            </button>
             <div className="bg-white border border-gray-200 border-l-4 border-l-red-400 rounded-xl p-4 shadow-sm">
               <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Overdue</p>
               <p className="text-2xl font-bold text-gray-900">{overdueCount}</p>
@@ -586,10 +593,19 @@ export default function DealsPage() {
               ))}
             </div>
           )}
-          {filterOwner && (
-            <button onClick={() => setFilterOwner('')} className="text-xs text-gray-400 hover:text-gray-600 mb-3">
-              ✕ Clear owner filter
-            </button>
+          {(filterOwner || filterStale) && (
+            <div className="flex items-center gap-3 mb-3">
+              {filterOwner && (
+                <button onClick={() => setFilterOwner('')} className="text-xs text-gray-400 hover:text-gray-600">
+                  ✕ Clear owner filter
+                </button>
+              )}
+              {filterStale && (
+                <button onClick={() => setFilterStale(false)} className="text-xs text-amber-600 hover:text-amber-800">
+                  ✕ Clear stale filter
+                </button>
+              )}
+            </div>
           )}
         </>
       )}
