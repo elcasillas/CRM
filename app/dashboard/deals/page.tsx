@@ -126,6 +126,9 @@ export default function DealsPage() {
   const [summary, setSummary]               = useState<string | null>(null)
   const [loadingSummary, setLoadingSummary] = useState(false)
 
+  // User email map (id -> email), used for mailto links
+  const [emailMap, setEmailMap] = useState<Map<string, string>>(new Map())
+
   // Feedback modal
   const [feedbackDeal, setFeedbackDeal]               = useState<DealWithRelations | null>(null)
   const [feedbackNotes, setFeedbackNotes]             = useState<NoteWithAuthor[]>([])
@@ -203,6 +206,9 @@ export default function DealsPage() {
   }, [])
 
   useEffect(() => {
+    fetch('/api/users').then(r => r.json()).then((users: { id: string; email: string }[]) => {
+      setEmailMap(new Map(users.map(u => [u.id, u.email])))
+    }).catch(() => {})
     Promise.all([fetchStages(), fetchDeals(), fetchAccounts(), fetchProfiles(), fetchLastNoteDates()]).then(() => setLoading(false))
   }, [fetchStages, fetchDeals, fetchAccounts, fetchProfiles, fetchLastNoteDates])
 
@@ -864,7 +870,49 @@ export default function DealsPage() {
                 )}
               </div>
             </div>
-            <div className="px-6 py-4 border-t border-gray-100 flex justify-end">
+            <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
+              <button
+                onClick={() => {
+                  const ownerEmail = emailMap.get(feedbackDeal.deal_owner_id) ?? ''
+                  const ts = lastNoteDates.get(feedbackDeal.id)
+                  const modifiedDate = ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
+                  const daysSince = ts ? `${Math.floor((Date.now() - new Date(ts).getTime()) / 86400000)} days` : 'N/A'
+                  const closeDate = feedbackDeal.close_date ? new Date(feedbackDeal.close_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
+                  const acv = feedbackDeal.value_amount != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(feedbackDeal.value_amount) : 'N/A'
+                  const notesBlock = feedbackNotes.length > 0
+                    ? feedbackNotes.map(n => `• ${new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — ${n.note_text}`).join('\n')
+                    : 'No notes recorded.'
+                  const subject = encodeURIComponent(`Deal Update: ${feedbackDeal.deal_name}`)
+                  const body = encodeURIComponent(
+`Hi ${feedbackDeal.deal_owner?.full_name ?? 'there'},
+
+Here is a summary for deal "${feedbackDeal.deal_name}":
+
+  Stage:             ${feedbackDeal.deal_stages?.stage_name ?? 'N/A'}
+  ACV (CAD):         ${acv}
+  Closing Date:      ${closeDate}
+  Health Score:      ${feedbackDeal.health_score ?? 'N/A'}
+  Modified Date:     ${modifiedDate}
+  Days Since Update: ${daysSince}
+
+Description:
+${feedbackDeal.deal_description ?? 'No description provided.'}
+
+Recent Notes:
+${notesBlock}
+
+Please review and let me know if any updates are needed.`
+                  )
+                  window.location.href = `mailto:${ownerEmail}?subject=${subject}&body=${body}`
+                }}
+                className="inline-flex items-center gap-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z" />
+                  <path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" />
+                </svg>
+                Email Owner
+              </button>
               <button onClick={closeFeedback} className="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">Close</button>
             </div>
           </div>
