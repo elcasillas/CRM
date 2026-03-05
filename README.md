@@ -10,6 +10,9 @@ A sales CRM built with Next.js 15, Supabase, and Tailwind CSS. Features accounts
 
 | Date | Change |
 |------|--------|
+| 2026-03-05 | Configurable stale deal threshold — set in Health Scoring admin page, stored in DB, applied dynamically in Deals table |
+| 2026-03-05 | AI summary switched from Anthropic direct to OpenRouter (`OPENROUTER_API_KEY`, `OPENROUTER_MODEL` env vars) |
+| 2026-03-05 | Added `/api/settings` endpoint — returns non-sensitive app settings (e.g. `stale_days`) to all authenticated users |
 | 2026-03-05 | Deal Owner and Service Manager dropdowns now filtered by role (sales / service_manager) in Account and Deal modals |
 | 2026-03-05 | Deal Owner dropdown in Edit Deal Modal restricted to `sales` role users |
 | 2026-03-05 | Removed "Joined" column from Admin Users table |
@@ -68,6 +71,9 @@ cp .env.local.example .env.local
 | `NEXT_PUBLIC_SUPABASE_URL`      | Supabase Dashboard → Project Settings → API → Project URL   |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase Dashboard → Project Settings → API → anon public   |
 | `SUPABASE_SERVICE_ROLE_KEY`     | Supabase Dashboard → Project Settings → API → service_role  |
+| `OPENROUTER_API_KEY`            | https://openrouter.ai/keys                                   |
+| `OPENROUTER_MODEL`              | OpenRouter model ID for deal summaries (e.g. `anthropic/claude-haiku-4-5`) |
+| `OPENROUTER_IMAGE_MODEL`        | OpenRouter model ID for image tasks (e.g. `anthropic/claude-haiku-4-5`) |
 
 > **Never expose `SUPABASE_SERVICE_ROLE_KEY` to the browser.** It is only used in server-side API routes (`app/api/`).
 
@@ -90,6 +96,7 @@ Migrations in `supabase/migrations/`:
 | `20260304000001_deal_health_score.sql` | Adds health score columns to `deals` |
 | `20260304000002_health_score_config.sql` | Adds `health_score_config` table for admin-tunable weights and keywords |
 | `20260304000006_add_slack_member_id.sql` | Adds `slack_member_id` column to `profiles` |
+| `20260305000001_add_stale_days_to_health_score_config.sql` | Adds `stale_days` column to `health_score_config` (default 30) |
 
 Earlier files (`000001`–`000003`) are superseded by `000004` and can be skipped.
 
