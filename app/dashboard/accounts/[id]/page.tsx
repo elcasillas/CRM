@@ -861,7 +861,7 @@ export default function AccountDetailPage() {
           <Field label="Deal owner">
             <select value={dealForm.deal_owner_id} onChange={e => setDealForm(f => ({ ...f, deal_owner_id: e.target.value }))} className={INPUT}>
               <option value="">— none —</option>
-              {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
+              {profiles.filter(p => p.role === 'sales').map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
             </select>
           </Field>
           <Field label="Solutions Engineer">
@@ -909,7 +909,7 @@ export default function AccountDetailPage() {
                 <Field label="Deal owner">
                   {(isAdmin || isSalesManager) ? (
                     <select value={dealForm.deal_owner_id} onChange={e => setDealForm(f => ({ ...f, deal_owner_id: e.target.value }))} className={INPUT}>
-                      {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
+                      {profiles.filter(p => p.role === 'sales').map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
                     </select>
                   ) : (
                     <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{profiles.find(p => p.id === dealForm.deal_owner_id)?.full_name ?? '—'}</p>

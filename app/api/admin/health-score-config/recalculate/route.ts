@@ -102,9 +102,12 @@ export async function POST() {
     })
   }
 
-  // Upsert all at once
-  const { error: upsertErr } = await admin.from('deals').upsert(updates, { onConflict: 'id' })
-  if (upsertErr) return NextResponse.json({ error: upsertErr.message }, { status: 500 })
+  // Update each deal individually to avoid upsert inserting rows with missing required columns
+  for (const u of updates) {
+    const { id, ...fields } = u
+    const { error: updateErr } = await admin.from('deals').update(fields).eq('id', id)
+    if (updateErr) return NextResponse.json({ error: updateErr.message }, { status: 500 })
+  }
 
   return NextResponse.json({ updated: updates.length })
 }

@@ -1034,7 +1034,7 @@ Please review and let me know if any updates are needed.`
                 <Field label="Deal owner">
                   {(isAdmin || isSalesManager) ? (
                     <select value={form.deal_owner_id} onChange={set('deal_owner_id')} className={INPUT}>
-                      {profiles.map(p => (
+                      {profiles.filter(p => p.role === 'sales').map(p => (
                         <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
                       ))}
                     </select>

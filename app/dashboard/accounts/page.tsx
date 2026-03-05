@@ -45,7 +45,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 export default function AccountsPage() {
   const [accounts, setAccounts]           = useState<AccountWithOwners[]>([])
-  const [profiles, setProfiles]           = useState<{ id: string; full_name: string | null }[]>([])
+  const [profiles, setProfiles]           = useState<{ id: string; full_name: string | null; role: string }[]>([])
   const [isAdmin, setIsAdmin]             = useState(false)
   const [loading, setLoading]             = useState(true)
   const [modal, setModal]                 = useState<'add' | 'edit' | null>(null)
@@ -358,7 +358,7 @@ export default function AccountsPage() {
               {isAdmin && modal === 'edit' && (
                 <Field label="Account owner">
                   <select value={form.account_owner_id} onChange={set('account_owner_id')} className={INPUT}>
-                    {profiles.map(p => (
+                    {profiles.filter(p => p.role === 'sales').map(p => (
                       <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
                     ))}
                   </select>
@@ -367,7 +367,7 @@ export default function AccountsPage() {
               <Field label="Service Manager">
                 <select value={form.service_manager_id} onChange={set('service_manager_id')} className={INPUT}>
                   <option value="">— none —</option>
-                  {profiles.map(p => (
+                  {profiles.filter(p => p.role === 'service_manager').map(p => (
                     <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
                   ))}
                 </select>

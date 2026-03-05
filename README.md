@@ -6,6 +6,26 @@ A sales CRM built with Next.js 15, Supabase, and Tailwind CSS. Features accounts
 
 ---
 
+## Recent Updates
+
+| Date | Change |
+|------|--------|
+| 2026-03-05 | Deal Owner and Service Manager dropdowns now filtered by role (sales / service_manager) in Account and Deal modals |
+| 2026-03-05 | Deal Owner dropdown in Edit Deal Modal restricted to `sales` role users |
+| 2026-03-05 | Removed "Joined" column from Admin Users table |
+| 2026-03-05 | Fixed Health Score recalculate error — switched from `upsert` to `update` to avoid NOT NULL constraint violation on `account_id` |
+| 2026-03-04 | Added Slack Member ID field to user profiles (migration, admin API, admin UI) |
+| 2026-03-04 | Deal Summary modal: Email Owner, Slack Owner (deep link), and Copy Info buttons in footer |
+| 2026-03-04 | Stale deals (30+ days since last note) tagged with amber pill in Days Since column; Stale and Overdue summary cards act as clickable filters |
+| 2026-03-04 | Owner summary cards now calculate Avg Days from last note date instead of `last_activity_at` |
+| 2026-03-04 | Deal Owner column moved to first position in Deals table |
+| 2026-03-04 | Added Deal Description field to Edit Deal Modal |
+| 2026-03-04 | Solutions Engineer dropdown filtered to `solutions_engineer` role only; Deal Owner editing restricted to admin/sales_manager |
+| 2026-03-04 | Health Score settings page (`/dashboard/admin/health-scoring`) — tune weights and keywords, recalculate all deals |
+| 2026-03-04 | Deal Summary modal (clipboard icon) — shows deal info, AI summary, last 3 notes with email/Slack/copy actions |
+
+---
+
 ## Tech Stack
 
 | Layer       | Technology                                           |
@@ -67,6 +87,9 @@ Migrations in `supabase/migrations/`:
 | `20260223000001_add_account_description.sql` | Adds `description` column to `accounts` |
 | `20260223000002_add_solutions_engineer_to_deals.sql` | Adds `solutions_engineer_id` to `deals` |
 | `20260223000003_fix_solutions_engineer_fk.sql` | Re-points FK to `public.profiles` |
+| `20260304000001_deal_health_score.sql` | Adds health score columns to `deals` |
+| `20260304000002_health_score_config.sql` | Adds `health_score_config` table for admin-tunable weights and keywords |
+| `20260304000006_add_slack_member_id.sql` | Adds `slack_member_id` column to `profiles` |
 
 Earlier files (`000001`–`000003`) are superseded by `000004` and can be skipped.
 
@@ -130,7 +153,7 @@ https://your-project.vercel.app/**
 
 | Table                | Purpose                                                               |
 |----------------------|-----------------------------------------------------------------------|
-| `profiles`           | One row per auth user; stores `full_name` and `role`                  |
+| `profiles`           | One row per auth user; stores `full_name`, `role`, and `slack_member_id` |
 | `accounts`           | Company records; includes `account_owner_id`, `service_manager_id`, and `description` |
 | `contacts`           | People linked to accounts                                             |
 | `hid_records`        | HID/cluster records linked to accounts                                |
@@ -144,8 +167,9 @@ https://your-project.vercel.app/**
 
 | Role                  | Access                                                       |
 |-----------------------|--------------------------------------------------------------|
-| `admin`               | Full access; can manage users, reassign owners, edit all records |
+| `admin`               | Full access; can manage users, reassign owners, edit all records, tune health scoring |
 | `sales`               | Owns accounts and deals; standard CRM access                 |
+| `sales_manager`       | Can reassign Deal Owner; standard CRM access                 |
 | `solutions_engineer`  | Assigned to deals as SE; standard CRM access                 |
 | `service_manager`     | Assigned to accounts; standard CRM access                    |
 | `read_only`           | View-only access                                             |

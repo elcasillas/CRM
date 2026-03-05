@@ -220,7 +220,6 @@ export function AdminUsersClient() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Slack ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
                 <th className="px-6 py-3"></th>
               </tr>
             </thead>
@@ -247,9 +246,6 @@ export function AdminUsersClient() {
                   </td>
                   <td className="px-6 py-3.5 text-gray-400 text-xs font-mono">
                     {u.slack_member_id ?? <span className="font-sans italic">—</span>}
-                  </td>
-                  <td className="px-6 py-3.5 text-gray-400 text-xs">
-                    {new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </td>
                   <td className="px-6 py-3.5 text-right">
                     {confirmDelete === u.id ? (
