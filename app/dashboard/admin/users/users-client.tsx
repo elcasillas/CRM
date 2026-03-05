@@ -309,6 +309,18 @@ export function AdminUsersClient() {
                 />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Slack Member ID <span className="text-gray-400 font-normal">(e.g. U01234ABCDE)</span>
+                </label>
+                <input
+                  type="text"
+                  value={editForm.slack_member_id}
+                  onChange={e => setEditForm(f => ({ ...f, slack_member_id: e.target.value }))}
+                  className={INPUT}
+                  placeholder="U01234ABCDE"
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Role</label>
                 <select
                   value={editForm.role}
@@ -330,18 +342,6 @@ export function AdminUsersClient() {
                   onChange={e => setEditForm(f => ({ ...f, new_password: e.target.value }))}
                   className={INPUT}
                   placeholder="Min. 6 characters"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                  Slack Member ID <span className="text-gray-400 font-normal">(e.g. U01234ABCDE)</span>
-                </label>
-                <input
-                  type="text"
-                  value={editForm.slack_member_id}
-                  onChange={e => setEditForm(f => ({ ...f, slack_member_id: e.target.value }))}
-                  className={INPUT}
-                  placeholder="U01234ABCDE"
                 />
               </div>
               {editError && <p className="text-red-600 text-sm font-medium">{editError}</p>}
