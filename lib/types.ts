@@ -2,11 +2,12 @@
 export type UserRole = 'admin' | 'sales' | 'sales_manager' | 'solutions_engineer' | 'service_manager' | 'read_only'
 
 export interface Profile {
-  id:         string
-  full_name:  string | null
-  role:       UserRole
-  created_at: string
-  updated_at: string
+  id:              string
+  full_name:       string | null
+  role:            UserRole
+  slack_member_id: string | null
+  created_at:      string
+  updated_at:      string
 }
 
 // ── Accounts ────────────────────────────────────────────────────────────────

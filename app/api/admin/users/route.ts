@@ -82,7 +82,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { userId, role, full_name, email, new_password } = await request.json()
+  const { userId, role, full_name, email, new_password, slack_member_id } = await request.json()
 
   if (!userId) {
     return NextResponse.json({ error: 'userId is required' }, { status: 400 })
@@ -97,6 +97,7 @@ export async function PATCH(request: NextRequest) {
   const profilePatch: Record<string, string | null> = {}
   if (role) profilePatch.role = role
   if (full_name !== undefined) profilePatch.full_name = full_name?.trim() || null
+  if (slack_member_id !== undefined) profilePatch.slack_member_id = slack_member_id?.trim() || null
 
   if (Object.keys(profilePatch).length > 0) {
     const { error } = await admin.from('profiles').update(profilePatch).eq('id', userId)

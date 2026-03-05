@@ -39,7 +39,7 @@ export function AdminUsersClient() {
   const [addSaving, setAddSaving] = useState(false)
 
   const [editingUser, setEditingUser] = useState<MergedUser | null>(null)
-  const [editForm, setEditForm]       = useState({ full_name: '', email: '', role: 'sales' as UserRole, new_password: '' })
+  const [editForm, setEditForm]       = useState({ full_name: '', email: '', role: 'sales' as UserRole, new_password: '', slack_member_id: '' })
   const [editError, setEditError]     = useState<string | null>(null)
   const [editSaving, setEditSaving]   = useState(false)
 
@@ -97,7 +97,7 @@ export function AdminUsersClient() {
 
   function openEdit(u: MergedUser) {
     setEditingUser(u)
-    setEditForm({ full_name: u.full_name ?? '', email: u.email ?? '', role: u.role, new_password: '' })
+    setEditForm({ full_name: u.full_name ?? '', email: u.email ?? '', role: u.role, new_password: '', slack_member_id: u.slack_member_id ?? '' })
     setEditError(null)
   }
 
@@ -117,7 +117,7 @@ export function AdminUsersClient() {
       return
     }
     setUsers(prev => prev.map(u => u.id === editingUser.id
-      ? { ...u, full_name: editForm.full_name.trim() || null, email: editForm.email.trim() || u.email, role: editForm.role }
+      ? { ...u, full_name: editForm.full_name.trim() || null, email: editForm.email.trim() || u.email, role: editForm.role, slack_member_id: editForm.slack_member_id.trim() || null }
       : u
     ))
     setEditingUser(null)
@@ -219,6 +219,7 @@ export function AdminUsersClient() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Slack ID</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
                 <th className="px-6 py-3"></th>
               </tr>
@@ -243,6 +244,9 @@ export function AdminUsersClient() {
                         <option key={r} value={r}>{r.replace('_', ' ')}</option>
                       ))}
                     </select>
+                  </td>
+                  <td className="px-6 py-3.5 text-gray-400 text-xs font-mono">
+                    {u.slack_member_id ?? <span className="font-sans italic">—</span>}
                   </td>
                   <td className="px-6 py-3.5 text-gray-400 text-xs">
                     {new Date(u.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
@@ -326,6 +330,18 @@ export function AdminUsersClient() {
                   onChange={e => setEditForm(f => ({ ...f, new_password: e.target.value }))}
                   className={INPUT}
                   placeholder="Min. 6 characters"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Slack Member ID <span className="text-gray-400 font-normal">(e.g. U01234ABCDE)</span>
+                </label>
+                <input
+                  type="text"
+                  value={editForm.slack_member_id}
+                  onChange={e => setEditForm(f => ({ ...f, slack_member_id: e.target.value }))}
+                  className={INPUT}
+                  placeholder="U01234ABCDE"
                 />
               </div>
               {editError && <p className="text-red-600 text-sm font-medium">{editError}</p>}
