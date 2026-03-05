@@ -150,6 +150,13 @@ export default function AccountDetailPage() {
   const [dealModal,   setDealModal]   = useState<'add' | 'edit' | null>(null)
   const [editingDeal, setEditingDeal] = useState<DealWithRelations | null>(null)
   const [dealForm,    setDealForm]    = useState<DealForm>(EMPTY_DEAL)
+  // deal edit modal — notes + AI summary
+  const [dealNotes,              setDealNotes]              = useState<NoteWithAuthor[]>([])
+  const [dealNoteText,           setDealNoteText]           = useState('')
+  const [loggingDealNote,        setLoggingDealNote]        = useState(false)
+  const [dealNoteConfirmDelete,  setDealNoteConfirmDelete]  = useState<string | null>(null)
+  const [dealSummary,            setDealSummary]            = useState<string | null>(null)
+  const [loadingDealSummary,     setLoadingDealSummary]     = useState(false)
 
   // description
   const [descEditing, setDescEditing] = useState(false)
@@ -210,6 +217,16 @@ export default function AccountDetailPage() {
   const fetchProfiles = useCallback(async () => {
     const { data } = await supabase.from('profiles').select('id, full_name').order('full_name')
     setProfiles(data ?? [])
+  }, [])
+
+  const fetchDealNotes = useCallback(async (dealId: string) => {
+    const { data } = await supabase
+      .from('notes')
+      .select('*, author:profiles!created_by(full_name)')
+      .eq('entity_type', 'deal')
+      .eq('entity_id', dealId)
+      .order('created_at', { ascending: false })
+    setDealNotes((data ?? []) as NoteWithAuthor[])
   }, [])
 
   useEffect(() => {
@@ -294,18 +311,50 @@ export default function AccountDetailPage() {
   // ── Deal CRUD ───────────────────────────────────────────────────────────────
 
   function openAddDeal()                    { setDealForm({ ...EMPTY_DEAL, stage_id: stages[1]?.id ?? '', deal_owner_id: userId }); setEditingDeal(null); clearError(); setDealModal('add') }
-  function openEditDeal(d: DealWithRelations) { setDealForm({ deal_name: d.deal_name, stage_id: d.stage_id, deal_owner_id: d.deal_owner_id, solutions_engineer_id: d.solutions_engineer_id ?? '', value_amount: d.value_amount != null ? String(d.value_amount) : '', currency: d.currency, close_date: d.close_date ?? '' }); setEditingDeal(d); clearError(); setDealModal('edit') }
-  function closeDealModal()                 { setDealModal(null); setEditingDeal(null); clearError() }
+  function openEditDeal(d: DealWithRelations) {
+    setDealForm({ deal_name: d.deal_name, stage_id: d.stage_id, deal_owner_id: d.deal_owner_id, solutions_engineer_id: d.solutions_engineer_id ?? '', value_amount: d.value_amount != null ? String(d.value_amount) : '', currency: d.currency, close_date: d.close_date ?? '' })
+    setDealNotes([]); setDealNoteText(''); setDealNoteConfirmDelete(null); setDealSummary(null)
+    fetchDealNotes(d.id)
+    setEditingDeal(d); clearError(); setDealModal('edit')
+  }
+  function closeDealModal() { setDealModal(null); setEditingDeal(null); clearError(); setDealNotes([]); setDealNoteText(''); setDealSummary(null) }
+
+  function triggerDealHealthScore(dealId: string) {
+    fetch(`/api/deals/${dealId}/health-score`, { method: 'POST' }).catch(() => {})
+  }
 
   async function saveDeal() {
     setSaving(true); clearError()
     const payload = { account_id: id, stage_id: dealForm.stage_id, deal_name: dealForm.deal_name.trim(), deal_owner_id: dealForm.deal_owner_id || userId, solutions_engineer_id: dealForm.solutions_engineer_id || null, value_amount: dealForm.value_amount ? parseFloat(dealForm.value_amount) : null, currency: dealForm.currency || 'USD', close_date: dealForm.close_date || null }
-    const { error } = dealModal === 'add'
-      ? await supabase.from('deals').insert(payload)
-      : await supabase.from('deals').update(payload).eq('id', editingDeal!.id)
-    if (error) setFormError(error.message)
-    else { closeDealModal(); fetchDeals() }
+    if (dealModal === 'add') {
+      const { error } = await supabase.from('deals').insert(payload)
+      if (error) setFormError(error.message)
+      else { closeDealModal(); fetchDeals() }
+    } else {
+      const stageChanged = dealForm.stage_id !== editingDeal!.stage_id
+      const { error } = await supabase.from('deals').update({ ...payload, last_activity_at: new Date().toISOString() }).eq('id', editingDeal!.id)
+      if (error) { setFormError(error.message) } else {
+        if (stageChanged) {
+          await supabase.from('deal_stage_history').insert({ deal_id: editingDeal!.id, from_stage_id: editingDeal!.stage_id, to_stage_id: dealForm.stage_id, changed_by: userId })
+        }
+        closeDealModal(); fetchDeals(); triggerDealHealthScore(editingDeal!.id)
+      }
+    }
     setSaving(false)
+  }
+
+  async function addDealNote() {
+    if (!dealNoteText.trim() || !editingDeal) return
+    setLoggingDealNote(true)
+    const { error } = await supabase.from('notes').insert({ entity_type: 'deal', entity_id: editingDeal.id, note_text: dealNoteText.trim(), created_by: userId })
+    if (!error) { setDealNoteText(''); fetchDealNotes(editingDeal.id); triggerDealHealthScore(editingDeal.id) }
+    setLoggingDealNote(false)
+  }
+
+  async function deleteDealNote(noteId: string) {
+    const { error } = await supabase.from('notes').delete().eq('id', noteId)
+    if (!error) setDealNotes(prev => prev.filter(n => n.id !== noteId))
+    setDealNoteConfirmDelete(null)
   }
 
   // ── Note CRUD ───────────────────────────────────────────────────────────────
@@ -786,10 +835,10 @@ export default function AccountDetailPage() {
         </Modal>
       )}
 
-      {/* Deal modal */}
-      {dealModal && (
+      {/* Deal add modal */}
+      {dealModal === 'add' && (
         <Modal
-          title={dealModal === 'add' ? 'New deal' : 'Edit deal'}
+          title="New deal"
           onClose={closeDealModal} onSave={saveDeal}
           saving={saving} disabled={!dealForm.deal_name.trim() || !dealForm.stage_id} error={formError}
         >
@@ -825,6 +874,142 @@ export default function AccountDetailPage() {
           </div>
           <Field label="Close date"><input type="date" value={dealForm.close_date} onChange={e => setDealForm(f => ({ ...f, close_date: e.target.value }))} className={INPUT} /></Field>
         </Modal>
+      )}
+
+      {/* Deal edit modal — full version with AI summary + notes */}
+      {dealModal === 'edit' && editingDeal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-2xl">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-900">Edit Deal</h3>
+              <button onClick={closeDealModal} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+            </div>
+            <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+              <Field label="Deal name *">
+                <input type="text" value={dealForm.deal_name} onChange={e => setDealForm(f => ({ ...f, deal_name: e.target.value }))} className={INPUT} />
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Stage">
+                  <select value={dealForm.stage_id} onChange={e => setDealForm(f => ({ ...f, stage_id: e.target.value }))} className={INPUT}>
+                    {stages.map(s => <option key={s.id} value={s.id}>{s.stage_name}</option>)}
+                  </select>
+                </Field>
+                <Field label="Deal owner">
+                  <select value={dealForm.deal_owner_id} onChange={e => setDealForm(f => ({ ...f, deal_owner_id: e.target.value }))} className={INPUT}>
+                    {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
+                  </select>
+                </Field>
+              </div>
+              <Field label="Solutions Engineer">
+                <select value={dealForm.solutions_engineer_id} onChange={e => setDealForm(f => ({ ...f, solutions_engineer_id: e.target.value }))} className={INPUT}>
+                  <option value="">— none —</option>
+                  {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
+                </select>
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="ACV">
+                  <input type="number" min="0" step="100" value={dealForm.value_amount} onChange={e => setDealForm(f => ({ ...f, value_amount: e.target.value }))} placeholder="0" className={INPUT} />
+                </Field>
+                <Field label="Currency">
+                  <select value={dealForm.currency} onChange={e => setDealForm(f => ({ ...f, currency: e.target.value }))} className={INPUT}>
+                    <option value="USD">USD</option>
+                    <option value="CAD">CAD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="GBP">GBP</option>
+                  </select>
+                </Field>
+              </div>
+              <Field label="Close date">
+                <input type="date" value={dealForm.close_date} onChange={e => setDealForm(f => ({ ...f, close_date: e.target.value }))} className={INPUT} />
+              </Field>
+
+              {/* AI Summary */}
+              <div className="border-t border-gray-100 pt-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-sm font-medium text-gray-700">AI summary</p>
+                  <button
+                    onClick={async () => {
+                      setLoadingDealSummary(true)
+                      try {
+                        const res = await fetch(`/api/deals/${editingDeal.id}/summarize`, { method: 'POST' })
+                        const body = await res.json()
+                        if (res.ok) setDealSummary(body.summary)
+                        else setDealSummary(`Error: ${body.error}`)
+                      } finally { setLoadingDealSummary(false) }
+                    }}
+                    disabled={loadingDealSummary}
+                    className="text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50 font-medium"
+                  >
+                    {loadingDealSummary ? 'Summarizing…' : dealSummary ? 'Refresh' : 'Summarize'}
+                  </button>
+                </div>
+                {dealSummary ? (
+                  <p className="text-sm text-gray-700 bg-blue-50 rounded-lg p-3 leading-relaxed">{dealSummary}</p>
+                ) : (
+                  <p className="text-xs text-gray-400">Click Summarize to generate an AI summary of this deal&apos;s notes using Claude.</p>
+                )}
+              </div>
+
+              {/* Notes */}
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-sm font-medium text-gray-700 mb-3">Notes</p>
+                <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4">
+                  <textarea
+                    value={dealNoteText}
+                    onChange={e => setDealNoteText(e.target.value)}
+                    rows={3}
+                    placeholder="Add a note…"
+                    className={`${INPUT} resize-none mb-3`}
+                  />
+                  <div className="flex justify-end">
+                    <button
+                      onClick={addDealNote}
+                      disabled={loggingDealNote || !dealNoteText.trim()}
+                      className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                    >
+                      {loggingDealNote ? 'Saving…' : 'Add note'}
+                    </button>
+                  </div>
+                </div>
+                {dealNotes.length === 0 ? (
+                  <p className="text-sm text-gray-400">No notes yet.</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {dealNotes.map(n => (
+                      <li key={n.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+                        <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{n.note_text}</p>
+                        <div className="flex items-center justify-between mt-3">
+                          <p className="text-xs text-gray-400">{n.author?.full_name ?? 'Unknown'} · {fmtTs(n.created_at)}</p>
+                          {dealNoteConfirmDelete === n.id ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-400">Delete?</span>
+                              <button onClick={() => deleteDealNote(n.id)} className="text-xs text-red-600 hover:text-red-700 font-medium">Confirm</button>
+                              <button onClick={() => setDealNoteConfirmDelete(null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => setDealNoteConfirmDelete(n.id)} title="Delete" className="text-gray-400 hover:text-red-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C9.327 4.025 9.66 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg></button>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button onClick={closeDealModal} className="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
+              <button
+                onClick={saveDeal}
+                disabled={saving || !dealForm.deal_name.trim() || !dealForm.stage_id}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
