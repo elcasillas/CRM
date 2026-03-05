@@ -119,7 +119,7 @@ export default function AccountDetailPage() {
   const [deals,     setDeals]     = useState<DealWithRelations[]>([])
   const [notes,     setNotes]     = useState<NoteWithAuthor[]>([])
   const [stages,    setStages]    = useState<DealStage[]>([])
-  const [profiles,  setProfiles]  = useState<{ id: string; full_name: string | null }[]>([])
+  const [profiles,  setProfiles]  = useState<{ id: string; full_name: string | null; role: string }[]>([])
   const [userId,    setUserId]    = useState('')
   const [loading,   setLoading]   = useState(true)
   const [notFound,  setNotFound]  = useState(false)
@@ -866,7 +866,7 @@ export default function AccountDetailPage() {
           <Field label="Solutions Engineer">
             <select value={dealForm.solutions_engineer_id} onChange={e => setDealForm(f => ({ ...f, solutions_engineer_id: e.target.value }))} className={INPUT}>
               <option value="">— none —</option>
-              {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
+              {profiles.filter(p => p.role === 'solutions_engineer').map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
             </select>
           </Field>
           <div className="grid grid-cols-2 gap-4">
@@ -903,15 +903,19 @@ export default function AccountDetailPage() {
                   </select>
                 </Field>
                 <Field label="Deal owner">
-                  <select value={dealForm.deal_owner_id} onChange={e => setDealForm(f => ({ ...f, deal_owner_id: e.target.value }))} className={INPUT}>
-                    {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
-                  </select>
+                  {(isAdmin || isSalesManager) ? (
+                    <select value={dealForm.deal_owner_id} onChange={e => setDealForm(f => ({ ...f, deal_owner_id: e.target.value }))} className={INPUT}>
+                      {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
+                    </select>
+                  ) : (
+                    <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{profiles.find(p => p.id === dealForm.deal_owner_id)?.full_name ?? '—'}</p>
+                  )}
                 </Field>
               </div>
               <Field label="Solutions Engineer">
                 <select value={dealForm.solutions_engineer_id} onChange={e => setDealForm(f => ({ ...f, solutions_engineer_id: e.target.value }))} className={INPUT}>
                   <option value="">— none —</option>
-                  {profiles.map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
+                  {profiles.filter(p => p.role === 'solutions_engineer').map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
                 </select>
               </Field>
               <div className="grid grid-cols-2 gap-4">

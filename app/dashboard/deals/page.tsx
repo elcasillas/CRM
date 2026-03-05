@@ -91,7 +91,7 @@ export default function DealsPage() {
   const [stages, setStages]     = useState<DealStage[]>([])
   const [deals, setDeals]       = useState<DealWithRelations[]>([])
   const [accounts, setAccounts] = useState<Pick<Account, 'id' | 'account_name'>[]>([])
-  const [profiles, setProfiles] = useState<{ id: string; full_name: string | null }[]>([])
+  const [profiles, setProfiles] = useState<{ id: string; full_name: string | null; role: string }[]>([])
   const [isAdmin, setIsAdmin]           = useState(false)
   const [isSalesManager, setIsSalesManager] = useState(false)
   const [loading, setLoading]   = useState(true)
@@ -764,17 +764,21 @@ export default function DealsPage() {
               </div>
               {modal === 'edit' && (
                 <Field label="Deal owner">
-                  <select value={form.deal_owner_id} onChange={set('deal_owner_id')} className={INPUT}>
-                    {profiles.map(p => (
-                      <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
-                    ))}
-                  </select>
+                  {(isAdmin || isSalesManager) ? (
+                    <select value={form.deal_owner_id} onChange={set('deal_owner_id')} className={INPUT}>
+                      {profiles.map(p => (
+                        <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{profiles.find(p => p.id === form.deal_owner_id)?.full_name ?? '—'}</p>
+                  )}
                 </Field>
               )}
               <Field label="Solutions Engineer">
                 <select value={form.solutions_engineer_id} onChange={set('solutions_engineer_id')} className={INPUT}>
                   <option value="">— none —</option>
-                  {profiles.map(p => (
+                  {profiles.filter(p => p.role === 'solutions_engineer').map(p => (
                     <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
                   ))}
                 </select>
