@@ -918,10 +918,7 @@ Please review and let me know if any updates are needed.`
                   const ownerProfile = profiles.find(p => p.id === feedbackDeal.deal_owner_id)
                   const slackId = ownerProfile?.slack_member_id
                   if (!slackId) return null
-                  const teamId = process.env.NEXT_PUBLIC_SLACK_TEAM_ID ?? ''
-                  const href = teamId
-                    ? `slack://user?team=${teamId}&id=${slackId}`
-                    : `slack://user?id=${slackId}`
+                  const href = `slack://user?team=T02FCU97B&id=${slackId}`
                   return (
                     <a
                       href={href}
