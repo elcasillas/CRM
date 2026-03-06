@@ -1094,12 +1094,21 @@ export default function AccountDetailPage() {
                   </button>
                 </div>
                 {dealSummary ? (
-                  <div className="bg-blue-50 rounded-lg p-4 space-y-3">
-                    {dealSummary.split('\n\n').filter(Boolean).map((block, i) =>
-                      block.startsWith('## ')
-                        ? <p key={i} className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-1">{block.slice(3)}</p>
-                        : <p key={i} className="text-sm text-gray-700 leading-relaxed">{block}</p>
-                    )}
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    {dealSummary.split('\n\n').filter(Boolean).map((block, i) => {
+                      if (block.startsWith('## ')) {
+                        const nl = block.indexOf('\n')
+                        const heading = nl === -1 ? block.slice(3) : block.slice(3, nl)
+                        const body = nl === -1 ? '' : block.slice(nl + 1).trim()
+                        return (
+                          <div key={i} className={i > 0 ? 'mt-5' : ''}>
+                            <p className="text-base font-semibold text-gray-900 mb-1.5 leading-snug">{heading}</p>
+                            {body && <p className="text-sm text-gray-700 leading-relaxed">{body}</p>}
+                          </div>
+                        )
+                      }
+                      return <p key={i} className={`text-sm text-gray-700 leading-relaxed${i > 0 ? ' mt-3' : ''}`}>{block}</p>
+                    })}
                   </div>
                 ) : (
                   <p className="text-xs text-gray-400">Click Summarize to generate an AI summary of this deal&apos;s notes using Claude.</p>
