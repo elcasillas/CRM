@@ -219,9 +219,10 @@ export default function AccountDetailPage() {
 
   const fetchProfiles = useCallback(async () => {
     const { data } = await supabase.from('profiles').select('id, full_name, role').order('full_name')
-    setProfiles(data ?? [])
+    const list = (data ?? []) as Array<{ id: string; full_name: string | null; role: string }>
+    setProfiles(list)
     const { data: { user } } = await supabase.auth.getUser()
-    const me = (data ?? []).find((p: { id: string; role?: string }) => p.id === user?.id)
+    const me = list.find(p => p.id === user?.id)
     setIsAdmin(me?.role === 'admin')
     setIsSalesManager(me?.role === 'sales_manager')
   }, [])

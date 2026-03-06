@@ -75,8 +75,9 @@ export default function AccountsPage() {
   const fetchProfiles = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     const { data } = await supabase.from('profiles').select('id, full_name, role').order('full_name')
-    setProfiles(data ?? [])
-    const me = (data ?? []).find(p => p.id === user?.id)
+    const list = (data ?? []) as Array<{ id: string; full_name: string | null; role: string }>
+    setProfiles(list)
+    const me = list.find(p => p.id === user?.id)
     setIsAdmin(me?.role === 'admin')
   }, [])
 
