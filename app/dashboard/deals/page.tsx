@@ -16,7 +16,8 @@ export default async function DealsPage() {
     .single()
 
   const staleDays    = configData?.stale_days    ?? 30
-  const newDealDays  = configData?.new_deal_days  ?? 14
+  const newDealDaysRaw = Number(configData?.new_deal_days)
+  const newDealDays    = isFinite(newDealDaysRaw) && newDealDaysRaw > 0 ? Math.round(newDealDaysRaw) : 14
 
   const [
     { data: { user } },

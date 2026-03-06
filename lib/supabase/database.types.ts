@@ -1,3 +1,4 @@
+Initialising login role...
 export type Json =
   | string
   | number
@@ -431,6 +432,7 @@ export type Database = {
         Row: {
           id: string
           keywords: Json
+          new_deal_days: number
           stale_days: number
           updated_at: string | null
           updated_by: string | null
@@ -439,6 +441,7 @@ export type Database = {
         Insert: {
           id?: string
           keywords?: Json
+          new_deal_days?: number
           stale_days?: number
           updated_at?: string | null
           updated_by?: string | null
@@ -447,6 +450,7 @@ export type Database = {
         Update: {
           id?: string
           keywords?: Json
+          new_deal_days?: number
           stale_days?: number
           updated_at?: string | null
           updated_by?: string | null

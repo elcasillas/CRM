@@ -141,8 +141,9 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
   const isAdmin            = initialData.currentUserRole === 'admin'
   const isSalesManager     = initialData.currentUserRole === 'sales_manager'
   const userId             = initialData.currentUserId
-  const staleDaysThreshold  = initialData.staleDays
-  const newDealDaysThreshold = initialData.newDealDays
+  const staleDaysThreshold   = initialData.staleDays
+  // Clamp to a valid positive integer; fall back to 14 if config is missing/invalid
+  const newDealDaysThreshold = Math.max(1, Math.round(Number(initialData.newDealDays) || 14))
   const emailMap           = useMemo(
     () => new Map(Object.entries(initialData.emailMap)),
     [initialData.emailMap]
@@ -547,7 +548,13 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                     <td className="px-4 py-3.5 font-medium text-gray-900 max-w-[220px]">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <button onClick={() => openEdit(deal)} className="truncate text-left hover:text-blue-600 transition-colors">{deal.deal_name}</button>
-                        {Math.floor((Date.now() - new Date(deal.created_at).getTime()) / 86400000) < newDealDaysThreshold && (
+                        {(() => {
+                          if (!deal.created_at) return false
+                          const ms = new Date(deal.created_at).getTime()
+                          if (!isFinite(ms)) return false
+                          const daysAgo = (Date.now() - ms) / 86400000
+                          return daysAgo >= 0 && daysAgo < newDealDaysThreshold
+                        })() && (
                           <span className="shrink-0 inline-flex px-1.5 py-0 rounded text-xs font-medium bg-blue-50 text-blue-600 ring-1 ring-blue-200">New</span>
                         )}
                       </div>
