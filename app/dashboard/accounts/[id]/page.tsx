@@ -80,7 +80,7 @@ type Tab = 'contacts' | 'hids' | 'contracts' | 'deals' | 'notes'
 
 // ── Modal shell ───────────────────────────────────────────────────────────────
 
-function Modal({ title, onClose, onSave, saving, disabled, error, children }: {
+function Modal({ title, onClose, onSave, saving, disabled, error, children, maxWidth = 'max-w-md' }: {
   title: string
   onClose: () => void
   onSave: () => void
@@ -88,10 +88,11 @@ function Modal({ title, onClose, onSave, saving, disabled, error, children }: {
   disabled?: boolean
   error: string | null
   children: React.ReactNode
+  maxWidth?: string
 }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md">
+      <div className={`bg-white border border-gray-200 rounded-xl shadow-xl w-full ${maxWidth}`}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h3 className="font-semibold text-gray-900">{title}</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
@@ -978,6 +979,7 @@ export default function AccountDetailPage() {
           title="New deal"
           onClose={closeDealModal} onSave={saveDeal}
           saving={saving} disabled={!dealForm.deal_name.trim() || !dealForm.stage_id} error={formError}
+          maxWidth="max-w-2xl"
         >
           <Field label="Deal name *"><input type="text" value={dealForm.deal_name} onChange={e => setDealForm(f => ({ ...f, deal_name: e.target.value }))} className={INPUT} /></Field>
           <Field label="Description"><textarea value={dealForm.deal_description} onChange={e => setDealForm(f => ({ ...f, deal_description: e.target.value }))} rows={2} placeholder="Optional description…" className={`${INPUT} resize-none`} /></Field>
