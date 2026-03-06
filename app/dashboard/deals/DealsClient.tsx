@@ -42,6 +42,15 @@ function fmtTs(ts: string): string {
   return new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
+function relativeTime(iso: string): string {
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  return `${Math.floor(hrs / 24)}d ago`
+}
+
 function healthBadgeClass(score: number | null): string {
   if (score == null) return 'bg-gray-100 text-gray-400'
   if (score >= 80) return 'bg-green-100 text-green-700'
@@ -80,16 +89,17 @@ type FiltersState = {
 }
 
 type UIState = {
-  modal:                  'add' | 'edit' | null
-  editing:                DealWithRelations | null
-  form:                   DealFormData
-  saving:                 boolean
-  formError:              string | null
-  confirmDelete:          string | null
-  feedbackDeal:           DealWithRelations | null
-  feedbackSummary:        string | null
-  loadingFeedbackSummary: boolean
-  copied:                 boolean
+  modal:                       'add' | 'edit' | null
+  editing:                     DealWithRelations | null
+  form:                        DealFormData
+  saving:                      boolean
+  formError:                   string | null
+  confirmDelete:                string | null
+  feedbackDeal:                DealWithRelations | null
+  feedbackSummary:             string | null
+  feedbackSummaryGeneratedAt:  string | null
+  loadingFeedbackSummary:      boolean
+  copied:                      boolean
 }
 
 type NotesState = {
@@ -108,7 +118,7 @@ const INITIAL_FILTERS: FiltersState = {
 const INITIAL_UI: UIState = {
   modal: null, editing: null, form: EMPTY_FORM, saving: false,
   formError: null, confirmDelete: null, feedbackDeal: null,
-  feedbackSummary: null, loadingFeedbackSummary: false, copied: false,
+  feedbackSummary: null, feedbackSummaryGeneratedAt: null, loadingFeedbackSummary: false, copied: false,
 }
 
 const INITIAL_NOTES: NotesState = {
@@ -131,7 +141,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
   // Destructure for readable access throughout the component
   const { view, search, filterStage, filterOwner, filterStale, filterOverdue, sortCol, sortDir } = filters
   const { modal, editing, form, saving, formError, confirmDelete,
-          feedbackDeal, feedbackSummary, loadingFeedbackSummary, copied } = ui
+          feedbackDeal, feedbackSummary, feedbackSummaryGeneratedAt, loadingFeedbackSummary, copied } = ui
   const { dealNotes, noteText, loggingNote, noteConfirmDelete, feedbackNotes } = notes
 
   // ── Props-derived constants ──────────────────────────────────────────────────
@@ -172,7 +182,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     resetNotesForm()
   }
   function closeFeedback() {
-    setUIState(prev => ({ ...prev, feedbackDeal: null, feedbackSummary: null, loadingFeedbackSummary: false }))
+    setUIState(prev => ({ ...prev, feedbackDeal: null, feedbackSummary: null, feedbackSummaryGeneratedAt: null, loadingFeedbackSummary: false }))
     setNotesState(prev => ({ ...prev, feedbackNotes: [] }))
   }
   function closeAllModals() { closeModal(); closeFeedback() }
@@ -254,16 +264,25 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
   }
 
   async function openFeedback(deal: DealWithRelations) {
-    setUIState(prev => ({ ...prev, feedbackDeal: deal, feedbackSummary: null }))
+    setUIState(prev => ({ ...prev, feedbackDeal: deal, feedbackSummary: null, feedbackSummaryGeneratedAt: null }))
     setNotesUI('feedbackNotes', [])
-    const { data } = await supabase
-      .from('notes')
-      .select('*, author:profiles!created_by(full_name)')
-      .eq('entity_type', 'deal')
-      .eq('entity_id', deal.id)
-      .order('created_at', { ascending: false })
-      .limit(3)
-    setNotesUI('feedbackNotes', (data ?? []) as NoteWithAuthor[])
+    const [notesResult, summaryRes] = await Promise.all([
+      supabase
+        .from('notes')
+        .select('*, author:profiles!created_by(full_name)')
+        .eq('entity_type', 'deal')
+        .eq('entity_id', deal.id)
+        .order('created_at', { ascending: false })
+        .limit(3),
+      fetch(`/api/deals/${deal.id}/summarize`),
+    ])
+    setNotesUI('feedbackNotes', (notesResult.data ?? []) as NoteWithAuthor[])
+    if (summaryRes.ok) {
+      const body = await summaryRes.json()
+      if (body.summary) {
+        setUIState(prev => ({ ...prev, feedbackSummary: body.summary, feedbackSummaryGeneratedAt: body.generatedAt ?? null }))
+      }
+    }
   }
 
   // ── Note CRUD ────────────────────────────────────────────────────────────────
@@ -690,14 +709,23 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
               {(isAdmin || isSalesManager) && (
                 <div className="border-t border-gray-100 pt-4">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">AI Summary</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">AI Summary</p>
+                      {feedbackSummaryGeneratedAt && (
+                        <span className="text-xs text-gray-400">· Generated {relativeTime(feedbackSummaryGeneratedAt)}</span>
+                      )}
+                    </div>
                     <button
                       onClick={async () => {
                         setUI('loadingFeedbackSummary', true)
                         try {
                           const res = await fetch(`/api/deals/${feedbackDeal.id}/summarize`, { method: 'POST' })
                           const body = await res.json()
-                          setUI('feedbackSummary', res.ok ? body.summary : `Error: ${body.error}`)
+                          if (res.ok) {
+                            setUIState(prev => ({ ...prev, feedbackSummary: body.summary, feedbackSummaryGeneratedAt: body.generatedAt ?? null }))
+                          } else {
+                            setUI('feedbackSummary', `Error: ${body.error}`)
+                          }
                         } finally { setUI('loadingFeedbackSummary', false) }
                       }}
                       disabled={loadingFeedbackSummary}

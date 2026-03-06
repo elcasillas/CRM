@@ -34,6 +34,15 @@ function fmtTs(ts: string): string {
   return new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
+function relativeTime(iso: string): string {
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  return `${Math.floor(hrs / 24)}d ago`
+}
+
 function fmtCurrency(v: number | null): string {
   if (v == null) return '—'
   const n = Number(v)
@@ -157,6 +166,7 @@ export default function AccountDetailPage() {
   const [loggingDealNote,        setLoggingDealNote]        = useState(false)
   const [dealNoteConfirmDelete,  setDealNoteConfirmDelete]  = useState<string | null>(null)
   const [dealSummary,            setDealSummary]            = useState<string | null>(null)
+  const [dealSummaryGeneratedAt, setDealSummaryGeneratedAt] = useState<string | null>(null)
   const [loadingDealSummary,     setLoadingDealSummary]     = useState(false)
 
   // account edit
@@ -375,11 +385,17 @@ export default function AccountDetailPage() {
   function openAddDeal()                    { setDealForm({ ...EMPTY_DEAL, stage_id: stages[1]?.id ?? '', deal_owner_id: userId }); setEditingDeal(null); clearError(); setDealModal('add') }
   function openEditDeal(d: DealWithRelations) {
     setDealForm({ deal_name: d.deal_name, deal_description: d.deal_description ?? '', stage_id: d.stage_id, deal_owner_id: d.deal_owner_id, solutions_engineer_id: d.solutions_engineer_id ?? '', value_amount: d.value_amount != null ? String(d.value_amount) : '', currency: d.currency, close_date: d.close_date ?? '' })
-    setDealNotes([]); setDealNoteText(''); setDealNoteConfirmDelete(null); setDealSummary(null)
+    setDealNotes([]); setDealNoteText(''); setDealNoteConfirmDelete(null); setDealSummary(null); setDealSummaryGeneratedAt(null)
     fetchDealNotes(d.id)
+    // Pre-load stored summary
+    fetch(`/api/deals/${d.id}/summarize`).then(res => {
+      if (res.ok) res.json().then(body => {
+        if (body.summary) { setDealSummary(body.summary); setDealSummaryGeneratedAt(body.generatedAt ?? null) }
+      })
+    })
     setEditingDeal(d); clearError(); setDealModal('edit')
   }
-  function closeDealModal() { setDealModal(null); setEditingDeal(null); clearError(); setDealNotes([]); setDealNoteText(''); setDealSummary(null) }
+  function closeDealModal() { setDealModal(null); setEditingDeal(null); clearError(); setDealNotes([]); setDealNoteText(''); setDealSummary(null); setDealSummaryGeneratedAt(null) }
 
   async function saveDeal() {
     setSaving(true); clearError()
@@ -1055,14 +1071,19 @@ export default function AccountDetailPage() {
               {/* AI Summary — admin and sales manager only */}
               {(isAdmin || isSalesManager) && <div className="border-t border-gray-100 pt-4">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-gray-700">AI summary</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-gray-700">AI summary</p>
+                    {dealSummaryGeneratedAt && (
+                      <span className="text-xs text-gray-400">· Generated {relativeTime(dealSummaryGeneratedAt)}</span>
+                    )}
+                  </div>
                   <button
                     onClick={async () => {
                       setLoadingDealSummary(true)
                       try {
                         const res = await fetch(`/api/deals/${editingDeal.id}/summarize`, { method: 'POST' })
                         const body = await res.json()
-                        if (res.ok) setDealSummary(body.summary)
+                        if (res.ok) { setDealSummary(body.summary); setDealSummaryGeneratedAt(body.generatedAt ?? null) }
                         else setDealSummary(`Error: ${body.error}`)
                       } finally { setLoadingDealSummary(false) }
                     }}

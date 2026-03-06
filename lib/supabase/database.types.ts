@@ -326,6 +326,8 @@ export type Database = {
       deals: {
         Row: {
           account_id: string
+          ai_summary: string | null
+          ai_summary_generated_at: string | null
           close_date: string | null
           created_at: string
           currency: string
@@ -350,6 +352,8 @@ export type Database = {
         }
         Insert: {
           account_id: string
+          ai_summary?: string | null
+          ai_summary_generated_at?: string | null
           close_date?: string | null
           created_at?: string
           currency?: string
@@ -374,6 +378,8 @@ export type Database = {
         }
         Update: {
           account_id?: string
+          ai_summary?: string | null
+          ai_summary_generated_at?: string | null
           close_date?: string | null
           created_at?: string
           currency?: string

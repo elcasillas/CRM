@@ -69,6 +69,35 @@ Guidelines:
   return (json.choices?.[0]?.message?.content ?? '').trim()
 }
 
+// ── GET — return stored summary from deals table ─────────────────────────────
+
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('deals')
+    .select('ai_summary, ai_summary_generated_at')
+    .eq('id', id)
+    .single()
+
+  if (error || !data) return NextResponse.json({ error: 'Deal not found' }, { status: 404 })
+
+  return NextResponse.json({
+    summary: data.ai_summary ?? null,
+    generatedAt: data.ai_summary_generated_at ?? null,
+  })
+}
+
+// ── POST — generate (or return cached) summary, persist to deals ─────────────
+
 export async function POST(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -109,22 +138,60 @@ export async function POST(
     .eq('notes_hash', notesHash)
     .eq('model', MODEL_TAG)
     .maybeSingle()
-  if (cached?.summary) return NextResponse.json({ summary: cached.summary, cached: true })
 
-  // 3. Call OpenRouter
   let summary: string
-  try {
-    summary = await callOpenRouter(canonical, deal.deal_name)
-  } catch (err) {
-    return NextResponse.json({ error: String(err) }, { status: 502 })
+  let isNew = false
+
+  if (cached?.summary) {
+    summary = cached.summary
+  } else {
+    // 3. Call OpenRouter
+    try {
+      summary = await callOpenRouter(canonical, deal.deal_name)
+    } catch (err) {
+      return NextResponse.json({ error: String(err) }, { status: 502 })
+    }
+    if (!summary) return NextResponse.json({ error: 'No summary returned' }, { status: 502 })
+
+    // 4. Cache result
+    await admin.from('deal_summary_cache').upsert(
+      { deal_id: id, notes_hash: notesHash, model: MODEL_TAG, summary },
+      { onConflict: 'deal_id,notes_hash,model' }
+    )
+    isNew = true
   }
-  if (!summary) return NextResponse.json({ error: 'No summary returned' }, { status: 502 })
 
-  // 4. Cache result
-  await admin.from('deal_summary_cache').upsert(
-    { deal_id: id, notes_hash: notesHash, model: MODEL_TAG, summary },
-    { onConflict: 'deal_id,notes_hash,model' }
-  )
+  // 5. Persist to deals table
+  //    Always update ai_summary; only update generated_at when actually running AI
+  //    (or when no timestamp exists yet)
+  const now = new Date().toISOString()
+  const updatePayload: Record<string, string> = { ai_summary: summary }
+  if (isNew) {
+    updatePayload.ai_summary_generated_at = now
+  } else {
+    // On cache hit, set generated_at only if it's not yet recorded
+    const { data: existing } = await admin
+      .from('deals')
+      .select('ai_summary_generated_at')
+      .eq('id', id)
+      .single()
+    if (!existing?.ai_summary_generated_at) {
+      updatePayload.ai_summary_generated_at = now
+    }
+  }
 
-  return NextResponse.json({ summary, cached: false })
+  await admin.from('deals').update(updatePayload).eq('id', id)
+
+  // Fetch the final generated_at to return to the client
+  const { data: finalDeal } = await admin
+    .from('deals')
+    .select('ai_summary_generated_at')
+    .eq('id', id)
+    .single()
+
+  return NextResponse.json({
+    summary,
+    cached: !isNew,
+    generatedAt: finalDeal?.ai_summary_generated_at ?? now,
+  })
 }
