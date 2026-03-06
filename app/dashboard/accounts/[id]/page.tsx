@@ -68,13 +68,13 @@ function stageBadgeClass(s: { is_won: boolean; is_lost: boolean; sort_order: num
 
 type ContactForm = { first_name: string; last_name: string; email: string; phone: string; title: string; is_primary: boolean }
 type HidForm     = { hid_number: string; dc_location: string; cluster_id: string; start_date: string; domain_name: string }
-type ContractForm = { effective_date: string; renewal_date: string; renewal_term_months: string; auto_renew: boolean; status: string }
+type ContractForm = { entity_name: string; effective_date: string; renewal_date: string; renewal_term_months: string; auto_renew: boolean; status: string }
 type DealForm    = { deal_name: string; deal_description: string; stage_id: string; deal_owner_id: string; solutions_engineer_id: string; amount: string; contract_term_months: string; currency: string; close_date: string }
 type AccountForm = { account_name: string; account_website: string; address_line1: string; address_line2: string; city: string; region: string; postal: string; country: string; status: string; account_owner_id: string; service_manager_id: string }
 
 const EMPTY_CONTACT: ContactForm  = { first_name: '', last_name: '', email: '', phone: '', title: '', is_primary: false }
 const EMPTY_HID: HidForm          = { hid_number: '', dc_location: '', cluster_id: '', start_date: '', domain_name: '' }
-const EMPTY_CONTRACT: ContractForm = { effective_date: '', renewal_date: '', renewal_term_months: '', auto_renew: false, status: 'active' }
+const EMPTY_CONTRACT: ContractForm = { entity_name: '', effective_date: '', renewal_date: '', renewal_term_months: '', auto_renew: false, status: 'active' }
 const EMPTY_DEAL: DealForm        = { deal_name: '', deal_description: '', stage_id: '', deal_owner_id: '', solutions_engineer_id: '', amount: '', contract_term_months: '', currency: 'USD', close_date: '' }
 
 type Tab = 'contacts' | 'hids' | 'contracts' | 'deals' | 'notes'
@@ -368,12 +368,12 @@ export default function AccountDetailPage() {
   // ── Contract CRUD ───────────────────────────────────────────────────────────
 
   function openAddContract()             { setContractForm(EMPTY_CONTRACT); setEditingContract(null); clearError(); setContractModal('add') }
-  function openEditContract(c: Contract) { setContractForm({ effective_date: c.effective_date ?? '', renewal_date: c.renewal_date ?? '', renewal_term_months: c.renewal_term_months != null ? String(c.renewal_term_months) : '', auto_renew: c.auto_renew, status: c.status }); setEditingContract(c); clearError(); setContractModal('edit') }
+  function openEditContract(c: Contract) { setContractForm({ entity_name: c.entity_name ?? '', effective_date: c.effective_date ?? '', renewal_date: c.renewal_date ?? '', renewal_term_months: c.renewal_term_months != null ? String(c.renewal_term_months) : '', auto_renew: c.auto_renew, status: c.status }); setEditingContract(c); clearError(); setContractModal('edit') }
   function closeContractModal()          { setContractModal(null); setEditingContract(null); clearError() }
 
   async function saveContract() {
     setSaving(true); clearError()
-    const payload = { account_id: id, effective_date: contractForm.effective_date || null, renewal_date: contractForm.renewal_date || null, renewal_term_months: contractForm.renewal_term_months ? parseInt(contractForm.renewal_term_months) : null, auto_renew: contractForm.auto_renew, status: contractForm.status }
+    const payload = { account_id: id, entity_name: contractForm.entity_name || null, effective_date: contractForm.effective_date || null, renewal_date: contractForm.renewal_date || null, renewal_term_months: contractForm.renewal_term_months ? parseInt(contractForm.renewal_term_months) : null, auto_renew: contractForm.auto_renew, status: contractForm.status }
     const { error } = contractModal === 'add'
       ? await supabase.from('contracts').insert(payload)
       : await supabase.from('contracts').update(payload).eq('id', editingContract!.id)
@@ -709,21 +709,20 @@ export default function AccountDetailPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entity Name</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Effective</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Renewal</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Term</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Auto Renew</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-5 py-3"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {contracts.map(c => (
                     <tr key={c.id} className="hover:bg-gray-50">
-                      <td className="px-5 py-3">
-                        <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${c.status === 'active' ? 'bg-green-50 text-green-700 ring-1 ring-green-200' : 'bg-gray-100 text-gray-600'}`}>
-                          {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
-                        </span>
+                      <td className="px-5 py-3 font-medium">
+                        <button onClick={() => openEditContract(c)} className="text-gray-900 hover:text-blue-600 text-left transition-colors">{c.entity_name ?? '—'}</button>
                       </td>
                       <td className="px-5 py-3 text-gray-500">{fmtDate(c.effective_date)}</td>
                       <td className="px-5 py-3 text-gray-500">{fmtDate(c.renewal_date)}</td>
@@ -734,8 +733,12 @@ export default function AccountDetailPage() {
                         </span>
                       </td>
                       <td className="px-5 py-3">
+                        <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${c.status === 'active' ? 'bg-green-50 text-green-700 ring-1 ring-green-200' : 'bg-gray-100 text-gray-600'}`}>
+                          {c.status.charAt(0).toUpperCase() + c.status.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3">
                         <div className="flex items-center gap-3 justify-end">
-                          <button onClick={() => openEditContract(c)} title="Edit" className="text-gray-500 hover:text-gray-700"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" /></svg></button>
                           <DeleteActions entity="contract" rowId={c.id} />
                         </div>
                       </td>
@@ -955,6 +958,7 @@ export default function AccountDetailPage() {
           onClose={closeContractModal} onSave={saveContract}
           saving={saving} error={formError}
         >
+          <Field label="Entity Name"><input type="text" value={contractForm.entity_name} onChange={e => setContractForm(f => ({ ...f, entity_name: e.target.value }))} placeholder="Legal entity name" className={INPUT} /></Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Effective date"><input type="date" value={contractForm.effective_date} onChange={e => setContractForm(f => ({ ...f, effective_date: e.target.value }))} className={INPUT} /></Field>
             <Field label="Renewal date"><input type="date" value={contractForm.renewal_date} onChange={e => setContractForm(f => ({ ...f, renewal_date: e.target.value }))} className={INPUT} /></Field>

@@ -161,6 +161,7 @@ export type Database = {
           auto_renew: boolean
           created_at: string
           effective_date: string | null
+          entity_name: string | null
           id: string
           renewal_date: string | null
           renewal_term_months: number | null
@@ -172,6 +173,7 @@ export type Database = {
           auto_renew?: boolean
           created_at?: string
           effective_date?: string | null
+          entity_name?: string | null
           id?: string
           renewal_date?: string | null
           renewal_term_months?: number | null
@@ -183,6 +185,7 @@ export type Database = {
           auto_renew?: boolean
           created_at?: string
           effective_date?: string | null
+          entity_name?: string | null
           id?: string
           renewal_date?: string | null
           renewal_term_months?: number | null
