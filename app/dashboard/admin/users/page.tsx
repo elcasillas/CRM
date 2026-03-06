@@ -13,7 +13,7 @@ export default async function AdminUsersPage() {
     .eq('id', user.id)
     .single()
 
-  if (profile?.role !== 'admin') redirect('/dashboard')
+  if ((profile as { role: string } | null)?.role !== 'admin') redirect('/dashboard')
 
   return <AdminUsersClient />
 }
