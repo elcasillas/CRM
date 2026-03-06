@@ -141,7 +141,8 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
   const isAdmin            = initialData.currentUserRole === 'admin'
   const isSalesManager     = initialData.currentUserRole === 'sales_manager'
   const userId             = initialData.currentUserId
-  const staleDaysThreshold = initialData.staleDays
+  const staleDaysThreshold  = initialData.staleDays
+  const newDealDaysThreshold = initialData.newDealDays
   const emailMap           = useMemo(
     () => new Map(Object.entries(initialData.emailMap)),
     [initialData.emailMap]
@@ -543,7 +544,14 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                 {sorted.map(deal => (
                   <tr key={deal.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3.5 text-gray-500">{deal.deal_owner?.full_name ?? '—'}</td>
-                    <td className="px-4 py-3.5 font-medium text-gray-900 max-w-[220px]"><button onClick={() => openEdit(deal)} className="truncate block text-left hover:text-blue-600 transition-colors w-full">{deal.deal_name}</button></td>
+                    <td className="px-4 py-3.5 font-medium text-gray-900 max-w-[220px]">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <button onClick={() => openEdit(deal)} className="truncate text-left hover:text-blue-600 transition-colors">{deal.deal_name}</button>
+                        {Math.floor((Date.now() - new Date(deal.created_at).getTime()) / 86400000) < newDealDaysThreshold && (
+                          <span className="shrink-0 inline-flex px-1.5 py-0 rounded text-xs font-medium bg-blue-50 text-blue-600 ring-1 ring-blue-200">New</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3.5">
                       <select value={deal.stage_id} onChange={e => changeStage(deal, e.target.value)} className={`text-xs font-medium px-2 py-1 rounded-md border-0 focus:outline-none focus:ring-2 focus:ring-blue-300 cursor-pointer ${stageBadgeClass(deal.deal_stages)}`}>
                         {stages.map(s => <option key={s.id} value={s.id}>{s.stage_name}</option>)}

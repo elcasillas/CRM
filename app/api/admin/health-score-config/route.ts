@@ -10,7 +10,7 @@ export async function GET() {
   const admin = createAdminClient()
   const { data, error } = await admin
     .from('health_score_config')
-    .select('id, weights, keywords, stale_days')
+    .select('id, weights, keywords, stale_days, new_deal_days')
     .limit(1)
     .single()
 
@@ -23,7 +23,7 @@ export async function PUT(request: NextRequest) {
   const caller = await assertAdmin()
   if (!caller) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const { id, weights, keywords, stale_days } = await request.json()
+  const { id, weights, keywords, stale_days, new_deal_days } = await request.json()
 
   if (!weights || !keywords) {
     return NextResponse.json({ error: 'weights and keywords are required' }, { status: 400 })
@@ -37,7 +37,7 @@ export async function PUT(request: NextRequest) {
   const admin = createAdminClient()
   const { error } = await admin
     .from('health_score_config')
-    .update({ weights, keywords, stale_days: Number(stale_days) || 30, updated_at: new Date().toISOString(), updated_by: caller.id })
+    .update({ weights, keywords, stale_days: Number(stale_days) || 30, new_deal_days: Number(new_deal_days) || 14, updated_at: new Date().toISOString(), updated_by: caller.id })
     .eq('id', id)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

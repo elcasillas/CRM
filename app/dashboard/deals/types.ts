@@ -30,6 +30,7 @@ export type DealsInitialData = {
   lastNoteDates:   Record<string, string>
   emailMap:        Record<string, string>
   staleDays:       number
+  newDealDays:     number
   currentUserId:   string
   currentUserRole: string
 }

@@ -11,11 +11,12 @@ export default async function DealsPage() {
   // Fetch config first so we can pass stale_days to the RPC
   const { data: configData } = await admin
     .from('health_score_config')
-    .select('stale_days')
+    .select('stale_days, new_deal_days')
     .limit(1)
     .single()
 
-  const staleDays = configData?.stale_days ?? 30
+  const staleDays    = configData?.stale_days    ?? 30
+  const newDealDays  = configData?.new_deal_days  ?? 14
 
   const [
     { data: { user } },
@@ -101,6 +102,7 @@ export default async function DealsPage() {
     lastNoteDates,
     emailMap,
     staleDays,
+    newDealDays,
     currentUserId:   user?.id ?? '',
     currentUserRole: currentUserProfile?.role ?? '',
   }

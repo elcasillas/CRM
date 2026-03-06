@@ -30,6 +30,7 @@ export default function HealthScoringClient() {
   const [positiveKws, setPositiveKws]       = useState('')
   const [negativeKws, setNegativeKws]       = useState('')
   const [staleDays, setStaleDays]           = useState(30)
+  const [newDealDays, setNewDealDays]       = useState(14)
   const [loading, setLoading]               = useState(true)
   const [saving, setSaving]                 = useState(false)
   const [recalculating, setRecalculating]   = useState(false)
@@ -46,7 +47,8 @@ export default function HealthScoringClient() {
           setPositiveKws((data.keywords.positive ?? []).join('\n'))
           setNegativeKws((data.keywords.negative ?? []).join('\n'))
         }
-        if (data.stale_days != null) setStaleDays(data.stale_days)
+        if (data.stale_days   != null) setStaleDays(data.stale_days)
+        if (data.new_deal_days != null) setNewDealDays(data.new_deal_days)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -70,7 +72,7 @@ export default function HealthScoringClient() {
     const res = await fetch('/api/admin/health-score-config', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: configId, weights, keywords, stale_days: staleDays }),
+      body: JSON.stringify({ id: configId, weights, keywords, stale_days: staleDays, new_deal_days: newDealDays }),
     })
     const body = await res.json()
     setSaveMsg(res.ok ? { type: 'ok', text: 'Settings saved.' } : { type: 'err', text: body.error ?? 'Save failed.' })
@@ -166,6 +168,24 @@ export default function HealthScoringClient() {
             step="1"
             value={staleDays}
             onChange={e => { setStaleDays(Number(e.target.value) || 30); setSaveMsg(null) }}
+            className="w-32 bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm"
+          />
+          <span className="text-sm text-gray-500">days</span>
+        </div>
+      </div>
+
+      {/* New Deal Badge Threshold */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+        <h3 className="text-sm font-semibold text-gray-700 mb-1">New Deal Badge</h3>
+        <p className="text-xs text-gray-400 mb-4">Deals created within this many days will show a <span className="inline-flex px-1.5 py-0 rounded text-xs font-medium bg-blue-50 text-blue-600 ring-1 ring-blue-200">New</span> badge in the Deals table.</p>
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            min="1"
+            max="365"
+            step="1"
+            value={newDealDays}
+            onChange={e => { setNewDealDays(Number(e.target.value) || 14); setSaveMsg(null) }}
             className="w-32 bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm"
           />
           <span className="text-sm text-gray-500">days</span>
