@@ -703,8 +703,11 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                 <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Deal Name</p><p className="text-gray-900 font-medium">{feedbackDeal.deal_name}</p></div>
                 <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Deal Owner</p><p className="text-gray-900">{feedbackDeal.deal_owner?.full_name ?? '—'}</p></div>
                 <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Stage</p><p className="text-gray-900">{feedbackDeal.deal_stages?.stage_name ?? '—'}</p></div>
-                <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">ACV (CAD)</p><p className="text-gray-900 font-medium">{feedbackDeal.value_amount != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(feedbackDeal.value_amount) : '—'}</p></div>
+                <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Amount</p><p className="text-gray-900 font-medium">{feedbackDeal.amount != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(feedbackDeal.amount) : '—'}</p></div>
+                <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Contract Term</p><p className="text-gray-900">{feedbackDeal.contract_term_months != null ? `${feedbackDeal.contract_term_months} months` : '—'}</p></div>
                 <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Closing Date</p><p className="text-gray-900">{feedbackDeal.close_date ? new Date(feedbackDeal.close_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</p></div>
+                <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">ACV (CAD)</p><p className="text-gray-900 font-medium">{(() => { const acv = feedbackDeal.amount != null ? feedbackDeal.amount * 12 : feedbackDeal.value_amount; return acv != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(acv) : '—' })()}</p></div>
+                <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">TCV (CAD)</p><p className="text-gray-900 font-medium">{(() => { const tcv = feedbackDeal.amount != null && feedbackDeal.contract_term_months != null ? feedbackDeal.amount * feedbackDeal.contract_term_months : feedbackDeal.total_contract_value; return tcv != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(tcv) : '—' })()}</p></div>
                 <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Health Score</p><p>{feedbackDeal.health_score != null ? <span className={`inline-flex items-center justify-center w-8 h-6 rounded text-xs font-semibold ${healthBadgeClass(feedbackDeal.health_score)}`}>{feedbackDeal.health_score}</span> : <span className="text-gray-400">—</span>}</p></div>
                 <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Modified Date</p><p className="text-gray-900">{(() => { const ts = lastNoteDates.get(feedbackDeal.id); return ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' })()}</p></div>
                 <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Days Since Update</p><p className="text-gray-900">{(() => { const ts = lastNoteDates.get(feedbackDeal.id); return ts ? `${Math.floor((Date.now() - new Date(ts).getTime()) / 86400000)} days` : '—' })()}</p></div>
@@ -787,7 +790,10 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
               const modifiedDate = ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
               const daysSince    = ts ? `${Math.floor((Date.now() - new Date(ts).getTime()) / 86400000)} days` : 'N/A'
               const closeDate    = feedbackDeal.close_date ? new Date(feedbackDeal.close_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
-              const acv          = feedbackDeal.value_amount != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(feedbackDeal.value_amount) : 'N/A'
+              const acvVal       = feedbackDeal.amount != null ? feedbackDeal.amount * 12 : feedbackDeal.value_amount
+              const tcvVal       = feedbackDeal.amount != null && feedbackDeal.contract_term_months != null ? feedbackDeal.amount * feedbackDeal.contract_term_months : feedbackDeal.total_contract_value
+              const fmt          = (v: number | null) => v != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(v) : 'N/A'
+              const acv          = fmt(acvVal)
               const notesBlock   = feedbackNotes.length > 0 ? feedbackNotes.map(n => `• ${new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — ${n.note_text}`).join('\n') : 'No notes recorded.'
               const bodyText =
 `Hi ${feedbackDeal.deal_owner?.full_name ?? 'there'},
@@ -795,7 +801,10 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
 Here is a summary for deal "${feedbackDeal.deal_name}":
 
   Stage:             ${feedbackDeal.deal_stages?.stage_name ?? 'N/A'}
+  Amount (CAD):      ${feedbackDeal.amount != null ? fmt(feedbackDeal.amount) : 'N/A'}
+  Contract Term:     ${feedbackDeal.contract_term_months != null ? `${feedbackDeal.contract_term_months} months` : 'N/A'}
   ACV (CAD):         ${acv}
+  TCV (CAD):         ${fmt(tcvVal)}
   Closing Date:      ${closeDate}
   Health Score:      ${feedbackDeal.health_score ?? 'N/A'}
   Modified Date:     ${modifiedDate}
@@ -910,10 +919,10 @@ Please review and let me know if any updates are needed.`
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="ACV (auto)">
-                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount ? (formatCurrency(calcACV(form.amount)) ?? '—') : '—'}</p>
+                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount ? (formatCurrency(calcACV(form.amount)) ?? '—') : (editing?.value_amount != null ? formatCurrency(editing.value_amount) ?? '—' : '—')}</p>
                 </Field>
                 <Field label="Total Contract Value (auto)">
-                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount && form.contract_term_months ? (formatCurrency(calcTCV(form.amount, form.contract_term_months)) ?? '—') : '—'}</p>
+                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount && form.contract_term_months ? (formatCurrency(calcTCV(form.amount, form.contract_term_months)) ?? '—') : (editing?.total_contract_value != null ? formatCurrency(editing.total_contract_value) ?? '—' : '—')}</p>
                 </Field>
               </div>
 

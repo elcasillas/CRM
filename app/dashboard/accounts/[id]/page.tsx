@@ -767,6 +767,7 @@ export default function AccountDetailPage() {
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Deal</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stage</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ACV</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">TCV</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Close Date</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SE</th>
@@ -784,7 +785,8 @@ export default function AccountDetailPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-gray-700 font-medium">{fmtCurrency(d.value_amount)}</td>
+                      <td className="px-5 py-3 text-gray-700 font-medium">{fmtCurrency(d.amount != null ? d.amount * 12 : d.value_amount)}</td>
+                      <td className="px-5 py-3 text-gray-700 font-medium">{fmtCurrency(d.amount != null && d.contract_term_months != null ? d.amount * d.contract_term_months : d.total_contract_value)}</td>
                       <td className="px-5 py-3 text-gray-500">{fmtDate(d.close_date)}</td>
                       <td className="px-5 py-3 text-gray-500">{d.deal_owner?.full_name ?? '—'}</td>
                       <td className="px-5 py-3 text-gray-500">{d.solutions_engineer?.full_name ?? '—'}</td>
@@ -1090,10 +1092,10 @@ export default function AccountDetailPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="ACV (auto)">
-                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{dealForm.amount ? (fmtCurrency(calcACV(dealForm.amount)) || '—') : '—'}</p>
+                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{dealForm.amount ? (fmtCurrency(calcACV(dealForm.amount)) || '—') : (editingDeal?.value_amount != null ? fmtCurrency(editingDeal.value_amount) || '—' : '—')}</p>
                 </Field>
                 <Field label="Total Contract Value (auto)">
-                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{dealForm.amount && dealForm.contract_term_months ? (fmtCurrency(calcTCV(dealForm.amount, dealForm.contract_term_months)) || '—') : '—'}</p>
+                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{dealForm.amount && dealForm.contract_term_months ? (fmtCurrency(calcTCV(dealForm.amount, dealForm.contract_term_months)) || '—') : (editingDeal?.total_contract_value != null ? fmtCurrency(editingDeal.total_contract_value) || '—' : '—')}</p>
                 </Field>
               </div>
 
