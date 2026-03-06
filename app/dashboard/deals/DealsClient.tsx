@@ -906,7 +906,7 @@ Please review and let me know if any updates are needed.`
                 </select>
               </Field>
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Amount"><input type="text" value={form.amount} onChange={set('amount')} placeholder="0" className={INPUT} /></Field>
+                <Field label="Amount"><div className="relative"><span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none">$</span><input type="text" value={form.amount} onChange={set('amount')} placeholder="0" className={`${INPUT} pl-6`} /></div></Field>
                 <Field label="Currency">
                   <select value={form.currency} onChange={set('currency')} className={INPUT}>
                     <option value="USD">USD</option><option value="CAD">CAD</option><option value="EUR">EUR</option><option value="GBP">GBP</option>

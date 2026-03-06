@@ -1007,7 +1007,7 @@ export default function AccountDetailPage() {
             </select>
           </Field>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Amount"><input type="text" value={dealForm.amount} onChange={e => setDealForm(f => ({ ...f, amount: e.target.value }))} placeholder="0" className={INPUT} /></Field>
+            <Field label="Amount"><div className="relative"><span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none">$</span><input type="text" value={dealForm.amount} onChange={e => setDealForm(f => ({ ...f, amount: e.target.value }))} placeholder="0" className={`${INPUT} pl-6`} /></div></Field>
             <Field label="Currency">
               <select value={dealForm.currency} onChange={e => setDealForm(f => ({ ...f, currency: e.target.value }))} className={INPUT}>
                 <option value="USD">USD</option>
