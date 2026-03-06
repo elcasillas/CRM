@@ -254,7 +254,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
         stage_id:              deal.stage_id,
         deal_owner_id:         deal.deal_owner_id,
         solutions_engineer_id: deal.solutions_engineer_id ?? '',
-        amount:                deal.amount != null ? String(deal.amount) : '',
+        amount:                deal.amount != null ? new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(Number(deal.amount)) : '',
         contract_term_months:  deal.contract_term_months != null ? String(deal.contract_term_months) : '',
         currency:              deal.currency,
         close_date:            deal.close_date ?? '',
@@ -906,7 +906,7 @@ Please review and let me know if any updates are needed.`
                 </select>
               </Field>
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Amount"><input type="number" min="0" step="100" value={form.amount} onChange={set('amount')} placeholder="0" className={INPUT} /></Field>
+                <Field label="Amount"><input type="text" value={form.amount} onChange={set('amount')} placeholder="0" className={INPUT} /></Field>
                 <Field label="Currency">
                   <select value={form.currency} onChange={set('currency')} className={INPUT}>
                     <option value="USD">USD</option><option value="CAD">CAD</option><option value="EUR">EUR</option><option value="GBP">GBP</option>

@@ -386,7 +386,7 @@ export default function AccountDetailPage() {
 
   function openAddDeal()                    { setDealForm({ ...EMPTY_DEAL, stage_id: stages[1]?.id ?? '', deal_owner_id: userId }); setEditingDeal(null); clearError(); setDealModal('add') }
   function openEditDeal(d: DealWithRelations) {
-    setDealForm({ deal_name: d.deal_name, deal_description: d.deal_description ?? '', stage_id: d.stage_id, deal_owner_id: d.deal_owner_id, solutions_engineer_id: d.solutions_engineer_id ?? '', amount: d.amount != null ? String(d.amount) : '', contract_term_months: d.contract_term_months != null ? String(d.contract_term_months) : '', currency: d.currency, close_date: d.close_date ?? '' })
+    setDealForm({ deal_name: d.deal_name, deal_description: d.deal_description ?? '', stage_id: d.stage_id, deal_owner_id: d.deal_owner_id, solutions_engineer_id: d.solutions_engineer_id ?? '', amount: d.amount != null ? new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(Number(d.amount)) : '', contract_term_months: d.contract_term_months != null ? String(d.contract_term_months) : '', currency: d.currency, close_date: d.close_date ?? '' })
     setDealNotes([]); setDealNoteText(''); setDealNoteConfirmDelete(null); setDealSummary(null); setDealSummaryGeneratedAt(null)
     fetchDealNotes(d.id)
     // Pre-load stored summary
@@ -1007,7 +1007,7 @@ export default function AccountDetailPage() {
             </select>
           </Field>
           <div className="grid grid-cols-2 gap-4">
-            <Field label="Amount"><input type="number" min="0" step="100" value={dealForm.amount} onChange={e => setDealForm(f => ({ ...f, amount: e.target.value }))} placeholder="0" className={INPUT} /></Field>
+            <Field label="Amount"><input type="text" value={dealForm.amount} onChange={e => setDealForm(f => ({ ...f, amount: e.target.value }))} placeholder="0" className={INPUT} /></Field>
             <Field label="Currency">
               <select value={dealForm.currency} onChange={e => setDealForm(f => ({ ...f, currency: e.target.value }))} className={INPUT}>
                 <option value="USD">USD</option>
