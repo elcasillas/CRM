@@ -855,7 +855,8 @@ export default function AccountDetailPage() {
       {/* Account edit modal */}
       {accountModal && (
         <Modal
-          title="Edit account"
+          title="Edit Account"
+          maxWidth="max-w-2xl"
           onClose={closeAccountModal} onSave={saveAccount}
           saving={accountSaving} disabled={!accountForm.account_name.trim()} error={accountFormError}
         >
