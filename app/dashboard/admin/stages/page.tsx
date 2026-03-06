@@ -42,7 +42,7 @@ export default function AdminStagesPage() {
       .select('id, stage_name, sort_order, is_closed, is_won, is_lost, win_probability')
       .order('sort_order')
     if (error) console.error('stages fetch:', error.message)
-    else setStages(data ?? [])
+    else setStages((data ?? []) as DealStage[])
     setLoading(false)
   }, [])
 
