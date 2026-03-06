@@ -677,14 +677,13 @@ export default function AccountDetailPage() {
                 <tbody className="divide-y divide-gray-100">
                   {hids.map(h => (
                     <tr key={h.id} className="hover:bg-gray-50">
-                      <td className="px-5 py-3 font-medium text-gray-900">{h.hid_number}</td>
+                      <td className="px-5 py-3 font-medium"><button onClick={() => openEditHid(h)} className="text-gray-900 hover:text-blue-600 text-left transition-colors">{h.hid_number}</button></td>
                       <td className="px-5 py-3 text-gray-500">{h.dc_location ?? '—'}</td>
                       <td className="px-5 py-3 text-gray-500">{h.cluster_id ?? '—'}</td>
                       <td className="px-5 py-3 text-gray-500">{h.domain_name ?? '—'}</td>
                       <td className="px-5 py-3 text-gray-500">{fmtDate(h.start_date)}</td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3 justify-end">
-                          <button onClick={() => openEditHid(h)} title="Edit" className="text-gray-500 hover:text-gray-700"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" /></svg></button>
                           <DeleteActions entity="hid" rowId={h.id} />
                         </div>
                       </td>
