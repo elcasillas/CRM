@@ -349,15 +349,6 @@ export async function POST(req: NextRequest) {
     await admin.from('notes').update({ created_at: fix.created_at }).eq('id', fix.id)
   }
 
-  // Trigger health score computation for each newly inserted deal (fire-and-forget)
-  const origin = req.nextUrl.origin
-  for (const { id } of inserted ?? []) {
-    fetch(`${origin}/api/deals/${id}/health-score`, {
-      method: 'POST',
-      headers: { cookie: req.headers.get('cookie') ?? '' },
-    }).catch(() => { /* silent */ })
-  }
-
   return NextResponse.json({
     inserted: inserted?.length ?? 0,
     existing: existingRows.length,

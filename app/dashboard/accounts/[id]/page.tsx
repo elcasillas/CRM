@@ -326,10 +326,6 @@ export default function AccountDetailPage() {
   }
   function closeDealModal() { setDealModal(null); setEditingDeal(null); clearError(); setDealNotes([]); setDealNoteText(''); setDealSummary(null) }
 
-  function triggerDealHealthScore(dealId: string) {
-    fetch(`/api/deals/${dealId}/health-score`, { method: 'POST' }).catch(() => {})
-  }
-
   async function saveDeal() {
     setSaving(true); clearError()
     const payload = { account_id: id, stage_id: dealForm.stage_id, deal_name: dealForm.deal_name.trim(), deal_description: dealForm.deal_description.trim() || null, deal_owner_id: dealForm.deal_owner_id || userId, solutions_engineer_id: dealForm.solutions_engineer_id || null, value_amount: dealForm.value_amount ? parseFloat(dealForm.value_amount) : null, currency: dealForm.currency || 'USD', close_date: dealForm.close_date || null }
@@ -344,7 +340,7 @@ export default function AccountDetailPage() {
         if (stageChanged) {
           await supabase.from('deal_stage_history').insert({ deal_id: editingDeal!.id, from_stage_id: editingDeal!.stage_id, to_stage_id: dealForm.stage_id, changed_by: userId })
         }
-        closeDealModal(); fetchDeals(); triggerDealHealthScore(editingDeal!.id)
+        closeDealModal(); fetchDeals()
       }
     }
     setSaving(false)
@@ -354,7 +350,7 @@ export default function AccountDetailPage() {
     if (!dealNoteText.trim() || !editingDeal) return
     setLoggingDealNote(true)
     const { error } = await supabase.from('notes').insert({ entity_type: 'deal', entity_id: editingDeal.id, note_text: dealNoteText.trim(), created_by: userId })
-    if (!error) { setDealNoteText(''); fetchDealNotes(editingDeal.id); triggerDealHealthScore(editingDeal.id) }
+    if (!error) { setDealNoteText(''); fetchDealNotes(editingDeal.id) }
     setLoggingDealNote(false)
   }
 

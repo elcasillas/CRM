@@ -185,12 +185,6 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     else setDeals((data ?? []) as DealWithRelations[])
   }
 
-  function triggerHealthScore(dealId: string) {
-    fetch(`/api/deals/${dealId}/health-score`, { method: 'POST' })
-      .then(() => fetchDeals())
-      .catch(() => { /* silent */ })
-  }
-
   async function fetchDealNotes(dealId: string) {
     const { data } = await supabase
       .from('notes')
@@ -277,7 +271,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     const { error } = await supabase.from('notes').insert({
       entity_type: 'deal', entity_id: editing.id, note_text: noteText.trim(), created_by: userId,
     })
-    if (!error) { setNotesUI('noteText', ''); fetchDealNotes(editing.id); fetchLastNoteDates(); triggerHealthScore(editing.id) }
+    if (!error) { setNotesUI('noteText', ''); fetchDealNotes(editing.id); fetchLastNoteDates(); fetchDeals() }
     setNotesUI('loggingNote', false)
   }
 
@@ -312,7 +306,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     }
     if (modal === 'add') {
       const { data: inserted, error } = await supabase.from('deals').insert({ ...payload, deal_owner_id: u!.id }).select('id').single()
-      if (error) { setUI('formError', error.message) } else { closeModal(); fetchDeals(); if (inserted) triggerHealthScore(inserted.id) }
+      if (error) { setUI('formError', error.message) } else { closeModal(); fetchDeals() }
     } else if (modal === 'edit' && editing) {
       const stageChanged = form.stage_id !== editing.stage_id
       const { error } = await supabase.from('deals').update({ ...payload, last_activity_at: new Date().toISOString() }).eq('id', editing.id)
@@ -324,7 +318,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
             deal_id: editing.id, from_stage_id: editing.stage_id, to_stage_id: form.stage_id, changed_by: u!.id,
           })
         }
-        closeModal(); fetchDeals(); triggerHealthScore(editing.id)
+        closeModal(); fetchDeals()
       }
     }
     setUI('saving', false)

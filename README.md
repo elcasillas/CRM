@@ -10,6 +10,7 @@ A sales CRM built with Next.js 15, Supabase, and Tailwind CSS. Features accounts
 
 | Date | Change |
 |------|--------|
+| 2026-03-05 | Health score computation moved to Postgres — `recompute_deal_health_score(uuid)` function + triggers on `notes` and `deals`; removed `/api/deals/[id]/health-score` route and `lib/deal-health-score.ts` (migration `20260305000003`) |
 | 2026-03-05 | Deals page uses `get_deals_page` Postgres RPC — merges deals+joins and last-note aggregation into one round-trip (migration `20260305000002`) |
 | 2026-03-05 | Removed unused `/api/users` and `/api/settings` routes — data now fetched server-side in the Deals server component |
 | 2026-03-05 | Collapsed 18 individual `useState` hooks in `DealsClient` into 3 grouped objects (`filters`, `ui`, `notes`) with typed setter helpers and `useMemo` for derived data |
@@ -101,6 +102,7 @@ Migrations in `supabase/migrations/`:
 | `20260304000006_add_slack_member_id.sql` | Adds `slack_member_id` column to `profiles` |
 | `20260305000001_add_stale_days_to_health_score_config.sql` | Adds `stale_days` column to `health_score_config` (default 30) |
 | `20260305000002_get_deals_page.sql` | Adds `get_deals_page()` RPC — combines deals+joins and last-note aggregation in one query |
+| `20260305000003_recompute_deal_health_score.sql` | Adds `recompute_deal_health_score(uuid)` function + `recompute_all_deal_health_scores()` + triggers on `notes` and `deals` |
 
 Earlier files (`000001`–`000003`) are superseded by `000004` and can be skipped.
 
