@@ -1092,10 +1092,10 @@ export default function AccountDetailPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="ACV (auto)">
-                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{dealForm.amount ? (fmtCurrency(calcACV(dealForm.amount)) || '—') : (editingDeal?.value_amount != null ? fmtCurrency(editingDeal.value_amount) || '—' : '—')}</p>
+                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{dealForm.amount ? (fmtCurrency(calcACV(dealForm.amount)) || '—') : '—'}</p>
                 </Field>
                 <Field label="Total Contract Value (auto)">
-                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{dealForm.amount && dealForm.contract_term_months ? (fmtCurrency(calcTCV(dealForm.amount, dealForm.contract_term_months)) || '—') : (editingDeal?.total_contract_value != null ? fmtCurrency(editingDeal.total_contract_value) || '—' : '—')}</p>
+                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{dealForm.amount && dealForm.contract_term_months ? (fmtCurrency(calcTCV(dealForm.amount, dealForm.contract_term_months)) || '—') : '—'}</p>
                 </Field>
               </div>
 

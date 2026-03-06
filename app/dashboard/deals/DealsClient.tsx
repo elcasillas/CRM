@@ -919,10 +919,10 @@ Please review and let me know if any updates are needed.`
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="ACV (auto)">
-                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount ? (formatCurrency(calcACV(form.amount)) ?? '—') : (editing?.value_amount != null ? formatCurrency(editing.value_amount) ?? '—' : '—')}</p>
+                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount ? (formatCurrency(calcACV(form.amount)) ?? '—') : '—'}</p>
                 </Field>
                 <Field label="Total Contract Value (auto)">
-                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount && form.contract_term_months ? (formatCurrency(calcTCV(form.amount, form.contract_term_months)) ?? '—') : (editing?.total_contract_value != null ? formatCurrency(editing.total_contract_value) ?? '—' : '—')}</p>
+                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount && form.contract_term_months ? (formatCurrency(calcTCV(form.amount, form.contract_term_months)) ?? '—') : '—'}</p>
                 </Field>
               </div>
 
