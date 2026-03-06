@@ -10,5 +10,5 @@ export async function assertAdmin() {
     .select('role')
     .eq('id', user.id)
     .single()
-  return profile?.role === 'admin' ? user : null
+  return (profile as { role: string } | null)?.role === 'admin' ? user : null
 }
