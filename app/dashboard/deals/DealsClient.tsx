@@ -707,7 +707,15 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                     </button>
                   </div>
                   {feedbackSummary
-                    ? <p className="text-sm text-gray-700 bg-blue-50 rounded-lg p-3 leading-relaxed">{feedbackSummary}</p>
+                    ? (
+                      <div className="bg-blue-50 rounded-lg p-4 space-y-3">
+                        {feedbackSummary.split('\n\n').filter(Boolean).map((block, i) =>
+                          block.startsWith('## ')
+                            ? <p key={i} className="text-xs font-semibold text-gray-500 uppercase tracking-wide pt-1">{block.slice(3)}</p>
+                            : <p key={i} className="text-sm text-gray-700 leading-relaxed">{block}</p>
+                        )}
+                      </div>
+                    )
                     : <p className="text-xs text-gray-400">Click Summarize to generate an AI summary of this deal&apos;s notes.</p>}
                 </div>
               )}

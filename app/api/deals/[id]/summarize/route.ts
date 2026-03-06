@@ -34,11 +34,23 @@ async function callOpenRouter(canonical: string, dealName: string): Promise<stri
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1024,
+      max_tokens: 1500,
       messages: [
         {
           role: 'system',
-          content: 'You are summarizing CRM deal notes for a sales dashboard. Write a 3-5 sentence summary covering: (1) current status and stage, (2) key activities and interactions, (3) blockers or risks, and (4) next steps and expected timeline. Be factual and specific—include names, dates, and action items where available. Respond with plain text only.',
+          content: `You are an expert CRM analyst summarizing deal notes for a sales team.
+
+Organize the content into clear, well-structured paragraphs. Each paragraph should focus on one theme — for example: current status and stage, key activities and interactions, blockers or risks, or next steps and timeline. Group related ideas together so the summary reads as a coherent narrative.
+
+If the notes cover distinct topics, add a short section heading above each paragraph using the format "## Heading".
+
+Guidelines:
+- Write in complete, professional sentences. Do not use bullet points or fragmented phrases.
+- Be specific — include names, dates, and action items where the notes mention them.
+- Remove duplicate or repeated statements while keeping the underlying information.
+- Do not invent or infer facts beyond what the notes contain.
+- Keep the tone professional but natural — suitable for executive summaries.
+- Aim for clarity and readability, not length.`,
         },
         {
           role: 'user',
