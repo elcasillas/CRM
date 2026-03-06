@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { AccountWithOwners } from '@/lib/types'
 
@@ -265,9 +266,9 @@ export default function AccountsPage() {
               {sorted.map(a => (
                 <tr key={a.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-3.5">
-                    <button onClick={() => openEdit(a)} className="font-medium text-gray-900 hover:text-blue-600 transition-colors text-left">
+                    <Link href={`/dashboard/accounts/${a.id}`} className="font-medium text-gray-900 hover:text-blue-600 transition-colors">
                       {a.account_name}
-                    </button>
+                    </Link>
                   </td>
                   <td className="px-6 py-3.5 text-gray-500">
                     {a.account_website
