@@ -122,7 +122,7 @@ function Modal({ title, onClose, onSave, saving, disabled, error, children, maxW
 export default function AccountDetailPage() {
   const { id }      = useParams<{ id: string }>()
   const searchParams = useSearchParams()
-  const initialTab  = (searchParams.get('tab') as Tab | null) ?? 'contacts'
+  const initialTab  = (searchParams.get('tab') as Tab | null) ?? 'deals'
 
   const [account,   setAccount]   = useState<AccountWithOwners | null>(null)
   const [contacts,  setContacts]  = useState<Contact[]>([])
@@ -495,10 +495,10 @@ export default function AccountDetailPage() {
   }
 
   const TABS: { key: Tab; label: string; count: number }[] = [
-    { key: 'contacts',  label: 'Contacts',  count: contacts.length },
-    { key: 'hids',      label: 'HIDs',      count: hids.length },
-    { key: 'contracts', label: 'Contracts', count: contracts.length },
     { key: 'deals',     label: 'Deals',     count: deals.length },
+    { key: 'hids',      label: 'HIDs',      count: hids.length },
+    { key: 'contacts',  label: 'Contacts',  count: contacts.length },
+    { key: 'contracts', label: 'Contracts', count: contracts.length },
     { key: 'notes',     label: 'Notes',     count: notes.length },
   ]
 
