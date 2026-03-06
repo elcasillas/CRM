@@ -1,20 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { assertAdmin } from '@/lib/api-helpers'
 
 const VALID_ROLES = ['admin', 'sales', 'sales_manager', 'solutions_engineer', 'service_manager', 'read_only'] as const
-
-async function assertAdmin() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single()
-  return profile?.role === 'admin' ? user : null
-}
 
 // GET /api/admin/users — list auth users (id, email, created_at)
 export async function GET() {
