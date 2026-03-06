@@ -5,12 +5,13 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { DealStage, DealWithRelations, NoteWithAuthor } from '@/lib/types'
 import type { DealFormData, DealsInitialData } from './types'
+import { parseAmount, calcACV, calcTCV } from '@/lib/dealCalc'
 
 const supabase = createClient()
 
 const EMPTY_FORM: DealFormData = {
   deal_name: '', deal_description: '', account_id: '', stage_id: '',
-  deal_owner_id: '', solutions_engineer_id: '', value_amount: '', currency: 'USD', close_date: '',
+  deal_owner_id: '', solutions_engineer_id: '', amount: '', contract_term_months: '', currency: 'USD', close_date: '',
 }
 
 const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm'
@@ -253,7 +254,8 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
         stage_id:              deal.stage_id,
         deal_owner_id:         deal.deal_owner_id,
         solutions_engineer_id: deal.solutions_engineer_id ?? '',
-        value_amount:          deal.value_amount != null ? String(deal.value_amount) : '',
+        amount:                deal.amount != null ? String(deal.amount) : '',
+        contract_term_months:  deal.contract_term_months != null ? String(deal.contract_term_months) : '',
         currency:              deal.currency,
         close_date:            deal.close_date ?? '',
       },
@@ -314,14 +316,19 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
   async function handleSave() {
     setUIState(prev => ({ ...prev, saving: true, formError: null }))
     const { data: { user: u } } = await supabase.auth.getUser()
+    const amountNum = parseAmount(form.amount)
+    const termNum   = Math.max(0, Math.floor(parseFloat(form.contract_term_months) || 0))
     const payload = {
-      deal_name:        form.deal_name.trim(),
-      deal_description: form.deal_description.trim() || null,
-      account_id:       form.account_id   || null,
-      stage_id:         form.stage_id,
-      value_amount:     form.value_amount ? parseFloat(form.value_amount) : null,
-      currency:         form.currency     || 'USD',
-      close_date:       form.close_date   || null,
+      deal_name:             form.deal_name.trim(),
+      deal_description:      form.deal_description.trim() || null,
+      account_id:            form.account_id   || null,
+      stage_id:              form.stage_id,
+      amount:                amountNum > 0 ? amountNum : null,
+      contract_term_months:  termNum   > 0 ? termNum   : null,
+      value_amount:          amountNum > 0 ? amountNum * 12 : null,
+      total_contract_value:  amountNum > 0 && termNum > 0 ? amountNum * termNum : null,
+      currency:              form.currency || 'USD',
+      close_date:            form.close_date || null,
       solutions_engineer_id: form.solutions_engineer_id || null,
       ...(modal === 'edit' && form.deal_owner_id ? { deal_owner_id: form.deal_owner_id } : {}),
     }
@@ -890,14 +897,25 @@ Please review and let me know if any updates are needed.`
                 </select>
               </Field>
               <div className="grid grid-cols-2 gap-4">
-                <Field label="ACV"><input type="number" min="0" step="100" value={form.value_amount} onChange={set('value_amount')} placeholder="0" className={INPUT} /></Field>
+                <Field label="Amount"><input type="number" min="0" step="100" value={form.amount} onChange={set('amount')} placeholder="0" className={INPUT} /></Field>
                 <Field label="Currency">
                   <select value={form.currency} onChange={set('currency')} className={INPUT}>
                     <option value="USD">USD</option><option value="CAD">CAD</option><option value="EUR">EUR</option><option value="GBP">GBP</option>
                   </select>
                 </Field>
               </div>
-              <Field label="Close date"><input type="date" value={form.close_date} onChange={set('close_date')} className={INPUT} /></Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Contract Term (months)"><input type="number" min="1" step="1" value={form.contract_term_months} onChange={set('contract_term_months')} placeholder="" className={INPUT} /></Field>
+                <Field label="Close date"><input type="date" value={form.close_date} onChange={set('close_date')} className={INPUT} /></Field>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="ACV (auto)">
+                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount ? (formatCurrency(calcACV(form.amount)) ?? '—') : '—'}</p>
+                </Field>
+                <Field label="Total Contract Value (auto)">
+                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount && form.contract_term_months ? (formatCurrency(calcTCV(form.amount, form.contract_term_months)) ?? '—') : '—'}</p>
+                </Field>
+              </div>
 
               {modal === 'edit' && (
                 <div className="border-t border-gray-100 pt-4">

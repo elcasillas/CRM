@@ -44,6 +44,13 @@ function parseCSVText(text: string): string[][] {
   return rows
 }
 
+/** Strip formatting and parse a plain numeric value (no currency detection). */
+function parseNumericValue(s: string): number {
+  if (!s) return 0
+  const n = parseFloat(s.replace(/[$,\s]/g, ''))
+  return isFinite(n) && n >= 0 ? n : 0
+}
+
 function parseACV(value: string): { value: number; isCAD: boolean } {
   if (!value) return { value: 0, isCAD: true }
   const upper = value.trim().toUpperCase()
@@ -81,6 +88,9 @@ interface ParsedDeal {
   deal_owner_name: string
   stage_name: string
   value_amount: number
+  amount: number | null
+  contract_term_months: number | null
+  total_contract_value: number | null
   close_date: string | null
   deal_description: string
   account_name: string
@@ -108,6 +118,9 @@ function parseCSVDeals(csvText: string): ParsedDeal[] {
   const iAcctName     = idx('Account Name')
   const iStage        = idx('Stage')
   const iACV          = idx('Annual Contract Value')
+  const iAmount       = idx('Amount')
+  const iTermMonths   = idx('Contract Term (months)')
+  const iTCV          = idx('Total Contract Value')
   const iClose        = idx('Closing Date')
   const iNotes        = idx('Note Content')
   const iDesc         = idx('Description')
@@ -137,6 +150,20 @@ function parseCSVDeals(csvText: string): ParsedDeal[] {
     const descRaw     = iDesc     >= 0 ? (row[iDesc]     ?? '').trim() : ''
     const modifiedRaw = iModifiedTime >= 0 ? (row[iModifiedTime] ?? '').trim() : ''
 
+    // New value fields — all optional; gracefully absent in legacy CSVs
+    const amountRaw = iAmount     >= 0 ? (row[iAmount]     ?? '').trim() : ''
+    const termRaw   = iTermMonths >= 0 ? (row[iTermMonths] ?? '').trim() : ''
+    const tcvRaw    = iTCV        >= 0 ? (row[iTCV]        ?? '').trim() : ''
+
+    const parsedAmount = amountRaw ? parseNumericValue(amountRaw)  : null
+    const parsedTerm   = termRaw   ? Math.max(0, Math.floor(parseFloat(termRaw.replace(/[^0-9.]/g, '')) || 0)) || null : null
+    // Use CSV TCV if present; else calculate from amount × term if both are known
+    const parsedTCV    = tcvRaw    ? parseNumericValue(tcvRaw)
+                       : (parsedAmount && parsedTerm) ? parsedAmount * parsedTerm
+                       : null
+    // Derive value_amount (ACV) from Amount column when available; fall back to Annual Contract Value
+    const derivedACV   = parsedAmount != null ? parsedAmount * 12 : acv.value
+
     const noteText = noteRaw.replace(/<[^>]*>/g, '').trim()
 
     let modifiedAt: string | null = null
@@ -160,14 +187,17 @@ function parseCSVDeals(csvText: string): ParsedDeal[] {
       const noteMap = new Map<string, ParsedNote>()
       if (noteText) noteMap.set(noteText, { text: noteText, modified_at: modifiedAt })
       dealMap.set(key, {
-        deal_name:        dealName,
-        deal_owner_name:  dealOwner,
-        account_name:     acctName,
-        stage_name:       stageName,
-        value_amount:     acv.value,
-        close_date:       closeDate,
-        deal_description: descRaw,
-        notes:            [],
+        deal_name:            dealName,
+        deal_owner_name:      dealOwner,
+        account_name:         acctName,
+        stage_name:           stageName,
+        value_amount:         derivedACV,
+        amount:               parsedAmount,
+        contract_term_months: parsedTerm,
+        total_contract_value: parsedTCV,
+        close_date:           closeDate,
+        deal_description:     descRaw,
+        notes:                [],
         noteMap,
       })
     }
@@ -247,7 +277,7 @@ export async function POST(req: NextRequest) {
   }
 
   const now = new Date().toISOString()
-  type DealRow = { account_id: string; stage_id: string; deal_name: string; deal_description: string | null; deal_owner_id: string; value_amount: number | null; currency: string; close_date: string | null; last_activity_at: string; _notes: ParsedNote[]; _owner_id: string }
+  type DealRow = { account_id: string; stage_id: string; deal_name: string; deal_description: string | null; deal_owner_id: string; amount: number | null; contract_term_months: number | null; total_contract_value: number | null; value_amount: number | null; currency: string; close_date: string | null; last_activity_at: string; _notes: ParsedNote[]; _owner_id: string }
   const rows = parsedDeals.map(d => {
     const resolvedAccountId =
       (d.account_name && accountNameMap.get(normalizeString(d.account_name))) ||
@@ -257,17 +287,20 @@ export async function POST(req: NextRequest) {
     const stageId = stageMap.get(normalizeString(d.stage_name)) ?? defaultStageId
     const ownerId = profileMap.get(normalizeString(d.deal_owner_name)) ?? user.id
     return {
-      account_id:       resolvedAccountId,
-      stage_id:         stageId,
-      deal_name:        d.deal_name,
-      deal_description: d.deal_description || null,
-      deal_owner_id:    ownerId,
-      value_amount:     d.value_amount > 0 ? d.value_amount : null,
-      currency:         'CAD',
-      close_date:       d.close_date,
-      last_activity_at: now,
-      _notes:           d.notes,
-      _owner_id:        ownerId,
+      account_id:           resolvedAccountId,
+      stage_id:             stageId,
+      deal_name:            d.deal_name,
+      deal_description:     d.deal_description || null,
+      deal_owner_id:        ownerId,
+      amount:               d.amount != null && d.amount > 0 ? d.amount : null,
+      contract_term_months: d.contract_term_months,
+      total_contract_value: d.total_contract_value,
+      value_amount:         d.value_amount > 0 ? d.value_amount : null,
+      currency:             'CAD',
+      close_date:           d.close_date,
+      last_activity_at:     now,
+      _notes:               d.notes,
+      _owner_id:            ownerId,
     }
   }).filter((r): r is NonNullable<DealRow> => r !== null && !!r.stage_id)
 

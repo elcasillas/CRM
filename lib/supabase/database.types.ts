@@ -328,7 +328,9 @@ export type Database = {
           account_id: string
           ai_summary: string | null
           ai_summary_generated_at: string | null
+          amount: number | null
           close_date: string | null
+          contract_term_months: number | null
           created_at: string
           currency: string
           deal_description: string | null
@@ -347,6 +349,7 @@ export type Database = {
           notes_hash: string | null
           solutions_engineer_id: string | null
           stage_id: string
+          total_contract_value: number | null
           updated_at: string
           value_amount: number | null
         }
@@ -354,7 +357,9 @@ export type Database = {
           account_id: string
           ai_summary?: string | null
           ai_summary_generated_at?: string | null
+          amount?: number | null
           close_date?: string | null
+          contract_term_months?: number | null
           created_at?: string
           currency?: string
           deal_description?: string | null
@@ -373,6 +378,7 @@ export type Database = {
           notes_hash?: string | null
           solutions_engineer_id?: string | null
           stage_id: string
+          total_contract_value?: number | null
           updated_at?: string
           value_amount?: number | null
         }
@@ -380,7 +386,9 @@ export type Database = {
           account_id?: string
           ai_summary?: string | null
           ai_summary_generated_at?: string | null
+          amount?: number | null
           close_date?: string | null
+          contract_term_months?: number | null
           created_at?: string
           currency?: string
           deal_description?: string | null
@@ -399,6 +407,7 @@ export type Database = {
           notes_hash?: string | null
           solutions_engineer_id?: string | null
           stage_id?: string
+          total_contract_value?: number | null
           updated_at?: string
           value_amount?: number | null
         }
@@ -594,7 +603,9 @@ export type Database = {
         Returns: {
           account_id: string
           account_name: string
+          amount: number
           close_date: string
+          contract_term_months: number
           created_at: string
           currency: string
           deal_description: string
@@ -623,6 +634,7 @@ export type Database = {
           stage_is_won: boolean
           stage_name: string
           stage_sort_order: number
+          total_contract_value: number
           updated_at: string
           value_amount: number
         }[]

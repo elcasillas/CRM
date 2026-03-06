@@ -8,7 +8,8 @@ export type DealFormData = {
   stage_id:              string
   deal_owner_id:         string
   solutions_engineer_id: string
-  value_amount:          string
+  amount:                string   // user-entered; ACV = amount × 12 (auto)
+  contract_term_months:  string   // user-entered; TCV = amount × term (auto)
   currency:              string
   close_date:            string
 }
