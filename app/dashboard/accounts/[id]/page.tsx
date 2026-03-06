@@ -60,6 +60,7 @@ type ContactForm = { first_name: string; last_name: string; email: string; phone
 type HidForm     = { hid_number: string; dc_location: string; cluster_id: string; start_date: string; domain_name: string }
 type ContractForm = { effective_date: string; renewal_date: string; renewal_term_months: string; auto_renew: boolean; status: string }
 type DealForm    = { deal_name: string; deal_description: string; stage_id: string; deal_owner_id: string; solutions_engineer_id: string; value_amount: string; currency: string; close_date: string }
+type AccountForm = { account_name: string; account_website: string; address_line1: string; address_line2: string; city: string; region: string; postal: string; country: string; status: string; account_owner_id: string; service_manager_id: string }
 
 const EMPTY_CONTACT: ContactForm  = { first_name: '', last_name: '', email: '', phone: '', title: '', is_primary: false }
 const EMPTY_HID: HidForm          = { hid_number: '', dc_location: '', cluster_id: '', start_date: '', domain_name: '' }
@@ -158,6 +159,12 @@ export default function AccountDetailPage() {
   const [dealSummary,            setDealSummary]            = useState<string | null>(null)
   const [loadingDealSummary,     setLoadingDealSummary]     = useState(false)
 
+  // account edit
+  const [accountModal,    setAccountModal]    = useState(false)
+  const [accountForm,     setAccountForm]     = useState<AccountForm>({ account_name: '', account_website: '', address_line1: '', address_line2: '', city: '', region: '', postal: '', country: '', status: 'active', account_owner_id: '', service_manager_id: '' })
+  const [accountSaving,   setAccountSaving]   = useState(false)
+  const [accountFormError, setAccountFormError] = useState<string | null>(null)
+
   // description
   const [descEditing, setDescEditing] = useState(false)
   const [descDraft,   setDescDraft]   = useState('')
@@ -253,6 +260,53 @@ export default function AccountDetailPage() {
     const { error } = await supabase.from('accounts').update({ description: descDraft.trim() || null }).eq('id', id)
     if (!error) { setAccount(a => a ? { ...a, description: descDraft.trim() || null } : a); setDescEditing(false) }
     setDescSaving(false)
+  }
+
+  // ── Account edit ─────────────────────────────────────────────────────────────
+
+  function openEditAccount() {
+    if (!account) return
+    setAccountForm({
+      account_name:       account.account_name,
+      account_website:    account.account_website    ?? '',
+      address_line1:      account.address_line1      ?? '',
+      address_line2:      account.address_line2      ?? '',
+      city:               account.city               ?? '',
+      region:             account.region             ?? '',
+      postal:             account.postal             ?? '',
+      country:            account.country            ?? '',
+      status:             account.status,
+      account_owner_id:   account.account_owner_id   ?? '',
+      service_manager_id: account.service_manager_id ?? '',
+    })
+    setAccountFormError(null)
+    setAccountModal(true)
+  }
+
+  function closeAccountModal() { setAccountModal(false); setAccountFormError(null) }
+
+  async function saveAccount() {
+    if (!accountForm.account_name.trim()) { setAccountFormError('Account name is required'); return }
+    setAccountSaving(true); setAccountFormError(null)
+    const payload = {
+      account_name:       accountForm.account_name.trim(),
+      account_website:    accountForm.account_website.trim()  || null,
+      address_line1:      accountForm.address_line1.trim()    || null,
+      address_line2:      accountForm.address_line2.trim()    || null,
+      city:               accountForm.city.trim()             || null,
+      region:             accountForm.region.trim()           || null,
+      postal:             accountForm.postal.trim()           || null,
+      country:            accountForm.country.trim()          || null,
+      status:             accountForm.status,
+      account_owner_id:   accountForm.account_owner_id        || null,
+      service_manager_id: accountForm.service_manager_id      || null,
+    }
+    const { error } = await supabase.from('accounts').update(payload).eq('id', id)
+    if (error) { setAccountFormError(error.message) } else {
+      await fetchAccount()
+      closeAccountModal()
+    }
+    setAccountSaving(false)
   }
 
   // ── Generic helpers ─────────────────────────────────────────────────────────
@@ -465,6 +519,13 @@ export default function AccountDetailPage() {
               )}
             </div>
           </div>
+          <button
+            onClick={openEditAccount}
+            title="Edit account"
+            className="shrink-0 text-gray-400 hover:text-gray-700 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" /></svg>
+          </button>
         </div>
 
         {/* Description */}
@@ -769,6 +830,61 @@ export default function AccountDetailPage() {
       )}
 
       {/* ── Modals ────────────────────────────────────────────────────────────── */}
+
+      {/* Account edit modal */}
+      {accountModal && (
+        <Modal
+          title="Edit account"
+          onClose={closeAccountModal} onSave={saveAccount}
+          saving={accountSaving} disabled={!accountForm.account_name.trim()} error={accountFormError}
+        >
+          <Field label="Account name *">
+            <input type="text" value={accountForm.account_name} onChange={e => setAccountForm(f => ({ ...f, account_name: e.target.value }))} className={INPUT} autoFocus />
+          </Field>
+          <Field label="Website">
+            <input type="url" value={accountForm.account_website} onChange={e => setAccountForm(f => ({ ...f, account_website: e.target.value }))} placeholder="https://" className={INPUT} />
+          </Field>
+          <Field label="Address line 1">
+            <input type="text" value={accountForm.address_line1} onChange={e => setAccountForm(f => ({ ...f, address_line1: e.target.value }))} className={INPUT} />
+          </Field>
+          <Field label="Address line 2">
+            <input type="text" value={accountForm.address_line2} onChange={e => setAccountForm(f => ({ ...f, address_line2: e.target.value }))} className={INPUT} />
+          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="City"><input type="text" value={accountForm.city} onChange={e => setAccountForm(f => ({ ...f, city: e.target.value }))} className={INPUT} /></Field>
+            <Field label="Region / State"><input type="text" value={accountForm.region} onChange={e => setAccountForm(f => ({ ...f, region: e.target.value }))} className={INPUT} /></Field>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Postal code"><input type="text" value={accountForm.postal} onChange={e => setAccountForm(f => ({ ...f, postal: e.target.value }))} className={INPUT} /></Field>
+            <Field label="Country"><input type="text" value={accountForm.country} onChange={e => setAccountForm(f => ({ ...f, country: e.target.value }))} className={INPUT} /></Field>
+          </div>
+          <Field label="Status">
+            <select value={accountForm.status} onChange={e => setAccountForm(f => ({ ...f, status: e.target.value }))} className={INPUT}>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="churned">Churned</option>
+            </select>
+          </Field>
+          {isAdmin && (
+            <Field label="Account owner">
+              <select value={accountForm.account_owner_id} onChange={e => setAccountForm(f => ({ ...f, account_owner_id: e.target.value }))} className={INPUT}>
+                <option value="">— none —</option>
+                {profiles.filter(p => p.role === 'sales' || p.role === 'sales_manager' || p.role === 'admin').map(p => (
+                  <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
+                ))}
+              </select>
+            </Field>
+          )}
+          <Field label="Service manager">
+            <select value={accountForm.service_manager_id} onChange={e => setAccountForm(f => ({ ...f, service_manager_id: e.target.value }))} className={INPUT}>
+              <option value="">— none —</option>
+              {profiles.map(p => (
+                <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
+              ))}
+            </select>
+          </Field>
+        </Modal>
+      )}
 
       {/* Contact modal */}
       {contactModal && (
