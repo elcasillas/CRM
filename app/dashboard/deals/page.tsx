@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { DealWithRelations, DealStage, Account } from '@/lib/types'
-import type { DealsInitialData, DealPageRow } from './types'
+import type { DealsInitialData } from './types'
 import DealsClient from './DealsClient'
 
 export default async function DealsPage() {
@@ -43,7 +43,7 @@ export default async function DealsPage() {
   ])
 
   // Map flat RPC rows → DealWithRelations[] and build lastNoteDates
-  const rpcRows = (rpcData ?? []) as DealPageRow[]
+  const rpcRows = rpcData ?? []
 
   const deals = rpcRows.map(row => ({
     id:                    row.id,

@@ -1,32 +1,40 @@
-// ── Profiles ────────────────────────────────────────────────────────────────
-export type UserRole = 'admin' | 'sales' | 'sales_manager' | 'solutions_engineer' | 'service_manager' | 'read_only'
+import type { Tables } from './supabase/database.types'
 
-export interface Profile {
-  id:              string
-  full_name:       string | null
-  role:            UserRole
-  slack_member_id: string | null
-  created_at:      string
-  updated_at:      string
-}
+// ── Semantic union types ──────────────────────────────────────────────────────
+// Postgres CHECK constraints don't generate TS enums, so we keep these.
 
-// ── Accounts ────────────────────────────────────────────────────────────────
-export interface Account {
-  id:                 string
-  account_name:       string
-  account_website:    string | null
-  address_line1:      string | null
-  address_line2:      string | null
-  city:               string | null
-  region:             string | null
-  postal:             string | null
-  country:            string | null
-  account_owner_id:   string
-  service_manager_id: string | null
-  status:             string
-  description:        string | null
-  created_at:         string
-  updated_at:         string
+export type UserRole =
+  | 'admin'
+  | 'sales'
+  | 'sales_manager'
+  | 'solutions_engineer'
+  | 'service_manager'
+  | 'read_only'
+
+export type NoteEntityType = 'account' | 'deal' | 'contact' | 'contract' | 'hid'
+
+// ── Table row types (generated aliases) ──────────────────────────────────────
+// Replace manual interface declarations — regenerate with `npm run gen-types`.
+
+export type Account   = Tables<'accounts'>
+export type Contact   = Tables<'contacts'>
+export type HidRecord = Tables<'hid_records'>
+export type Contract  = Tables<'contracts'>
+export type DealStage = Tables<'deal_stages'>
+export type Deal      = Tables<'deals'>
+
+// Note and Profile override the generated `string` types for constrained columns
+// with narrower union types for better type safety.
+export type Note    = Omit<Tables<'notes'>,    'entity_type'> & { entity_type: NoteEntityType }
+export type Profile = Omit<Tables<'profiles'>, 'role'>        & { role: UserRole }
+
+// ── Relational types (joins — cannot come from generated table types) ─────────
+
+export interface DealWithRelations extends Deal {
+  accounts:           { account_name: string } | null
+  deal_stages:        Pick<DealStage, 'stage_name' | 'sort_order' | 'is_closed' | 'is_won' | 'is_lost'> | null
+  deal_owner:         { full_name: string | null } | null
+  solutions_engineer: { full_name: string | null } | null
 }
 
 export interface AccountWithOwners extends Account {
@@ -34,108 +42,9 @@ export interface AccountWithOwners extends Account {
   service_manager: { id: string; full_name: string | null } | null
 }
 
-// ── Contacts ────────────────────────────────────────────────────────────────
-export interface Contact {
-  id:         string
-  account_id: string
-  first_name: string | null
-  last_name:  string | null
-  email:      string
-  phone:      string | null
-  title:      string | null
-  is_primary: boolean
-  created_at: string
-  updated_at: string
-}
-
-// ── HID Records ─────────────────────────────────────────────────────────────
-export interface HidRecord {
-  id:          string
-  account_id:  string
-  hid_number:  string
-  dc_location: string | null
-  cluster_id:  string | null
-  start_date:  string | null
-  domain_name: string | null
-  created_at:  string
-  updated_at:  string
-}
-
-// ── Contracts ───────────────────────────────────────────────────────────────
-export interface Contract {
-  id:                  string
-  account_id:          string
-  effective_date:      string | null
-  renewal_date:        string | null
-  renewal_term_months: number | null
-  auto_renew:          boolean
-  status:              string
-  created_at:          string
-  updated_at:          string
-}
-
-// ── Deal Stages ─────────────────────────────────────────────────────────────
-export interface DealStage {
-  id:               string
-  stage_name:       string
-  sort_order:       number
-  is_closed:        boolean
-  is_won:           boolean
-  is_lost:          boolean
-  win_probability:  number | null
-}
-
-// ── Deals ───────────────────────────────────────────────────────────────────
-export interface Deal {
-  id:               string
-  account_id:       string
-  stage_id:         string
-  deal_name:        string
-  deal_description: string | null
-  deal_owner_id:          string
-  solutions_engineer_id:  string | null
-  value_amount:           number | null
-  currency:               string
-  close_date:             string | null
-  last_activity_at:       string | null
-  created_at:             string
-  updated_at:             string
-  // Health score (computed, stored for display)
-  health_score:         number | null
-  hs_stage_probability: number | null
-  hs_velocity:          number | null
-  hs_activity_recency:  number | null
-  hs_close_date:        number | null
-  hs_acv:               number | null
-  hs_notes_signal:      number | null
-  health_debug:         Record<string, unknown> | null
-  notes_hash:           string | null
-}
-
-export interface DealWithRelations extends Deal {
-  accounts:             { account_name: string } | null
-  deal_stages:          Pick<DealStage, 'stage_name' | 'sort_order' | 'is_closed' | 'is_won' | 'is_lost'> | null
-  deal_owner:           { full_name: string | null } | null
-  solutions_engineer:   { full_name: string | null } | null
-}
-
-// ── Notes ───────────────────────────────────────────────────────────────────
-export type NoteEntityType = 'account' | 'deal' | 'contact' | 'contract' | 'hid'
-
-export interface Note {
-  id:          string
-  entity_type: NoteEntityType
-  entity_id:   string
-  note_text:   string
-  created_by:  string
-  created_at:  string
-}
-
 export interface NoteWithAuthor extends Note {
   author: { full_name: string | null } | null
 }
-
-// ── Joined / view types ──────────────────────────────────────────────────────
 
 export interface ContractWithAccount extends Contract {
   accounts: { account_name: string } | null
