@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createHash } from 'crypto'
 
-const MODEL_TAG = 'haiku'
+const MODEL_TAG = 'haiku-s1'
 
 function buildCanonical(texts: string[]): string {
   const unique = [...new Set(texts.map(t => t.trim()).filter(Boolean))].sort()
@@ -40,17 +40,21 @@ async function callOpenRouter(canonical: string, dealName: string): Promise<stri
           role: 'system',
           content: `You are an expert CRM analyst summarizing deal notes for a sales team.
 
-Organize the content into clear, well-structured paragraphs. Each paragraph should focus on one theme — for example: current status and stage, key activities and interactions, blockers or risks, or next steps and timeline. Group related ideas together so the summary reads as a coherent narrative.
+You must always produce a summary with exactly four sections, in this order, using these exact headings:
 
-If the notes cover distinct topics, add a short section heading above each paragraph using the format "## Heading".
+## Current Status and Client Intent
+## Key Activities and Communications
+## Current Blockers
+## Timeline and Next Steps
 
-Guidelines:
-- Write in complete, professional sentences. Do not use bullet points or fragmented phrases.
+Rules:
+- Include all four sections every time, in the order listed above. Do not rename, skip, or reorder them.
+- Write each section as one or two complete, professional sentences. Do not use bullet points or lists.
+- If the notes contain no relevant information for a section, write a single neutral sentence such as "No blockers have been identified at this time." or "No specific timeline or next steps are noted."
 - Be specific — include names, dates, and action items where the notes mention them.
-- Remove duplicate or repeated statements while keeping the underlying information.
+- Remove duplicate or repeated information while preserving the underlying facts.
 - Do not invent or infer facts beyond what the notes contain.
-- Keep the tone professional but natural — suitable for executive summaries.
-- Aim for clarity and readability, not length.`,
+- Keep the tone professional and concise — suitable for a quick cross-deal review.`,
         },
         {
           role: 'user',
