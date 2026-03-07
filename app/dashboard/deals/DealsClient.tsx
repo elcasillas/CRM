@@ -375,12 +375,13 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
 
   const filtered = useMemo(() =>
     deals.filter(d => {
+      if (!isAllDeals && d.deal_stages?.is_closed) return false
       const q = search.toLowerCase()
       const matchSearch = !q || d.deal_name.toLowerCase().includes(q) || (d.accounts?.account_name ?? '').toLowerCase().includes(q)
       const matchStage  = !filterStage || d.stage_id === filterStage
       return matchSearch && matchStage
     }),
-    [deals, search, filterStage]
+    [deals, search, filterStage, isAllDeals]
   )
 
   const displayDeals = useMemo(() =>
