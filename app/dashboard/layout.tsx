@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import SignOutButton from '@/components/sign-out-button'
@@ -25,15 +26,22 @@ export default async function DashboardLayout({
 
   return (
     <div>
-      <header className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-6 py-2 flex items-center justify-between">
           <div className="flex items-center gap-6">
-            <span className="font-semibold text-gray-900">CRM</span>
+            <Image
+              src="/hostopia-logo.png"
+              alt="Hostopia"
+              width={120}
+              height={33}
+              className="shrink-0"
+              priority
+            />
             <NavLinks isAdmin={isAdmin} />
           </div>
           <div className="flex items-center gap-4">
             <GlobalSearch />
-            <span className="text-sm text-gray-400">{user.email}</span>
+            <span className="text-sm text-gray-400 hidden sm:block">{user.email}</span>
             <SignOutButton />
           </div>
         </div>
