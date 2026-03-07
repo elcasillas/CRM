@@ -46,6 +46,37 @@ function formatRelative(ts, referenceDate) {
   return `${months}mo ago`
 }
 
+// ── Deal calculations (mirrors lib/dealCalc.ts) ───────────────────────────────
+
+/**
+ * Strip currency symbols, commas, and whitespace, then parse to a
+ * non-negative float. Returns 0 for empty, invalid, or negative input.
+ */
+function parseAmount(s) {
+  if (s == null) return 0
+  const n = parseFloat(String(s).replace(/[$,\s]/g, ''))
+  return isFinite(n) && n > 0 ? n : 0
+}
+
+/**
+ * ACV calculation:
+ *   term = 1 month  → Amount × 1  (single-month contract, not annualised)
+ *   term > 1 months → Amount × 12 (annualised monthly rate)
+ *   term not set    → Amount × 12 (default)
+ */
+function calcACV(amount, months) {
+  const a = parseAmount(String(amount))
+  const m = months != null ? Math.max(0, Math.floor(parseFloat(String(months)) || 0)) : 0
+  return m === 1 ? a : a * 12
+}
+
+/** TCV = Amount × Contract Term (months) */
+function calcTCV(amountStr, monthsStr) {
+  const a = parseAmount(amountStr)
+  const m = Math.max(0, Math.floor(parseFloat(monthsStr) || 0))
+  return a * m
+}
+
 // ── Stage badges ──────────────────────────────────────────────────────────────
 
 function stageBadgeClass(s) {
@@ -66,11 +97,58 @@ function stageHeaderClass(s) {
   return 'text-orange-600'
 }
 
+/**
+ * Health score badge CSS classes.
+ *   score >= 80 → green
+ *   score >= 60 → amber
+ *   otherwise   → red
+ */
+function healthBadgeClass(score) {
+  if (score == null) return 'bg-gray-100 text-gray-400'
+  if (score >= 80) return 'bg-green-100 text-green-700'
+  if (score >= 60) return 'bg-amber-100 text-amber-700'
+  return 'bg-red-100 text-red-600'
+}
+
+// ── Stale / overdue ───────────────────────────────────────────────────────────
+
+/**
+ * Returns true if days since lastNoteTs >= staleDays.
+ * @param {string|null} lastNoteTs - ISO timestamp of last note
+ * @param {number} staleDays
+ * @param {string|null} referenceDate - ISO string for deterministic tests; defaults to Date.now()
+ */
+function isStale(lastNoteTs, staleDays, referenceDate) {
+  if (!lastNoteTs) return false
+  const ref = referenceDate ? new Date(referenceDate).getTime() : Date.now()
+  const days = Math.floor((ref - new Date(lastNoteTs).getTime()) / 86400000)
+  return days >= staleDays
+}
+
+/**
+ * Returns true if close_date is in the past and the deal is not closed.
+ * @param {string|null} closeDate - 'YYYY-MM-DD' string
+ * @param {boolean} isClosed - whether the deal's stage has is_closed = true
+ * @param {string|null} referenceDate - ISO string (uses date portion only)
+ */
+function isOverdue(closeDate, isClosed, referenceDate) {
+  if (!closeDate || isClosed) return false
+  const todayStr = referenceDate
+    ? new Date(referenceDate).toISOString().slice(0, 10)
+    : new Date().toISOString().slice(0, 10)
+  return closeDate < todayStr
+}
+
 // ── Filtering ─────────────────────────────────────────────────────────────────
 
-/** Filter deals by search string and/or stage ID. */
-function filterDeals(deals, { search = '', stageId = '' } = {}) {
+/**
+ * Filter deals by search string, stage ID, and/or activeOnly.
+ * @param {object[]} deals
+ * @param {{ search?: string, stageId?: string, activeOnly?: boolean }} opts
+ */
+function filterDeals(deals, { search = '', stageId = '', activeOnly = false } = {}) {
   return deals.filter(d => {
+    if (activeOnly && d.deal_stages?.is_closed) return false
     const q = search.toLowerCase()
     const matchSearch = !q
       || d.deal_name.toLowerCase().includes(q)
@@ -108,7 +186,9 @@ function stageTotal(deals, stageId) {
 if (typeof module !== 'undefined') {
   module.exports = {
     formatCurrency, fmtDate, formatClose, formatRelative,
-    stageBadgeClass, stageHeaderClass,
+    parseAmount, calcACV, calcTCV,
+    healthBadgeClass, stageBadgeClass, stageHeaderClass,
+    isStale, isOverdue,
     filterDeals, filterAccounts, stageTotal,
   }
 }

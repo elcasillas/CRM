@@ -9,7 +9,8 @@
       "d1",
       "d2",
       "d3",
-      "d4"
+      "d4",
+      "d5"
     ]
   },
   {
@@ -59,6 +60,39 @@
     "filters": {
       "search": "acme",
       "stageId": "s2"
+    },
+    "resultIds": []
+  },
+  {
+    "label": "activeOnly excludes closed",
+    "filters": {
+      "activeOnly": true
+    },
+    "resultIds": [
+      "d1",
+      "d2",
+      "d3",
+      "d4"
+    ]
+  },
+  {
+    "label": "activeOnly false includes all",
+    "filters": {
+      "activeOnly": false
+    },
+    "resultIds": [
+      "d1",
+      "d2",
+      "d3",
+      "d4",
+      "d5"
+    ]
+  },
+  {
+    "label": "search + activeOnly (no match)",
+    "filters": {
+      "search": "closed",
+      "activeOnly": true
     },
     "resultIds": []
   }

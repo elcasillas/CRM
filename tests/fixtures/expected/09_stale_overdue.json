@@ -1,0 +1,67 @@
+{
+  "isStale": [
+    {
+      "label": "null last note",
+      "lastNoteTs": null,
+      "result": false
+    },
+    {
+      "label": "noted today (0 days)",
+      "lastNoteTs": "2026-02-23T12:00:00.000Z",
+      "result": false
+    },
+    {
+      "label": "noted 14 days ago (stale)",
+      "lastNoteTs": "2026-02-09T12:00:00.000Z",
+      "result": true
+    },
+    {
+      "label": "noted 13 days ago (fresh)",
+      "lastNoteTs": "2026-02-10T12:00:00.000Z",
+      "result": false
+    },
+    {
+      "label": "noted 53 days ago (stale)",
+      "lastNoteTs": "2026-01-01T12:00:00.000Z",
+      "result": true
+    }
+  ],
+  "isOverdue": [
+    {
+      "label": "past close date, open",
+      "closeDate": "2026-02-22",
+      "isClosed": false,
+      "result": true
+    },
+    {
+      "label": "close date = today, open",
+      "closeDate": "2026-02-23",
+      "isClosed": false,
+      "result": false
+    },
+    {
+      "label": "future close date, open",
+      "closeDate": "2026-02-24",
+      "isClosed": false,
+      "result": false
+    },
+    {
+      "label": "past close date, closed",
+      "closeDate": "2026-02-01",
+      "isClosed": true,
+      "result": false
+    },
+    {
+      "label": "null close date",
+      "closeDate": null,
+      "isClosed": false,
+      "result": false
+    },
+    {
+      "label": "far past close date, open",
+      "closeDate": "2026-01-01",
+      "isClosed": false,
+      "result": true
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "healthBadgeClass": [
+    {
+      "label": "null score",
+      "score": null,
+      "result": "bg-gray-100 text-gray-400"
+    },
+    {
+      "label": "score 100",
+      "score": 100,
+      "result": "bg-green-100 text-green-700"
+    },
+    {
+      "label": "score 80",
+      "score": 80,
+      "result": "bg-green-100 text-green-700"
+    },
+    {
+      "label": "score 79",
+      "score": 79,
+      "result": "bg-amber-100 text-amber-700"
+    },
+    {
+      "label": "score 60",
+      "score": 60,
+      "result": "bg-amber-100 text-amber-700"
+    },
+    {
+      "label": "score 59",
+      "score": 59,
+      "result": "bg-red-100 text-red-600"
+    },
+    {
+      "label": "score 0",
+      "score": 0,
+      "result": "bg-red-100 text-red-600"
+    }
+  ],
+  "stageBadgeClass": [
+    {
+      "label": "null stage",
+      "stage": null,
+      "result": "bg-gray-100 text-gray-600"
+    },
+    {
+      "label": "lost stage",
+      "stage": {
+        "is_lost": true,
+        "is_won": false,
+        "sort_order": 7
+      },
+      "result": "bg-red-50 text-red-600 ring-1 ring-red-200"
+    },
+    {
+      "label": "won stage",
+      "stage": {
+        "is_lost": false,
+        "is_won": true,
+        "sort_order": 7
+      },
+      "result": "bg-green-50 text-green-700 ring-1 ring-green-200"
+    },
+    {
+      "label": "early stage (sort_order 1)",
+      "stage": {
+        "is_lost": false,
+        "is_won": false,
+        "sort_order": 1
+      },
+      "result": "bg-gray-100 text-gray-700"
+    },
+    {
+      "label": "early stage (sort_order 3)",
+      "stage": {
+        "is_lost": false,
+        "is_won": false,
+        "sort_order": 3
+      },
+      "result": "bg-gray-100 text-gray-700"
+    },
+    {
+      "label": "mid stage (sort_order 4)",
+      "stage": {
+        "is_lost": false,
+        "is_won": false,
+        "sort_order": 4
+      },
+      "result": "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+    },
+    {
+      "label": "mid stage (sort_order 5)",
+      "stage": {
+        "is_lost": false,
+        "is_won": false,
+        "sort_order": 5
+      },
+      "result": "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+    },
+    {
+      "label": "late stage (sort_order 6)",
+      "stage": {
+        "is_lost": false,
+        "is_won": false,
+        "sort_order": 6
+      },
+      "result": "bg-orange-50 text-orange-700 ring-1 ring-orange-200"
+    }
+  ]
+}

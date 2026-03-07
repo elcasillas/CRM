@@ -1,0 +1,144 @@
+{
+  "parseAmount": [
+    {
+      "label": "empty string",
+      "input": "",
+      "result": 0
+    },
+    {
+      "label": "dollar + commas",
+      "input": "$1,234.56",
+      "result": 1234.56
+    },
+    {
+      "label": "plain number string",
+      "input": "5000",
+      "result": 5000
+    },
+    {
+      "label": "negative value",
+      "input": "-100",
+      "result": 0
+    },
+    {
+      "label": "whitespace + symbol",
+      "input": "  $ 500 ",
+      "result": 500
+    },
+    {
+      "label": "null",
+      "input": null,
+      "result": 0
+    },
+    {
+      "label": "non-numeric string",
+      "input": "abc",
+      "result": 0
+    },
+    {
+      "label": "zero string",
+      "input": "0",
+      "result": 0
+    }
+  ],
+  "calcACV": [
+    {
+      "label": "12-month term",
+      "amount": 1000,
+      "months": 12,
+      "result": 12000
+    },
+    {
+      "label": "1-month term (no mult)",
+      "amount": 1000,
+      "months": 1,
+      "result": 1000
+    },
+    {
+      "label": "null term (default ×12)",
+      "amount": 1000,
+      "months": null,
+      "result": 12000
+    },
+    {
+      "label": "0-month term (×12)",
+      "amount": 1000,
+      "months": 0,
+      "result": 12000
+    },
+    {
+      "label": "24-month term",
+      "amount": 1000,
+      "months": 24,
+      "result": 12000
+    },
+    {
+      "label": "string amount, 1-month",
+      "amount": "$500",
+      "months": 1,
+      "result": 500
+    },
+    {
+      "label": "string amount, 6-month",
+      "amount": "$500",
+      "months": 6,
+      "result": 6000
+    },
+    {
+      "label": "zero amount",
+      "amount": 0,
+      "months": 12,
+      "result": 0
+    },
+    {
+      "label": "invalid amount",
+      "amount": "invalid",
+      "months": 6,
+      "result": 0
+    }
+  ],
+  "calcTCV": [
+    {
+      "label": "1000 × 12",
+      "amount": "1000",
+      "months": "12",
+      "result": 12000
+    },
+    {
+      "label": "1000 × 1",
+      "amount": "1000",
+      "months": "1",
+      "result": 1000
+    },
+    {
+      "label": "1000 × 0",
+      "amount": "500",
+      "months": "0",
+      "result": 0
+    },
+    {
+      "label": "formatted amount × 24",
+      "amount": "$1,200",
+      "months": "24",
+      "result": 28800
+    },
+    {
+      "label": "invalid amount",
+      "amount": "abc",
+      "months": "12",
+      "result": 0
+    },
+    {
+      "label": "empty months",
+      "amount": "1000",
+      "months": "",
+      "result": 0
+    },
+    {
+      "label": "1000 × 6",
+      "amount": "1000",
+      "months": "6",
+      "result": 6000
+    }
+  ]
+}

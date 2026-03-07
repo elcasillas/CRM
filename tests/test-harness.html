@@ -244,6 +244,96 @@ const SUITES = [
       })
     },
   },
+
+  {
+    id: '07',
+    name: '07 – Deal Calculations (ACV / TCV)',
+    fixture: 'fixtures/07_deal_calc.json',
+    golden:  'fixtures/expected/07_deal_calc.json',
+    run(fixture) {
+      return [
+        ...fixture.parseAmount.map(c => ({
+          group: 'parseAmount', label: c.label, result: parseAmount(c.input),
+        })),
+        ...fixture.calcACV.map(c => ({
+          group: 'calcACV', label: c.label, result: calcACV(c.amount, c.months),
+        })),
+        ...fixture.calcTCV.map(c => ({
+          group: 'calcTCV', label: c.label, result: calcTCV(c.amount, c.months),
+        })),
+      ]
+    },
+    compare(actual, expected) {
+      const flat = [
+        ...expected.parseAmount,
+        ...expected.calcACV,
+        ...expected.calcTCV,
+      ]
+      return actual.map((a, i) => {
+        const e = flat[i]
+        const pass = JSON.stringify(a.result) === JSON.stringify(e?.result)
+        return { label: `[${a.group}] ${a.label}`, pass, actual: a.result, expected: e?.result }
+      })
+    },
+  },
+
+  {
+    id: '08',
+    name: '08 – Health & Stage Badges',
+    fixture: 'fixtures/08_health_badges.json',
+    golden:  'fixtures/expected/08_health_badges.json',
+    run(fixture) {
+      return [
+        ...fixture.healthBadgeClass.map(c => ({
+          group: 'healthBadgeClass', label: c.label, result: healthBadgeClass(c.score),
+        })),
+        ...fixture.stageBadgeClass.map(c => ({
+          group: 'stageBadgeClass', label: c.label, result: stageBadgeClass(c.stage),
+        })),
+      ]
+    },
+    compare(actual, expected) {
+      const flat = [
+        ...expected.healthBadgeClass,
+        ...expected.stageBadgeClass,
+      ]
+      return actual.map((a, i) => {
+        const e = flat[i]
+        const pass = a.result === e?.result
+        return { label: `[${a.group}] ${a.label}`, pass, actual: a.result, expected: e?.result }
+      })
+    },
+  },
+
+  {
+    id: '09',
+    name: '09 – Stale & Overdue',
+    fixture: 'fixtures/09_stale_overdue.json',
+    golden:  'fixtures/expected/09_stale_overdue.json',
+    run(fixture) {
+      const ref = fixture.referenceDate
+      const sd  = fixture.staleDays
+      return [
+        ...fixture.isStale.map(c => ({
+          group: 'isStale', label: c.label, result: isStale(c.lastNoteTs, sd, ref),
+        })),
+        ...fixture.isOverdue.map(c => ({
+          group: 'isOverdue', label: c.label, result: isOverdue(c.closeDate, c.isClosed, ref),
+        })),
+      ]
+    },
+    compare(actual, expected) {
+      const flat = [
+        ...expected.isStale,
+        ...expected.isOverdue,
+      ]
+      return actual.map((a, i) => {
+        const e = flat[i]
+        const pass = a.result === e?.result
+        return { label: `[${a.group}] ${a.label}`, pass, actual: a.result, expected: e?.result }
+      })
+    },
+  },
 ]
 
 // ── Runner ────────────────────────────────────────────────────────────────────
@@ -294,9 +384,7 @@ async function runAll() {
   document.getElementById('results').innerHTML = suiteEls.join('')
   const total = totalPass + totalFail
   document.getElementById('summary').textContent =
-    golden === null
-      ? `${totalPass}/${total} passed`
-      : `${totalPass}/${total} passed${totalFail ? ` · ${totalFail} failed` : ''}${totalWarn ? ` · ${totalWarn} suite(s) missing golden` : ''}`
+    `${totalPass}/${total} passed${totalFail ? ` · ${totalFail} failed` : ''}${totalWarn ? ` · ${totalWarn} suite(s) missing golden` : ''}`
 
   // Auto-expand failed suites
   document.querySelectorAll('.suite').forEach(el => {

@@ -323,13 +323,24 @@ export async function POST(req: NextRequest) {
     )
   )
 
-  const newRows      = rows.filter(r => !existingDealMap.has(`${normalizeString(r.deal_name)}|${r.account_id}`))
+  const newRows = rows.filter(r => !existingDealMap.has(`${normalizeString(r.deal_name)}|${r.account_id}`))
+  type ExistingDealUpdate = {
+    id: string; deal_name: string; stage_id: string; close_date: string | null
+    amount: number | null; contract_term_months: number | null
+    total_contract_value: number | null; value_amount: number | null
+    deal_description: string | null; _notes: ParsedNote[]; _owner_id: string
+  }
   const existingRows = rows
     .map(r => {
       const id = existingDealMap.get(`${normalizeString(r.deal_name)}|${r.account_id}`)
-      return id ? { id, _notes: r._notes, _owner_id: r._owner_id } : null
+      return id ? {
+        id, deal_name: r.deal_name, stage_id: r.stage_id, close_date: r.close_date,
+        amount: r.amount, contract_term_months: r.contract_term_months,
+        total_contract_value: r.total_contract_value, value_amount: r.value_amount,
+        deal_description: r.deal_description || null, _notes: r._notes, _owner_id: r._owner_id,
+      } : null
     })
-    .filter((r): r is { id: string; _notes: ParsedNote[]; _owner_id: string } => r !== null)
+    .filter((r): r is ExistingDealUpdate => r !== null)
 
   // Insert only new deals
   const dbRows = newRows.map(({ _notes: _n, _owner_id: _o, ...r }) => r)
@@ -383,9 +394,29 @@ export async function POST(req: NextRequest) {
     await admin.from('notes').update({ created_at: fix.created_at }).eq('id', fix.id)
   }
 
+  // Update existing deals: stage and value fields from CSV are authoritative
+  let updatedCount = 0
+  for (const r of existingRows) {
+    const payload: Record<string, unknown> = { stage_id: r.stage_id, last_activity_at: now }
+    if (r.close_date           != null) payload.close_date           = r.close_date
+    if (r.amount               != null) payload.amount               = r.amount
+    if (r.contract_term_months != null) payload.contract_term_months = r.contract_term_months
+    if (r.total_contract_value != null) payload.total_contract_value = r.total_contract_value
+    if (r.value_amount         != null) payload.value_amount         = r.value_amount
+    if (r.deal_description               ) payload.deal_description   = r.deal_description
+    const { error: updateErr } = await admin.from('deals').update(payload).eq('id', r.id)
+    if (updateErr) {
+      console.error(`[import] update failed for "${r.deal_name}" (${r.id}): ${updateErr.message}`)
+    } else {
+      console.log(`[import] updated "${r.deal_name}" (${r.id}) stage_id=${r.stage_id}`)
+      updatedCount++
+    }
+  }
+
   return NextResponse.json({
     inserted: inserted?.length ?? 0,
     existing: existingRows.length,
+    updated:  updatedCount,
     skipped:  parsedDeals.length - rows.length,
   })
 }

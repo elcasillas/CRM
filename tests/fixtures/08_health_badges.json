@@ -1,0 +1,22 @@
+{
+  "description": "Badge CSS class helpers: healthBadgeClass and stageBadgeClass",
+  "healthBadgeClass": [
+    { "label": "null score",   "score": null },
+    { "label": "score 100",    "score": 100  },
+    { "label": "score 80",     "score": 80   },
+    { "label": "score 79",     "score": 79   },
+    { "label": "score 60",     "score": 60   },
+    { "label": "score 59",     "score": 59   },
+    { "label": "score 0",      "score": 0    }
+  ],
+  "stageBadgeClass": [
+    { "label": "null stage",                     "stage": null },
+    { "label": "lost stage",                     "stage": { "is_lost": true,  "is_won": false, "sort_order": 7 } },
+    { "label": "won stage",                      "stage": { "is_lost": false, "is_won": true,  "sort_order": 7 } },
+    { "label": "early stage (sort_order 1)",     "stage": { "is_lost": false, "is_won": false, "sort_order": 1 } },
+    { "label": "early stage (sort_order 3)",     "stage": { "is_lost": false, "is_won": false, "sort_order": 3 } },
+    { "label": "mid stage (sort_order 4)",       "stage": { "is_lost": false, "is_won": false, "sort_order": 4 } },
+    { "label": "mid stage (sort_order 5)",       "stage": { "is_lost": false, "is_won": false, "sort_order": 5 } },
+    { "label": "late stage (sort_order 6)",      "stage": { "is_lost": false, "is_won": false, "sort_order": 6 } }
+  ]
+}
