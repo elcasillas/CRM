@@ -1,21 +1,20 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { DealWithRelations, DealStage, Account } from '@/lib/types'
-import type { DealsInitialData, DealPageRow } from './types'
-import DealsClient from './DealsClient'
+import type { DealsInitialData, DealPageRow } from '../types'
+import DealsClient from '../DealsClient'
 
-export default async function DealsPage() {
+export default async function AllDealsPage() {
   const supabase = await createClient()
   const admin = createAdminClient()
 
-  // Fetch config first so we can pass stale_days to the RPC
   const { data: configData } = await admin
     .from('health_score_config')
     .select('stale_days, new_deal_days')
     .limit(1)
     .single()
 
-  const staleDays    = configData?.stale_days    ?? 30
+  const staleDays      = configData?.stale_days    ?? 30
   const newDealDaysRaw = Number(configData?.new_deal_days)
   const newDealDays    = isFinite(newDealDaysRaw) && newDealDaysRaw > 0 ? Math.round(newDealDaysRaw) : 14
 
@@ -44,7 +43,6 @@ export default async function DealsPage() {
     admin.auth.admin.listUsers({ perPage: 1000 }),
   ])
 
-  // Map flat RPC rows → DealWithRelations[] and build lastNoteDates
   const rpcRows = (rpcData ?? []) as DealPageRow[]
 
   const deals = rpcRows.map(row => ({
@@ -90,7 +88,6 @@ export default async function DealsPage() {
     if (row.last_note_at) lastNoteDates[row.id] = row.last_note_at
   }
 
-  // Build emailMap
   const emailMap: Record<string, string> = {}
   for (const u of authData?.users ?? []) {
     emailMap[u.id] = u.email ?? ''
@@ -98,11 +95,8 @@ export default async function DealsPage() {
 
   const currentUserProfile = (profilesData ?? []).find(p => p.id === user?.id)
 
-  // Main Deals page: exclude closed stages (Closed Implemented, Closed Lost, etc.)
-  const activeDeals = deals.filter(d => !d.deal_stages?.is_closed)
-
   const initialData: DealsInitialData = {
-    deals: activeDeals,
+    deals,   // all deals — no closed-stage filter
     stages:          (stagesData ?? []) as DealStage[],
     accounts:        (accountsData ?? []) as Pick<Account, 'id' | 'account_name'>[],
     profiles:        profilesData ?? [],
@@ -112,6 +106,7 @@ export default async function DealsPage() {
     newDealDays,
     currentUserId:   user?.id ?? '',
     currentUserRole: currentUserProfile?.role ?? '',
+    isAllDeals:      true,
   }
 
   return <DealsClient initialData={initialData} />

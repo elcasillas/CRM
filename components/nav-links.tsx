@@ -6,9 +6,10 @@ import { usePathname } from 'next/navigation'
 type NavItem = { href: string; label: string; exact?: boolean }
 
 const BASE_ITEMS: NavItem[] = [
-  { href: '/dashboard',          label: 'Overview', exact: true },
-  { href: '/dashboard/accounts', label: 'Accounts' },
-  { href: '/dashboard/deals',    label: 'Deals' },
+  { href: '/dashboard',              label: 'Overview',  exact: true },
+  { href: '/dashboard/accounts',     label: 'Accounts' },
+  { href: '/dashboard/deals',        label: 'Deals',     exact: true },
+  { href: '/dashboard/deals/all',    label: 'All Deals', exact: true },
 ]
 
 const ADMIN_ITEMS: NavItem[] = [

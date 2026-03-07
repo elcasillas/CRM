@@ -144,6 +144,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
   const { modal, editing, form, saving, formError, confirmDelete,
           feedbackDeal, feedbackSummary, feedbackSummaryGeneratedAt, loadingFeedbackSummary, copied } = ui
   const { dealNotes, noteText, loggingNote, noteConfirmDelete, feedbackNotes } = notes
+  const isAllDeals = initialData.isAllDeals ?? false
 
   // ── Props-derived constants ──────────────────────────────────────────────────
   const stages             = initialData.stages
@@ -438,18 +439,20 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
 
   const ownerSummaries = useMemo(() => {
     type OwnerSummary = { id: string; name: string; count: number; acv: number; avgDays: number | null; overdue: number }
-    const nowMs    = Date.now()
+    const nowMs = Date.now()
+    // Always exclude closed-stage deals from owner summary cards
+    const activeFiltered = filtered.filter(d => !d.deal_stages?.is_closed)
     const ownerMap = new Map<string, OwnerSummary>()
-    for (const d of filtered) {
+    for (const d of activeFiltered) {
       const oid = d.deal_owner_id
       const cur = ownerMap.get(oid) ?? { id: oid, name: d.deal_owner?.full_name ?? 'Unknown', count: 0, acv: 0, avgDays: null, overdue: 0 }
       cur.count++
       cur.acv += d.value_amount ?? 0
-      if (d.close_date && d.close_date < todayStr && !d.deal_stages?.is_closed) cur.overdue++
+      if (d.close_date && d.close_date < todayStr) cur.overdue++
       ownerMap.set(oid, cur)
     }
     for (const [oid, ownerSummary] of ownerMap) {
-      const ownerDays = filtered
+      const ownerDays = activeFiltered
         .filter(d => d.deal_owner_id === oid)
         .map(d => { const ts = lastNoteDates.get(d.id); return ts ? Math.floor((nowMs - new Date(ts).getTime()) / 86400000) : null })
         .filter((x): x is number => x !== null)
@@ -475,7 +478,13 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
       <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-semibold text-gray-900">Deals</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-semibold text-gray-900">{isAllDeals ? 'All Deals' : 'Deals'}</h2>
+          {isAllDeals
+            ? <Link href="/dashboard/deals" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">← Active Deals</Link>
+            : <Link href="/dashboard/deals/all" className="text-sm text-gray-400 hover:text-gray-600 transition-colors">All Deals →</Link>
+          }
+        </div>
         <div className="flex items-center gap-3">
           <div className="flex items-center bg-gray-100 rounded-lg p-0.5">
             <button onClick={() => setFilter('view', 'table')} className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${view === 'table' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Table</button>

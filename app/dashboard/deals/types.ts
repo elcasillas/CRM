@@ -34,4 +34,5 @@ export type DealsInitialData = {
   newDealDays:     number
   currentUserId:   string
   currentUserRole: string
+  isAllDeals?:     boolean
 }
