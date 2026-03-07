@@ -195,8 +195,9 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
       .from('deals')
       .select('*, accounts(account_name), deal_stages(stage_name, sort_order, is_closed, is_won, is_lost), deal_owner:profiles!deal_owner_id(full_name), solutions_engineer:profiles!solutions_engineer_id(full_name)')
       .order('last_activity_at', { ascending: false, nullsFirst: false })
-    if (error) console.error('deals fetch:', error.message)
-    else setDeals((data ?? []) as DealWithRelations[])
+    if (error) { console.error('deals fetch:', error.message); return }
+    const rows = (data ?? []) as DealWithRelations[]
+    setDeals(isAllDeals ? rows : rows.filter(d => !d.deal_stages?.is_closed))
   }
 
   async function fetchDealNotes(dealId: string) {
