@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import type { DealStage, DealWithRelations, NoteWithAuthor } from '@/lib/types'
-import type { DealFormData, DealsInitialData } from './types'
+import type { DealFormData, DealsInitialData, DealPageRow } from './types'
 import { parseAmount, calcACV, calcTCV } from '@/lib/dealCalc'
 
 const supabase = createClient()
@@ -191,13 +191,49 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
 
   // ── Data refresh (post-mutation) ─────────────────────────────────────────────
   async function fetchDeals() {
-    const { data, error } = await supabase
-      .from('deals')
-      .select('*, accounts(account_name), deal_stages(stage_name, sort_order, is_closed, is_won, is_lost), deal_owner:profiles!deal_owner_id(full_name), solutions_engineer:profiles!solutions_engineer_id(full_name)')
-      .order('last_activity_at', { ascending: false, nullsFirst: false })
+    const { data, error } = await supabase.rpc('get_deals_page', {
+      p_stale_days:  staleDaysThreshold,
+      p_active_only: !isAllDeals,
+    })
     if (error) { console.error('deals fetch:', error.message); return }
-    const rows = (data ?? []) as DealWithRelations[]
-    setDeals(isAllDeals ? rows : rows.filter(d => !d.deal_stages?.is_closed))
+    const rpcRows = (data ?? []) as DealPageRow[]
+    setDeals(rpcRows.map(row => ({
+      id:                    row.id,
+      deal_name:             row.deal_name,
+      deal_description:      row.deal_description,
+      account_id:            row.account_id,
+      stage_id:              row.stage_id,
+      deal_owner_id:         row.deal_owner_id,
+      solutions_engineer_id: row.solutions_engineer_id,
+      amount:                row.amount,
+      contract_term_months:  row.contract_term_months,
+      total_contract_value:  row.total_contract_value,
+      value_amount:          row.value_amount,
+      currency:              row.currency,
+      close_date:            row.close_date,
+      last_activity_at:      row.last_activity_at,
+      created_at:            row.created_at,
+      updated_at:            row.updated_at,
+      health_score:          row.health_score,
+      hs_stage_probability:  row.hs_stage_probability,
+      hs_velocity:           row.hs_velocity,
+      hs_activity_recency:   row.hs_activity_recency,
+      hs_close_date:         row.hs_close_date,
+      hs_acv:                row.hs_acv,
+      hs_notes_signal:       row.hs_notes_signal,
+      health_debug:          row.health_debug,
+      notes_hash:            row.notes_hash,
+      accounts:              row.account_name ? { account_name: row.account_name } : null,
+      deal_stages:           row.stage_name ? {
+        stage_name:  row.stage_name,
+        sort_order:  row.stage_sort_order!,
+        is_closed:   row.stage_is_closed!,
+        is_won:      row.stage_is_won!,
+        is_lost:     row.stage_is_lost!,
+      } : null,
+      deal_owner:         row.deal_owner_name ? { full_name: row.deal_owner_name } : null,
+      solutions_engineer: row.se_name         ? { full_name: row.se_name }         : null,
+    })) as DealWithRelations[])
   }
 
   async function fetchDealNotes(dealId: string) {

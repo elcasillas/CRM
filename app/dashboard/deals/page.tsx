@@ -28,7 +28,7 @@ export default async function DealsPage() {
     { data: authData },
   ] = await Promise.all([
     supabase.auth.getUser(),
-    supabase.rpc('get_deals_page', { p_stale_days: staleDays }),
+    supabase.rpc('get_deals_page', { p_stale_days: staleDays, p_active_only: true }),
     supabase
       .from('deal_stages')
       .select('id, stage_name, sort_order, is_closed, is_won, is_lost, win_probability')
@@ -98,11 +98,8 @@ export default async function DealsPage() {
 
   const currentUserProfile = (profilesData ?? []).find(p => p.id === user?.id)
 
-  // Main Deals page: exclude closed stages (Closed Implemented, Closed Lost, etc.)
-  const activeDeals = deals.filter(d => !d.deal_stages?.is_closed)
-
   const initialData: DealsInitialData = {
-    deals: activeDeals,
+    deals,
     stages:          (stagesData ?? []) as DealStage[],
     accounts:        (accountsData ?? []) as Pick<Account, 'id' | 'account_name'>[],
     profiles:        profilesData ?? [],

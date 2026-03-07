@@ -596,6 +596,7 @@ export type Database = {
       }
       get_deals_page: {
         Args: {
+          p_active_only?: boolean
           p_overdue_only?: boolean
           p_owner_id?: string
           p_search?: string
