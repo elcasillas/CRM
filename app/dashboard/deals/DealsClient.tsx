@@ -363,7 +363,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
       stage_id:              form.stage_id,
       amount:                amountNum > 0 ? amountNum : null,
       contract_term_months:  termNum   > 0 ? termNum   : null,
-      value_amount:          amountNum > 0 ? amountNum * 12 : null,
+      value_amount:          amountNum > 0 ? calcACV(form.amount, form.contract_term_months) : null,
       total_contract_value:  amountNum > 0 && termNum > 0 ? amountNum * termNum : null,
       currency:              form.currency || 'USD',
       close_date:            form.close_date || null,
@@ -753,7 +753,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                 <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Amount</p><p className="text-gray-900 font-medium">{feedbackDeal.amount != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(feedbackDeal.amount) : '—'}</p></div>
                 <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Contract Term</p><p className="text-gray-900">{feedbackDeal.contract_term_months != null ? `${feedbackDeal.contract_term_months} months` : '—'}</p></div>
                 <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Closing Date</p><p className="text-gray-900">{feedbackDeal.close_date ? new Date(feedbackDeal.close_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</p></div>
-                <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">ACV (CAD)</p><p className="text-gray-900 font-medium">{(() => { const acv = feedbackDeal.amount != null ? feedbackDeal.amount * 12 : feedbackDeal.value_amount; return acv != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(acv) : '—' })()}</p></div>
+                <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">ACV (CAD)</p><p className="text-gray-900 font-medium">{(() => { const acv = feedbackDeal.amount != null ? calcACV(feedbackDeal.amount, feedbackDeal.contract_term_months) : feedbackDeal.value_amount; return acv != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(acv) : '—' })()}</p></div>
                 <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">TCV (CAD)</p><p className="text-gray-900 font-medium">{(() => { const tcv = feedbackDeal.amount != null && feedbackDeal.contract_term_months != null ? feedbackDeal.amount * feedbackDeal.contract_term_months : feedbackDeal.total_contract_value; return tcv != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(tcv) : '—' })()}</p></div>
                 <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Health Score</p><p>{feedbackDeal.health_score != null ? <span className={`inline-flex items-center justify-center w-8 h-6 rounded text-xs font-semibold ${healthBadgeClass(feedbackDeal.health_score)}`}>{feedbackDeal.health_score}</span> : <span className="text-gray-400">—</span>}</p></div>
                 <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Modified Date</p><p className="text-gray-900">{(() => { const ts = lastNoteDates.get(feedbackDeal.id); return ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' })()}</p></div>
@@ -837,7 +837,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
               const modifiedDate = ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
               const daysSince    = ts ? `${Math.floor((Date.now() - new Date(ts).getTime()) / 86400000)} days` : 'N/A'
               const closeDate    = feedbackDeal.close_date ? new Date(feedbackDeal.close_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
-              const acvVal       = feedbackDeal.amount != null ? feedbackDeal.amount * 12 : feedbackDeal.value_amount
+              const acvVal       = feedbackDeal.amount != null ? calcACV(feedbackDeal.amount, feedbackDeal.contract_term_months) : feedbackDeal.value_amount
               const tcvVal       = feedbackDeal.amount != null && feedbackDeal.contract_term_months != null ? feedbackDeal.amount * feedbackDeal.contract_term_months : feedbackDeal.total_contract_value
               const fmt          = (v: number | null) => v != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(v) : 'N/A'
               const acv          = fmt(acvVal)
@@ -966,7 +966,7 @@ Please review and let me know if any updates are needed.`
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="ACV (auto)">
-                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount ? (formatCurrency(calcACV(form.amount)) ?? '—') : '—'}</p>
+                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount ? (formatCurrency(calcACV(form.amount, form.contract_term_months)) ?? '—') : '—'}</p>
                 </Field>
                 <Field label="Total Contract Value (auto)">
                   <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount && form.contract_term_months ? (formatCurrency(calcTCV(form.amount, form.contract_term_months)) ?? '—') : '—'}</p>

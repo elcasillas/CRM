@@ -403,7 +403,7 @@ export default function AccountDetailPage() {
     setSaving(true); clearError()
     const amountNum = parseAmount(dealForm.amount)
     const termNum   = Math.max(0, Math.floor(parseFloat(dealForm.contract_term_months) || 0))
-    const payload = { account_id: id, stage_id: dealForm.stage_id, deal_name: dealForm.deal_name.trim(), deal_description: dealForm.deal_description.trim() || null, deal_owner_id: dealForm.deal_owner_id || userId, solutions_engineer_id: dealForm.solutions_engineer_id || null, amount: amountNum > 0 ? amountNum : null, contract_term_months: termNum > 0 ? termNum : null, value_amount: amountNum > 0 ? amountNum * 12 : null, total_contract_value: amountNum > 0 && termNum > 0 ? amountNum * termNum : null, currency: dealForm.currency || 'USD', close_date: dealForm.close_date || null }
+    const payload = { account_id: id, stage_id: dealForm.stage_id, deal_name: dealForm.deal_name.trim(), deal_description: dealForm.deal_description.trim() || null, deal_owner_id: dealForm.deal_owner_id || userId, solutions_engineer_id: dealForm.solutions_engineer_id || null, amount: amountNum > 0 ? amountNum : null, contract_term_months: termNum > 0 ? termNum : null, value_amount: amountNum > 0 ? calcACV(dealForm.amount, dealForm.contract_term_months) : null, total_contract_value: amountNum > 0 && termNum > 0 ? amountNum * termNum : null, currency: dealForm.currency || 'USD', close_date: dealForm.close_date || null }
     if (dealModal === 'add') {
       const { error } = await supabase.from('deals').insert(payload)
       if (error) setFormError(error.message)
@@ -779,7 +779,7 @@ export default function AccountDetailPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-5 py-3 text-gray-700 font-medium">{fmtCurrency(d.amount != null ? d.amount * 12 : d.value_amount)}</td>
+                      <td className="px-5 py-3 text-gray-700 font-medium">{fmtCurrency(d.amount != null ? calcACV(d.amount, d.contract_term_months) : d.value_amount)}</td>
                       <td className="px-5 py-3 text-gray-700 font-medium">{fmtCurrency(d.amount != null && d.contract_term_months != null ? d.amount * d.contract_term_months : d.total_contract_value)}</td>
                       <td className="px-5 py-3 text-gray-500">{fmtDate(d.close_date)}</td>
                       <td className="px-5 py-3 text-gray-500">{d.deal_owner?.full_name ?? '—'}</td>
@@ -1018,7 +1018,7 @@ export default function AccountDetailPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <Field label="ACV (auto)">
-              <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{dealForm.amount ? (fmtCurrency(calcACV(dealForm.amount)) || '—') : '—'}</p>
+              <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{dealForm.amount ? (fmtCurrency(calcACV(dealForm.amount, dealForm.contract_term_months)) || '—') : '—'}</p>
             </Field>
             <Field label="Total Contract Value (auto)">
               <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{dealForm.amount && dealForm.contract_term_months ? (fmtCurrency(calcTCV(dealForm.amount, dealForm.contract_term_months)) || '—') : '—'}</p>
@@ -1087,7 +1087,7 @@ export default function AccountDetailPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <Field label="ACV (auto)">
-                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{dealForm.amount ? (fmtCurrency(calcACV(dealForm.amount)) || '—') : '—'}</p>
+                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{dealForm.amount ? (fmtCurrency(calcACV(dealForm.amount, dealForm.contract_term_months)) || '—') : '—'}</p>
                 </Field>
                 <Field label="Total Contract Value (auto)">
                   <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{dealForm.amount && dealForm.contract_term_months ? (fmtCurrency(calcTCV(dealForm.amount, dealForm.contract_term_months)) || '—') : '—'}</p>

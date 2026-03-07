@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { calcACV } from '@/lib/dealCalc'
 
 // ── CSV parsing (ported from DealUpdates/js/ingest.js) ────────────────────────
 
@@ -162,7 +163,7 @@ function parseCSVDeals(csvText: string): ParsedDeal[] {
                        : (parsedAmount && parsedTerm) ? parsedAmount * parsedTerm
                        : null
     // Derive value_amount (ACV) from Amount column when available; fall back to Annual Contract Value
-    const derivedACV   = parsedAmount != null ? parsedAmount * 12 : acv.value
+    const derivedACV   = parsedAmount != null ? calcACV(parsedAmount, parsedTerm) : acv.value
 
     const noteText = noteRaw.replace(/<[^>]*>/g, '').trim()
 
