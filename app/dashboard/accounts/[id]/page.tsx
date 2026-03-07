@@ -14,7 +14,7 @@ const supabase = createClient()
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
-const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm'
+const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -107,7 +107,7 @@ function Modal({ title, onClose, onSave, saving, disabled, error, children, maxW
           <button
             onClick={onSave}
             disabled={saving || disabled}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             {saving ? 'Saving…' : 'Save'}
           </button>
@@ -484,7 +484,7 @@ export default function AccountDetailPage() {
   if (notFound || !account) return (
     <div className="max-w-5xl mx-auto px-6 py-8">
       <p className="text-gray-500 text-sm mb-3">Account not found.</p>
-      <Link href="/dashboard/accounts" className="text-sm text-blue-600 hover:text-blue-700">← Accounts</Link>
+      <Link href="/dashboard/accounts" className="text-sm text-brand-600 hover:text-brand-700">← Accounts</Link>
     </div>
   )
 
@@ -514,14 +514,14 @@ export default function AccountDetailPage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <button onClick={openEditAccount} className="text-2xl font-semibold text-gray-900 hover:text-blue-600 transition-colors text-left">{account.account_name}</button>
+              <button onClick={openEditAccount} className="text-2xl font-semibold text-gray-900 hover:text-brand-600 transition-colors text-left">{account.account_name}</button>
               <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${STATUS_CLASSES[account.status] ?? 'bg-gray-100 text-gray-600'}`}>
                 {account.status.charAt(0).toUpperCase() + account.status.slice(1)}
               </span>
             </div>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500 mt-2">
               {account.account_website && (
-                <a href={account.account_website} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600">
+                <a href={account.account_website} target="_blank" rel="noopener noreferrer" className="hover:text-brand-600">
                   {account.account_website.replace(/^https?:\/\//, '')}
                 </a>
               )}
@@ -557,7 +557,7 @@ export default function AccountDetailPage() {
                 <button
                   onClick={saveDescription}
                   disabled={descSaving}
-                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                  className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
                 >
                   {descSaving ? 'Saving…' : 'Save'}
                 </button>
@@ -587,7 +587,7 @@ export default function AccountDetailPage() {
             onClick={() => setTab(t.key)}
             className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
               tab === t.key
-                ? 'border-blue-600 text-blue-600'
+                ? 'border-brand-600 text-brand-600'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
@@ -604,7 +604,7 @@ export default function AccountDetailPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-semibold text-gray-900">Contacts</h3>
-            <button onClick={openAddContact} className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">+ Add contact</button>
+            <button onClick={openAddContact} className="bg-brand-500 hover:bg-brand-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">+ Add contact</button>
           </div>
           {contacts.length === 0 ? (
             <p className="text-gray-500 text-sm">No contacts yet.</p>
@@ -622,10 +622,10 @@ export default function AccountDetailPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {contacts.map(c => (
-                    <tr key={c.id} className="hover:bg-gray-50">
+                    <tr key={c.id} className="hover:bg-brand-50">
                       <td className="px-5 py-3 font-medium">
-                        <button onClick={() => openEditContact(c)} className="text-gray-900 hover:text-blue-600 text-left transition-colors">{contactName(c)}</button>
-                        {c.is_primary && <span className="ml-2 inline-flex px-1.5 py-0 rounded text-xs font-medium bg-blue-50 text-blue-600 ring-1 ring-blue-200">Primary</span>}
+                        <button onClick={() => openEditContact(c)} className="text-gray-900 hover:text-brand-600 text-left transition-colors">{contactName(c)}</button>
+                        {c.is_primary && <span className="ml-2 inline-flex px-1.5 py-0 rounded text-xs font-medium bg-brand-50 text-brand-600 ring-1 ring-brand-200">Primary</span>}
                       </td>
                       <td className="px-5 py-3 text-gray-500">{c.title ?? '—'}</td>
                       <td className="px-5 py-3 text-gray-500">{c.email}</td>
@@ -649,7 +649,7 @@ export default function AccountDetailPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-semibold text-gray-900">HID Records</h3>
-            <button onClick={openAddHid} className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">+ Add HID</button>
+            <button onClick={openAddHid} className="bg-brand-500 hover:bg-brand-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">+ Add HID</button>
           </div>
           {hids.length === 0 ? (
             <p className="text-gray-500 text-sm">No HID records yet.</p>
@@ -668,8 +668,8 @@ export default function AccountDetailPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {hids.map(h => (
-                    <tr key={h.id} className="hover:bg-gray-50">
-                      <td className="px-5 py-3 font-medium"><button onClick={() => openEditHid(h)} className="text-gray-900 hover:text-blue-600 text-left transition-colors">{h.hid_number}</button></td>
+                    <tr key={h.id} className="hover:bg-brand-50">
+                      <td className="px-5 py-3 font-medium"><button onClick={() => openEditHid(h)} className="text-gray-900 hover:text-brand-600 text-left transition-colors">{h.hid_number}</button></td>
                       <td className="px-5 py-3 text-gray-500">{h.dc_location ?? '—'}</td>
                       <td className="px-5 py-3 text-gray-500">{h.cluster_id ?? '—'}</td>
                       <td className="px-5 py-3 text-gray-500">{h.domain_name ?? '—'}</td>
@@ -693,7 +693,7 @@ export default function AccountDetailPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-semibold text-gray-900">Contracts</h3>
-            <button onClick={openAddContract} className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">+ Add contract</button>
+            <button onClick={openAddContract} className="bg-brand-500 hover:bg-brand-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">+ Add contract</button>
           </div>
           {contracts.length === 0 ? (
             <p className="text-gray-500 text-sm">No contracts yet.</p>
@@ -713,15 +713,15 @@ export default function AccountDetailPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {contracts.map(c => (
-                    <tr key={c.id} className="hover:bg-gray-50">
+                    <tr key={c.id} className="hover:bg-brand-50">
                       <td className="px-5 py-3 font-medium">
-                        <button onClick={() => openEditContract(c)} className="text-gray-900 hover:text-blue-600 text-left transition-colors">{c.entity_name ?? '—'}</button>
+                        <button onClick={() => openEditContract(c)} className="text-gray-900 hover:text-brand-600 text-left transition-colors">{c.entity_name ?? '—'}</button>
                       </td>
                       <td className="px-5 py-3 text-gray-500">{fmtDate(c.effective_date)}</td>
                       <td className="px-5 py-3 text-gray-500">{fmtDate(c.renewal_date)}</td>
                       <td className="px-5 py-3 text-gray-500">{c.renewal_term_months != null ? `${c.renewal_term_months} mo` : '—'}</td>
                       <td className="px-5 py-3">
-                        <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${c.auto_renew ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
+                        <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${c.auto_renew ? 'bg-brand-50 text-brand-600' : 'bg-gray-100 text-gray-500'}`}>
                           {c.auto_renew ? 'Yes' : 'No'}
                         </span>
                       </td>
@@ -749,7 +749,7 @@ export default function AccountDetailPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-semibold text-gray-900">Deals</h3>
-            <button onClick={openAddDeal} className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">+ Add deal</button>
+            <button onClick={openAddDeal} className="bg-brand-500 hover:bg-brand-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">+ Add deal</button>
           </div>
           {deals.length === 0 ? (
             <p className="text-gray-500 text-sm">No deals yet.</p>
@@ -770,8 +770,8 @@ export default function AccountDetailPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {deals.map(d => (
-                    <tr key={d.id} className="hover:bg-gray-50">
-                      <td className="px-5 py-3 font-medium"><button onClick={() => openEditDeal(d)} className="text-gray-900 hover:text-blue-600 text-left transition-colors">{d.deal_name}</button></td>
+                    <tr key={d.id} className="hover:bg-brand-50">
+                      <td className="px-5 py-3 font-medium"><button onClick={() => openEditDeal(d)} className="text-gray-900 hover:text-brand-600 text-left transition-colors">{d.deal_name}</button></td>
                       <td className="px-5 py-3">
                         {d.deal_stages && (
                           <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${stageBadgeClass(d.deal_stages)}`}>
@@ -815,7 +815,7 @@ export default function AccountDetailPage() {
               <button
                 onClick={addNote}
                 disabled={loggingNote || !noteText.trim()}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
               >
                 {loggingNote ? 'Saving…' : 'Add note'}
               </button>
@@ -919,7 +919,7 @@ export default function AccountDetailPage() {
             <Field label="Title"><input type="text" value={contactForm.title} onChange={e => setContactForm(f => ({ ...f, title: e.target.value }))} className={INPUT} /></Field>
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={contactForm.is_primary} onChange={e => setContactForm(f => ({ ...f, is_primary: e.target.checked }))} className="w-4 h-4 rounded border-gray-300 text-blue-600" />
+            <input type="checkbox" checked={contactForm.is_primary} onChange={e => setContactForm(f => ({ ...f, is_primary: e.target.checked }))} className="w-4 h-4 rounded border-gray-300 text-brand-600" />
             <span className="text-sm text-gray-700">Primary contact</span>
           </label>
         </Modal>
@@ -967,7 +967,7 @@ export default function AccountDetailPage() {
             </Field>
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={contractForm.auto_renew} onChange={e => setContractForm(f => ({ ...f, auto_renew: e.target.checked }))} className="w-4 h-4 rounded border-gray-300 text-blue-600" />
+            <input type="checkbox" checked={contractForm.auto_renew} onChange={e => setContractForm(f => ({ ...f, auto_renew: e.target.checked }))} className="w-4 h-4 rounded border-gray-300 text-brand-600" />
             <span className="text-sm text-gray-700">Auto renew</span>
           </label>
         </Modal>
@@ -1114,13 +1114,13 @@ export default function AccountDetailPage() {
                       } finally { setLoadingDealSummary(false) }
                     }}
                     disabled={loadingDealSummary}
-                    className="text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50 font-medium"
+                    className="text-xs text-brand-600 hover:text-brand-700 disabled:opacity-50 font-medium"
                   >
                     {loadingDealSummary ? 'Summarizing…' : dealSummary ? 'Refresh' : 'Summarize'}
                   </button>
                 </div>
                 {dealSummary ? (
-                  <div className="bg-blue-50 rounded-lg p-4">
+                  <div className="bg-brand-50 rounded-lg p-4">
                     {dealSummary.split('\n\n').filter(Boolean).map((block, i) => {
                       if (block.startsWith('## ')) {
                         const nl = block.indexOf('\n')
@@ -1156,7 +1156,7 @@ export default function AccountDetailPage() {
                     <button
                       onClick={addDealNote}
                       disabled={loggingDealNote || !dealNoteText.trim()}
-                      className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                      className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
                     >
                       {loggingDealNote ? 'Saving…' : 'Add note'}
                     </button>
@@ -1194,7 +1194,7 @@ export default function AccountDetailPage() {
               <button
                 onClick={saveDeal}
                 disabled={saving || !dealForm.deal_name.trim() || !dealForm.stage_id}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>

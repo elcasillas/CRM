@@ -26,7 +26,7 @@ export default async function DashboardLayout({
 
   return (
     <div>
-      <header className="sticky top-0 z-50 bg-white border-b border-gray-200">
+      <header className="sticky top-0 z-50 bg-brand-900 border-b border-brand-800">
         <div className="max-w-7xl mx-auto px-6 py-2 flex items-center justify-between">
           <div className="flex items-center gap-6">
             <Image
@@ -41,12 +41,12 @@ export default async function DashboardLayout({
           </div>
           <div className="flex items-center gap-4">
             <GlobalSearch />
-            <span className="text-sm text-gray-400 hidden sm:block">{user.email}</span>
+            <span className="text-sm text-brand-300 hidden sm:block">{user.email}</span>
             <SignOutButton />
           </div>
         </div>
       </header>
-      <main>{children}</main>
+      <main className="bg-slate-50 min-h-screen">{children}</main>
     </div>
   )
 }

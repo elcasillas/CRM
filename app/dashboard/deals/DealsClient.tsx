@@ -14,7 +14,7 @@ const EMPTY_FORM: DealFormData = {
   deal_owner_id: '', solutions_engineer_id: '', amount: '', contract_term_months: '', currency: 'USD', close_date: '',
 }
 
-const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm'
+const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -529,14 +529,14 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
             <button onClick={() => setFilter('view', 'kanban')} className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${view === 'kanban' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Kanban</button>
           </div>
           <Link href="/dashboard/deals/import" className="text-sm text-gray-500 hover:text-gray-700 font-medium border border-gray-300 px-3 py-2 rounded-lg transition-colors">Import CSV</Link>
-          <button onClick={() => openAdd()} className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">+ New deal</button>
+          <button onClick={() => openAdd()} className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">+ New deal</button>
         </div>
       </div>
 
       {/* Filter bar */}
       <div className="flex items-center gap-3 mb-4">
-        <input type="text" placeholder="Search deals…" value={search} onChange={e => setFilter('search', e.target.value)} className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 w-64" />
-        <select value={filterStage} onChange={e => setFilter('filterStage', e.target.value)} className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200">
+        <input type="text" placeholder="Search deals…" value={search} onChange={e => setFilter('search', e.target.value)} className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 w-64" />
+        <select value={filterStage} onChange={e => setFilter('filterStage', e.target.value)} className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100">
           <option value="">All stages</option>
           {stages.map(s => <option key={s.id} value={s.id}>{s.stage_name}</option>)}
         </select>
@@ -577,7 +577,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
           {ownerSummaries.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-4">
               {ownerSummaries.map(o => (
-                <button key={o.id} onClick={() => setFilter('filterOwner', filterOwner === o.id ? '' : o.id)} className={`text-left bg-white border rounded-xl p-4 shadow-sm transition-colors ${filterOwner === o.id ? 'border-l-4 border-blue-400 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                <button key={o.id} onClick={() => setFilter('filterOwner', filterOwner === o.id ? '' : o.id)} className={`text-left bg-white border rounded-xl p-4 shadow-sm transition-colors ${filterOwner === o.id ? 'border-l-4 border-brand-400 bg-brand-50' : 'border-gray-200 hover:border-gray-300'}`}>
                   <p className="font-medium text-gray-900 text-sm mb-2 truncate">{o.name}</p>
                   <div className="grid grid-cols-4 gap-1 text-center">
                     <div><p className="text-base font-bold text-gray-900">{o.count}</p><p className="text-xs text-gray-400">Deals</p></div>
@@ -616,11 +616,11 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {sorted.map(deal => (
-                  <tr key={deal.id} className="hover:bg-gray-50 transition-colors">
+                  <tr key={deal.id} className="hover:bg-brand-50 transition-colors">
                     <td className="px-4 py-3.5 text-gray-500">{deal.deal_owner?.full_name ?? '—'}</td>
                     <td className="px-4 py-3.5 font-medium text-gray-900 max-w-[220px]">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <button onClick={() => openEdit(deal)} className="truncate text-left hover:text-blue-600 transition-colors">{deal.deal_name}</button>
+                        <button onClick={() => openEdit(deal)} className="truncate text-left hover:text-brand-600 transition-colors">{deal.deal_name}</button>
                         {(() => {
                           if (!deal.created_at) return false
                           const ms = new Date(deal.created_at).getTime()
@@ -628,12 +628,12 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                           const daysAgo = (Date.now() - ms) / 86400000
                           return daysAgo >= 0 && daysAgo < newDealDaysThreshold
                         })() && (
-                          <span className="shrink-0 inline-flex px-1.5 py-0 rounded text-xs font-medium bg-blue-50 text-blue-600 ring-1 ring-blue-200">New</span>
+                          <span className="shrink-0 inline-flex px-1.5 py-0 rounded text-xs font-medium bg-brand-50 text-brand-600 ring-1 ring-brand-200">New</span>
                         )}
                       </div>
                     </td>
                     <td className="px-4 py-3.5">
-                      <select value={deal.stage_id} onChange={e => changeStage(deal, e.target.value)} className={`text-xs font-medium px-2 py-1 rounded-md border-0 focus:outline-none focus:ring-2 focus:ring-blue-300 cursor-pointer ${stageBadgeClass(deal.deal_stages)}`}>
+                      <select value={deal.stage_id} onChange={e => changeStage(deal, e.target.value)} className={`text-xs font-medium px-2 py-1 rounded-md border-0 focus:outline-none focus:ring-2 focus:ring-brand-200 cursor-pointer ${stageBadgeClass(deal.deal_stages)}`}>
                         {stages.map(s => <option key={s.id} value={s.id}>{s.stage_name}</option>)}
                       </select>
                     </td>
@@ -707,7 +707,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                           {deal.health_score != null && <span className={`flex-shrink-0 text-xs font-semibold px-1.5 py-0.5 rounded ${healthBadgeClass(deal.health_score)}`}>{deal.health_score}</span>}
                         </div>
                         {deal.accounts && <p className="text-xs text-gray-500 mt-1">{deal.accounts.account_name}</p>}
-                        {deal.solutions_engineer?.full_name && <p className="text-xs text-blue-500 mt-0.5">SE: {deal.solutions_engineer.full_name}</p>}
+                        {deal.solutions_engineer?.full_name && <p className="text-xs text-brand-500 mt-0.5">SE: {deal.solutions_engineer.full_name}</p>}
                         {(deal.value_amount != null || deal.close_date) && (
                           <div className="flex items-center gap-3 mt-2">
                             {deal.value_amount != null && <span className="text-xs text-gray-700 font-medium">{formatCurrency(deal.value_amount)}</span>}
@@ -715,7 +715,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                           </div>
                         )}
                         <div className="mt-2">
-                          <select value={deal.stage_id} onChange={e => changeStage(deal, e.target.value)} className="w-full text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-blue-300">
+                          <select value={deal.stage_id} onChange={e => changeStage(deal, e.target.value)} className="w-full text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-200">
                             {stages.map(s => <option key={s.id} value={s.id}>{s.stage_name}</option>)}
                           </select>
                         </div>
@@ -786,14 +786,14 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                         } finally { setUI('loadingFeedbackSummary', false) }
                       }}
                       disabled={loadingFeedbackSummary}
-                      className="text-xs text-blue-600 hover:text-blue-700 disabled:opacity-50 font-medium"
+                      className="text-xs text-brand-600 hover:text-brand-700 disabled:opacity-50 font-medium"
                     >
                       {loadingFeedbackSummary ? 'Summarizing…' : feedbackSummary ? 'Refresh' : 'Summarize'}
                     </button>
                   </div>
                   {feedbackSummary
                     ? (
-                      <div className="bg-blue-50 rounded-lg p-4">
+                      <div className="bg-brand-50 rounded-lg p-4">
                         {feedbackSummary.split('\n\n').filter(Boolean).map((block, i) => {
                           if (block.startsWith('## ')) {
                             const nl = block.indexOf('\n')
@@ -870,7 +870,7 @@ Please review and let me know if any updates are needed.`
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => { const ownerEmail = emailMap.get(feedbackDeal.deal_owner_id) ?? ''; window.open(`mailto:${ownerEmail}?subject=${encodeURIComponent(`Deal Update: ${feedbackDeal.deal_name}`)}&body=${encodeURIComponent(bodyText)}`, '_blank') }}
-                      className="inline-flex items-center gap-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
+                      className="inline-flex items-center gap-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 px-4 py-2 rounded-lg transition-colors"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z" /><path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" /></svg>
                       Email Owner
@@ -889,7 +889,7 @@ Please review and let me know if any updates are needed.`
                       {copied ? 'Copied!' : 'Copy Info'}
                     </button>
                   </div>
-                  <button onClick={closeFeedback} className="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">Close</button>
+                  <button onClick={closeFeedback} className="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2 rounded-lg border border-gray-200 hover:bg-brand-50 transition-colors">Close</button>
                 </div>
               )
             })()}
@@ -921,7 +921,7 @@ Please review and let me know if any updates are needed.`
                         target="_blank"
                         rel="noopener noreferrer"
                         title="Open account"
-                        className="shrink-0 text-gray-400 hover:text-blue-600 transition-colors"
+                        className="shrink-0 text-gray-400 hover:text-brand-600 transition-colors"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0112.75 17h-8.5A2.25 2.25 0 012 14.75v-8.5A2.25 2.25 0 014.25 4h5a.75.75 0 010 1.5h-5z" clipRule="evenodd" /><path fillRule="evenodd" d="M6.194 12.753a.75.75 0 001.06.053L16.5 4.44v2.81a.75.75 0 001.5 0v-4.5a.75.75 0 00-.75-.75h-4.5a.75.75 0 000 1.5h2.553l-9.056 8.194a.75.75 0 00-.053 1.06z" clipRule="evenodd" /></svg>
                       </Link>
@@ -979,7 +979,7 @@ Please review and let me know if any updates are needed.`
                   <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4">
                     <textarea value={noteText} onChange={e => setNotesUI('noteText', e.target.value)} rows={3} placeholder="Add a note…" className={`${INPUT} resize-none mb-3`} />
                     <div className="flex justify-end">
-                      <button onClick={addDealNote} disabled={loggingNote || !noteText.trim()} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+                      <button onClick={addDealNote} disabled={loggingNote || !noteText.trim()} className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
                         {loggingNote ? 'Saving…' : 'Add note'}
                       </button>
                     </div>
@@ -1013,7 +1013,7 @@ Please review and let me know if any updates are needed.`
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
               <button onClick={closeModal} className="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
-              <button onClick={handleSave} disabled={saving || !form.deal_name.trim() || !form.stage_id} className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+              <button onClick={handleSave} disabled={saving || !form.deal_name.trim() || !form.stage_id} className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
                 {saving ? 'Saving…' : 'Save'}
               </button>
             </div>

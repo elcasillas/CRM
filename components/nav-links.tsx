@@ -18,8 +18,8 @@ const ADMIN_ITEMS: NavItem[] = [
   { href: '/dashboard/admin/health-scoring', label: 'Health Scoring' },
 ]
 
-const ACTIVE  = 'text-sm text-gray-900 bg-gray-100 font-medium px-3 py-1.5 rounded-lg'
-const INACTIVE = 'text-sm text-gray-500 hover:text-gray-900 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors'
+const ACTIVE  = 'text-sm text-white bg-brand-700 font-medium px-3 py-1.5 rounded-lg'
+const INACTIVE = 'text-sm text-brand-200 hover:text-white hover:bg-brand-800 px-3 py-1.5 rounded-lg transition-colors'
 
 export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname()
@@ -37,7 +37,7 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
       ))}
       {isAdmin && (
         <>
-          <span className="text-gray-300 mx-1 select-none">|</span>
+          <span className="text-brand-700 mx-1 select-none">|</span>
           {ADMIN_ITEMS.map(item => (
             <Link key={item.href} href={item.href} className={isActive(item) ? ACTIVE : INACTIVE}>
               {item.label}

@@ -32,7 +32,7 @@ const EMPTY_FORM: FormData = {
   city: '', region: '', postal: '', country: '', status: 'active', account_owner_id: '', service_manager_id: '',
 }
 
-const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm'
+const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -204,7 +204,7 @@ export default function AccountsPage() {
         <h2 className="text-xl font-semibold text-gray-900">Accounts</h2>
         <button
           onClick={openAdd}
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
           + New account
         </button>
@@ -217,12 +217,12 @@ export default function AccountsPage() {
           placeholder="Search accounts…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 w-64"
+          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 w-64"
         />
         <select
           value={filterStatus}
           onChange={e => setFilterStatus(e.target.value)}
-          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200"
+          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100"
         >
           <option value="">All statuses</option>
           <option value="active">Active</option>
@@ -264,15 +264,15 @@ export default function AccountsPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {sorted.map(a => (
-                <tr key={a.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={a.id} className="hover:bg-brand-50 transition-colors">
                   <td className="px-6 py-3.5">
-                    <Link href={`/dashboard/accounts/${a.id}`} className="font-medium text-gray-900 hover:text-blue-600 transition-colors">
+                    <Link href={`/dashboard/accounts/${a.id}`} className="font-medium text-gray-900 hover:text-brand-600 transition-colors">
                       {a.account_name}
                     </Link>
                   </td>
                   <td className="px-6 py-3.5 text-gray-500">
                     {a.account_website
-                      ? <a href={a.account_website} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600">{a.account_website.replace(/^https?:\/\//, '')}</a>
+                      ? <a href={a.account_website} target="_blank" rel="noopener noreferrer" className="hover:text-brand-600">{a.account_website.replace(/^https?:\/\//, '')}</a>
                       : '—'}
                   </td>
                   <td className="px-6 py-3.5 text-gray-500">
@@ -379,7 +379,7 @@ export default function AccountsPage() {
               <button
                 onClick={handleSave}
                 disabled={saving || !form.account_name.trim()}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>

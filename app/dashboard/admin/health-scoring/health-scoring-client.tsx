@@ -20,7 +20,7 @@ const WEIGHT_LABELS: { key: keyof Weights; label: string; description: string }[
   { key: 'notesSignal',        label: 'Notes Signal',         description: 'Positive/negative keyword sentiment in notes' },
 ]
 
-const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm'
+const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
 
 export default function HealthScoringClient() {
   const [configId, setConfigId]             = useState<string>('')
@@ -168,7 +168,7 @@ export default function HealthScoringClient() {
             step="1"
             value={staleDays}
             onChange={e => { setStaleDays(Number(e.target.value) || 30); setSaveMsg(null) }}
-            className="w-32 bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm"
+            className="w-32 bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm"
           />
           <span className="text-sm text-gray-500">days</span>
         </div>
@@ -177,7 +177,7 @@ export default function HealthScoringClient() {
       {/* New Deal Badge Threshold */}
       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
         <h3 className="text-sm font-semibold text-gray-700 mb-1">New Deal Badge</h3>
-        <p className="text-xs text-gray-400 mb-4">Deals created within this many days will show a <span className="inline-flex px-1.5 py-0 rounded text-xs font-medium bg-blue-50 text-blue-600 ring-1 ring-blue-200">New</span> badge in the Deals table.</p>
+        <p className="text-xs text-gray-400 mb-4">Deals created within this many days will show a <span className="inline-flex px-1.5 py-0 rounded text-xs font-medium bg-brand-50 text-brand-600 ring-1 ring-brand-200">New</span> badge in the Deals table.</p>
         <div className="flex items-center gap-3">
           <input
             type="number"
@@ -186,7 +186,7 @@ export default function HealthScoringClient() {
             step="1"
             value={newDealDays}
             onChange={e => { setNewDealDays(Number(e.target.value) || 14); setSaveMsg(null) }}
-            className="w-32 bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm"
+            className="w-32 bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm"
           />
           <span className="text-sm text-gray-500">days</span>
         </div>
@@ -197,7 +197,7 @@ export default function HealthScoringClient() {
         <button
           onClick={handleSave}
           disabled={saving || !totalOk}
-          className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+          className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
         >
           {saving ? 'Saving…' : 'Save Settings'}
         </button>

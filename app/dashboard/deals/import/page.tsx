@@ -183,7 +183,7 @@ export default function ImportDealsPage() {
           <p className="text-green-600 text-sm mt-1">Health scores are being computed in the background.</p>
           <button
             onClick={() => router.push('/dashboard/deals')}
-            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="mt-4 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             Go to Deals
           </button>
@@ -196,7 +196,7 @@ export default function ImportDealsPage() {
             onDragLeave={() => setDragOver(false)}
             onDrop={onDrop}
             onClick={() => inputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 hover:border-gray-400 bg-white'}`}
+            className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-gray-300 hover:border-gray-400 bg-white'}`}
           >
             <input ref={inputRef} type="file" accept=".csv" className="hidden" onChange={onFileChange} />
             <p className="text-gray-500 text-sm">
@@ -222,7 +222,7 @@ export default function ImportDealsPage() {
                 <select
                   value={accountId}
                   onChange={e => setAccountId(e.target.value)}
-                  className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm"
+                  className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm"
                 >
                   <option value="">— {allHaveAccount ? 'none (account names read from CSV)' : 'select account'} —</option>
                   {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
@@ -272,7 +272,7 @@ export default function ImportDealsPage() {
                 <button
                   onClick={handleImport}
                   disabled={importing || (!allHaveAccount && !accountId)}
-                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+                  className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
                 >
                   {importing ? 'Importing…' : `Import ${preview.length} deal${preview.length !== 1 ? 's' : ''}`}
                 </button>

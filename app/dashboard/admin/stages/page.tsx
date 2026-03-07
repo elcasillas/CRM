@@ -6,7 +6,7 @@ import type { DealStage } from '@/lib/types'
 
 const supabase = createClient()
 
-const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm'
+const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
 
 type FormData = {
   stage_name:      string
@@ -140,7 +140,7 @@ export default function AdminStagesPage() {
         </div>
         <button
           onClick={openAdd}
-          className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
           + New stage
         </button>
@@ -184,7 +184,7 @@ export default function AdminStagesPage() {
                       </button>
                     </div>
                   </td>
-                  <td className="px-4 py-3.5 font-medium"><button onClick={() => openEdit(stage)} className="text-gray-900 hover:text-blue-600 text-left transition-colors">{stage.stage_name}</button></td>
+                  <td className="px-4 py-3.5 font-medium"><button onClick={() => openEdit(stage)} className="text-gray-900 hover:text-brand-600 text-left transition-colors">{stage.stage_name}</button></td>
                   <td className="px-4 py-3.5 text-gray-500 text-sm">{stage.win_probability != null ? `${stage.win_probability}%` : '—'}</td>
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -248,7 +248,7 @@ export default function AdminStagesPage() {
                       type="checkbox"
                       checked={form[flag]}
                       onChange={setFlag(flag)}
-                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
                     />
                     <span className="text-sm text-gray-700 capitalize">{flag.replace('is_', '')}</span>
                   </label>
@@ -262,7 +262,7 @@ export default function AdminStagesPage() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>

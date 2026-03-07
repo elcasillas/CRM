@@ -68,7 +68,7 @@ export default function LoginPage() {
                 required
                 autoComplete="email"
                 placeholder="you@example.com"
-                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm"
+                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm"
               />
             </div>
 
@@ -84,7 +84,7 @@ export default function LoginPage() {
                 required
                 autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
                 placeholder="••••••••"
-                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 text-sm"
+                className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm"
               />
             </div>
 
@@ -94,7 +94,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium py-2 rounded-lg transition-colors text-sm"
+              className="w-full bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white font-medium py-2 rounded-lg transition-colors text-sm"
             >
               {loading ? 'Please wait…' : mode === 'signin' ? 'Sign in' : 'Create account'}
             </button>
@@ -102,7 +102,7 @@ export default function LoginPage() {
 
           <p className="mt-5 text-center text-sm text-gray-500">
             {mode === 'signin' ? "Don't have an account?" : 'Already have an account?'}{' '}
-            <button onClick={toggleMode} className="text-blue-600 hover:text-blue-700 font-medium">
+            <button onClick={toggleMode} className="text-brand-600 hover:text-brand-700 font-medium">
               {mode === 'signin' ? 'Create one' : 'Sign in'}
             </button>
           </p>

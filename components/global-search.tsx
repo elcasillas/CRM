@@ -18,7 +18,7 @@ type SearchResult = {
 }
 
 const TYPE_META: Record<ResultType, { label: string; color: string }> = {
-  account: { label: 'Accounts',    color: 'text-blue-600' },
+  account: { label: 'Accounts',    color: 'text-brand-600' },
   deal:    { label: 'Deals',       color: 'text-amber-600' },
   hid:     { label: 'HID Records', color: 'text-purple-600' },
   contact: { label: 'Contacts',    color: 'text-green-600' },
@@ -171,7 +171,7 @@ export function GlobalSearch() {
     <div ref={containerRef} className="relative">
       <div className="relative">
         <svg
-          className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none"
+          className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-brand-400 pointer-events-none"
           fill="none" stroke="currentColor" viewBox="0 0 24 24"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -185,12 +185,12 @@ export function GlobalSearch() {
           onChange={handleChange}
           onFocus={() => { if (query.length >= 2) setOpen(true) }}
           onKeyDown={handleKeyDown}
-          className="w-52 bg-gray-50 border border-gray-200 rounded-lg pl-8 pr-7 py-1.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200 focus:bg-white focus:w-72 transition-all duration-150"
+          className="w-52 bg-brand-800 border border-brand-700 rounded-lg pl-8 pr-7 py-1.5 text-sm text-white placeholder-brand-400 focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-600 focus:bg-brand-800 focus:w-72 transition-all duration-150"
         />
         {query && (
           <button
             onClick={clear}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs leading-none"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-brand-400 hover:text-brand-200 text-xs leading-none"
             tabIndex={-1}
           >
             ✕
@@ -223,7 +223,7 @@ export function GlobalSearch() {
                           key={item.id}
                           href={item.href}
                           onClick={clear}
-                          className={`flex flex-col px-4 py-2.5 border-b border-gray-50 last:border-b-0 transition-colors ${active ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                          className={`flex flex-col px-4 py-2.5 border-b border-gray-50 last:border-b-0 transition-colors ${active ? 'bg-brand-50' : 'hover:bg-brand-50'}`}
                         >
                           <span className="text-sm text-gray-900 font-medium truncate">{item.label}</span>
                           {item.sublabel && (
