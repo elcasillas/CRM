@@ -171,7 +171,7 @@ export function GlobalSearch() {
     <div ref={containerRef} className="relative">
       <div className="relative">
         <svg
-          className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-brand-400 pointer-events-none"
+          className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none"
           fill="none" stroke="currentColor" viewBox="0 0 24 24"
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
@@ -185,12 +185,12 @@ export function GlobalSearch() {
           onChange={handleChange}
           onFocus={() => { if (query.length >= 2) setOpen(true) }}
           onKeyDown={handleKeyDown}
-          className="w-52 bg-brand-800 border border-brand-700 rounded-lg pl-8 pr-7 py-1.5 text-sm text-white placeholder-brand-400 focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-600 focus:bg-brand-800 focus:w-72 transition-all duration-150"
+          className="w-52 bg-gray-50 border border-gray-200 rounded-lg pl-8 pr-7 py-1.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-100 focus:bg-white focus:w-72 transition-all duration-150"
         />
         {query && (
           <button
             onClick={clear}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-brand-400 hover:text-brand-200 text-xs leading-none"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs leading-none"
             tabIndex={-1}
           >
             ✕
