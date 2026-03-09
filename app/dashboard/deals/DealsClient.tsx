@@ -101,6 +101,7 @@ type UIState = {
   feedbackSummaryGeneratedAt:  string | null
   loadingFeedbackSummary:      boolean
   copied:                      boolean
+  emailStatus:                 'idle' | 'checking' | 'summarizing' | 'emailing'
 }
 
 type NotesState = {
@@ -120,6 +121,7 @@ const INITIAL_UI: UIState = {
   modal: null, editing: null, form: EMPTY_FORM, saving: false,
   formError: null, confirmDelete: null, feedbackDeal: null,
   feedbackSummary: null, feedbackSummaryGeneratedAt: null, loadingFeedbackSummary: false, copied: false,
+  emailStatus: 'idle',
 }
 
 const INITIAL_NOTES: NotesState = {
@@ -142,7 +144,8 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
   // Destructure for readable access throughout the component
   const { view, search, filterStage, filterOwner, filterStale, filterOverdue, sortCol, sortDir } = filters
   const { modal, editing, form, saving, formError, confirmDelete,
-          feedbackDeal, feedbackSummary, feedbackSummaryGeneratedAt, loadingFeedbackSummary, copied } = ui
+          feedbackDeal, feedbackSummary, feedbackSummaryGeneratedAt, loadingFeedbackSummary, copied,
+          emailStatus } = ui
   const { dealNotes, noteText, loggingNote, noteConfirmDelete, feedbackNotes } = notes
   const isAllDeals = initialData.isAllDeals ?? false
 
@@ -184,7 +187,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     resetNotesForm()
   }
   function closeFeedback() {
-    setUIState(prev => ({ ...prev, feedbackDeal: null, feedbackSummary: null, feedbackSummaryGeneratedAt: null, loadingFeedbackSummary: false }))
+    setUIState(prev => ({ ...prev, feedbackDeal: null, feedbackSummary: null, feedbackSummaryGeneratedAt: null, loadingFeedbackSummary: false, emailStatus: 'idle' }))
     setNotesState(prev => ({ ...prev, feedbackNotes: [] }))
   }
   function closeAllModals() { closeModal(); closeFeedback() }
@@ -395,6 +398,48 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     if (error) console.error('delete deal:', error.message)
     else setDeals(prev => prev.filter(d => d.id !== id))
     setUI('confirmDelete', null)
+  }
+
+  async function handleEmailOwner() {
+    if (!feedbackDeal) return
+    const ownerEmail = emailMap.get(feedbackDeal.deal_owner_id) ?? ''
+
+    setUI('emailStatus', 'checking')
+
+    if (!feedbackSummary) {
+      setUI('emailStatus', 'summarizing')
+      try {
+        const res = await fetch(`/api/deals/${feedbackDeal.id}/summarize`, { method: 'POST' })
+        if (res.ok) {
+          const body = await res.json()
+          if (body.summary) {
+            setUIState(prev => ({ ...prev, feedbackSummary: body.summary, feedbackSummaryGeneratedAt: body.generatedAt ?? null, emailStatus: 'emailing' }))
+          }
+        }
+      } catch (_e) { /* continue without summary */ }
+    }
+
+    setUI('emailStatus', 'emailing')
+    try {
+      const res = await fetch(`/api/deals/${feedbackDeal.id}/compose-email`, { method: 'POST' })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.subject && data.body) {
+          window.open(`mailto:${ownerEmail}?subject=${encodeURIComponent(data.subject)}&body=${encodeURIComponent(data.body)}`, '_blank')
+          setUI('emailStatus', 'idle')
+          return
+        }
+      }
+    } catch (_e) { /* fall through to fallback */ }
+
+    // Client-side deterministic fallback
+    const ts = lastNoteDates.get(feedbackDeal.id)
+    const daysSince = ts ? `${Math.floor((Date.now() - new Date(ts).getTime()) / 86400000)} days` : 'N/A'
+    const closeDate = feedbackDeal.close_date ? new Date(feedbackDeal.close_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
+    const fallbackSubject = `Deal Update: ${feedbackDeal.deal_name}`
+    const fallbackBody = `Hi ${feedbackDeal.deal_owner?.full_name ?? 'there'},\n\nI wanted to follow up on "${feedbackDeal.deal_name}" (${feedbackDeal.deal_stages?.stage_name ?? 'unknown stage'}). ${daysSince !== 'N/A' ? `It has been ${daysSince} since the last update.` : ''} ${closeDate !== 'N/A' ? `The close date is ${closeDate}.` : ''}\n\nCould you please provide a current status update and flag any blockers?\n\nThanks.`
+    window.open(`mailto:${ownerEmail}?subject=${encodeURIComponent(fallbackSubject)}&body=${encodeURIComponent(fallbackBody)}`, '_blank')
+    setUI('emailStatus', 'idle')
   }
 
   // ── Sort ─────────────────────────────────────────────────────────────────────
@@ -869,11 +914,14 @@ Please review and let me know if any updates are needed.`
                 <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <button
-                      onClick={() => { const ownerEmail = emailMap.get(feedbackDeal.deal_owner_id) ?? ''; window.open(`mailto:${ownerEmail}?subject=${encodeURIComponent(`Deal Update: ${feedbackDeal.deal_name}`)}&body=${encodeURIComponent(bodyText)}`, '_blank') }}
-                      className="inline-flex items-center gap-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 px-4 py-2 rounded-lg transition-colors"
+                      onClick={handleEmailOwner}
+                      disabled={emailStatus !== 'idle'}
+                      className="inline-flex items-center gap-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-60 px-4 py-2 rounded-lg transition-colors"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z" /><path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" /></svg>
-                      Email Owner
+                      {emailStatus === 'checking' ? 'Checking summary…' :
+                       emailStatus === 'summarizing' ? 'Generating summary…' :
+                       emailStatus === 'emailing' ? 'Generating email…' :
+                       <><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z" /><path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" /></svg> Email Owner</>}
                     </button>
                     {ownerProfile?.slack_member_id && (
                       <a href={`slack://user?team=T02FCU97B&id=${ownerProfile.slack_member_id}`} className="inline-flex items-center gap-2 text-sm font-medium text-white bg-[#4A154B] hover:bg-[#3a1039] px-4 py-2 rounded-lg transition-colors">
