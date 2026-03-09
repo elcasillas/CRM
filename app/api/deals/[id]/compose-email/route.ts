@@ -41,7 +41,8 @@ export async function POST(
     if (owner?.full_name) ownerName = owner.full_name
   }
 
-  const stageName = (deal.deal_stages as { stage_name: string } | null)?.stage_name ?? 'Unknown'
+  const stagesArr = deal.deal_stages as { stage_name: string }[] | { stage_name: string } | null
+  const stageName = (Array.isArray(stagesArr) ? stagesArr[0] : stagesArr)?.stage_name ?? 'Unknown'
   const closeDate = deal.close_date
     ? new Date(deal.close_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : 'Not set'
