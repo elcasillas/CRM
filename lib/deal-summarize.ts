@@ -77,7 +77,6 @@ export interface SummaryResult {
   generatedAt: string
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function getOrCreateSummary(dealId: string, admin: SupabaseClient<any>): Promise<SummaryResult | null> {
   const { data: deal, error: dealErr } = await admin
     .from('deals')
