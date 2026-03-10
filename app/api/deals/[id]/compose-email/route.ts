@@ -81,13 +81,13 @@ export async function POST(
     : 'N/A'
   const ownerFirst = ownerName.split(' ')[0] ?? ownerName
 
-  // Build the missing-items block for the email prompt
+  // Build the missing-items block for the email prompt — top 3–6 by severity
   let missingItemsBlock = ''
   if (inspectionResult) {
     const missing = topMissingChecks(inspectionResult, 6)
     if (missing.length > 0) {
-      missingItemsBlock = `\nTOP MISSING / WEAK ITEMS (from deal inspection score ${inspectionResult.score}/100):\n` +
-        missing.map(c => `- [${c.severity.toUpperCase()}] ${c.label}: ${c.question ?? c.explanation}`).join('\n')
+      missingItemsBlock = `\nINSPECTION GAPS (deal score ${inspectionResult.score}/100 — use these to drive the questions):\n` +
+        missing.map(c => `- ${c.question ?? c.explanation}`).join('\n')
     }
   }
 
@@ -95,27 +95,22 @@ export async function POST(
     ? `AI SUMMARY:\n${deal.ai_summary}`
     : '(No AI summary available)'
 
-  const systemPrompt = `You are a sales manager writing a concise deal quality follow-up email to a deal owner.
+  const systemPrompt = `You are a sales manager writing an internal follow-up email to a deal owner about deal quality and forecast readiness.
 
-You have been given:
-1. Deal metadata
-2. An AI summary of the deal notes
-3. A list of inspection gaps — missing or weak information that needs to be addressed
+Tone: direct, professional, practical. Sound like a manager who has reviewed the deal and wants specific answers — not a form letter.
 
-Write a short, professional email that asks the rep specifically about the top missing items.
-
-Return your response as a JSON object with exactly two keys:
-- "subject": a short, specific email subject line (under 60 characters)
-- "body": the full email body as plain text
+Return a JSON object with exactly two keys:
+- "subject": short, specific subject line under 60 characters — reference the deal name
+- "body": the email body as plain text
 
 Rules for the body:
-- Begin with "Hi ${ownerFirst},"
-- One sentence stating the purpose (deal quality review / forecast check)
-- List the specific questions from the inspection gaps as a short bullet-style list (use dashes)
-- Brief closing requesting an update before the next deal review
+- Open: "Hi ${ownerFirst},"
+- One sentence: why you're writing (reviewed "${deal.deal_name as string}", need a few updates before forecast review, or similar — be specific to the deal)
+- List 3 to 6 questions as dash-separated lines. Use the inspection gaps provided. Prioritize critical gaps. Write each question as a direct, specific ask — no fluff, no preamble
+- One closing sentence: brief request to update the deal record or reply before the next review
 - Sign off: "Thanks"
-- Plain text only — no markdown formatting, no headers
-- Under 180 words`
+- Plain text only — no markdown, no bullet symbols other than dashes, no headers
+- Under 160 words total`
 
   const userContent = `Deal: "${deal.deal_name as string}"
 Owner: ${ownerName}
