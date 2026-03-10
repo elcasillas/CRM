@@ -276,9 +276,9 @@ export function AdminUsersClient() {
       {editingUser && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Edit user</h3>
-              <button onClick={() => setEditingUser(null)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
+              <h3 className="font-semibold text-white">Edit User</h3>
+              <button onClick={() => setEditingUser(null)} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
             </div>
             <div className="px-6 py-5 space-y-4">
               <div>
@@ -357,9 +357,9 @@ export function AdminUsersClient() {
       {addModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Add user</h3>
-              <button onClick={() => setAddModal(false)} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
+              <h3 className="font-semibold text-white">Add User</h3>
+              <button onClick={() => setAddModal(false)} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
             </div>
             <div className="px-6 py-5 space-y-4">
               <div>

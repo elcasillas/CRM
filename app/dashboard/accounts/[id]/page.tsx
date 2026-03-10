@@ -94,9 +94,9 @@ function Modal({ title, onClose, onSave, saving, disabled, error, children, maxW
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className={`bg-white border border-gray-200 rounded-xl shadow-xl w-full ${maxWidth}`}>
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h3 className="font-semibold text-gray-900">{title}</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+        <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
+          <h3 className="font-semibold text-white">{title}</h3>
+          <button onClick={onClose} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
         </div>
         <div className="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto">
           {children}
@@ -905,7 +905,7 @@ export default function AccountDetailPage() {
       {/* Contact modal */}
       {contactModal && (
         <Modal
-          title={contactModal === 'add' ? 'New contact' : 'Edit contact'}
+          title={contactModal === 'add' ? 'New Contact' : 'Edit Contact'}
           onClose={closeContactModal} onSave={saveContact}
           saving={saving} disabled={!contactForm.email.trim()} error={formError}
         >
@@ -928,7 +928,7 @@ export default function AccountDetailPage() {
       {/* HID modal */}
       {hidModal && (
         <Modal
-          title={hidModal === 'add' ? 'New HID record' : 'Edit HID record'}
+          title={hidModal === 'add' ? 'New HID Record' : 'Edit HID Record'}
           onClose={closeHidModal} onSave={saveHid}
           saving={saving} disabled={!hidForm.hid_number.trim()} error={formError}
         >
@@ -947,7 +947,7 @@ export default function AccountDetailPage() {
       {/* Contract modal */}
       {contractModal && (
         <Modal
-          title={contractModal === 'add' ? 'New contract' : 'Edit contract'}
+          title={contractModal === 'add' ? 'New Contract' : 'Edit Contract'}
           onClose={closeContractModal} onSave={saveContract}
           saving={saving} error={formError}
         >
@@ -976,7 +976,7 @@ export default function AccountDetailPage() {
       {/* Deal add modal */}
       {dealModal === 'add' && (
         <Modal
-          title="New deal"
+          title="New Deal"
           onClose={closeDealModal} onSave={saveDeal}
           saving={saving} disabled={!dealForm.deal_name.trim() || !dealForm.stage_id} error={formError}
           maxWidth="max-w-2xl"
@@ -1031,9 +1031,9 @@ export default function AccountDetailPage() {
       {dealModal === 'edit' && editingDeal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Edit Deal</h3>
-              <button onClick={closeDealModal} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
+              <h3 className="font-semibold text-white">Edit Deal</h3>
+              <button onClick={closeDealModal} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
             </div>
             <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
               <Field label="Deal name *">

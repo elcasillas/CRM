@@ -315,9 +315,9 @@ export default function AccountsPage() {
       {modal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-lg">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">{modal === 'add' ? 'New account' : 'Edit account'}</h3>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
+              <h3 className="font-semibold text-white">{modal === 'add' ? 'New Account' : 'Edit Account'}</h3>
+              <button onClick={closeModal} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
             </div>
             <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
               <Field label="Account name *">

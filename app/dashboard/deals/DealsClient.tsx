@@ -824,9 +824,9 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
       {feedbackDeal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Deal Summary</h3>
-              <button onClick={closeFeedback} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
+              <h3 className="font-semibold text-white">Deal Summary</h3>
+              <button onClick={closeFeedback} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
             </div>
             <div className="px-6 py-5 space-y-4 max-h-[75vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
@@ -1059,9 +1059,9 @@ Please review and let me know if any updates are needed.`
       {modal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-2xl">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">{modal === 'add' ? 'New deal' : 'Edit Deal'}</h3>
-              <button onClick={closeModal} className="text-gray-400 hover:text-gray-600 text-lg leading-none">✕</button>
+            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
+              <h3 className="font-semibold text-white">{modal === 'add' ? 'New Deal' : 'Edit Deal'}</h3>
+              <button onClick={closeModal} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
             </div>
             <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
               <Field label="Deal name *"><input type="text" value={form.deal_name} onChange={set('deal_name')} className={INPUT} /></Field>
