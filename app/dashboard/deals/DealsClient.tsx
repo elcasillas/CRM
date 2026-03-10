@@ -703,7 +703,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                     <td className="px-4 py-3.5 text-gray-500">{deal.deal_owner?.full_name ?? '—'}</td>
                     <td className="px-4 py-3.5 font-medium text-gray-900 max-w-[220px]">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <button onClick={() => openEdit(deal)} className="truncate text-left hover:text-brand-600 transition-colors">{deal.deal_name}</button>
+                        <button onClick={() => openEdit(deal)} title={deal.deal_name} className="truncate text-left hover:text-brand-600 transition-colors">{deal.deal_name}</button>
                         {(() => {
                           if (!deal.created_at) return false
                           const ms = new Date(deal.created_at).getTime()
