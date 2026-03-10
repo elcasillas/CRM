@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client'
 import type { DealStage, DealWithRelations, NoteWithAuthor } from '@/lib/types'
 import type { DealFormData, DealsInitialData, DealPageRow } from './types'
 import { parseAmount, calcACV, calcTCV } from '@/lib/dealCalc'
+import type { InspectionResult } from '@/lib/deal-inspect'
 
 const supabase = createClient()
 
@@ -101,7 +102,9 @@ type UIState = {
   feedbackSummaryGeneratedAt:  string | null
   loadingFeedbackSummary:      boolean
   copied:                      boolean
-  emailStatus:                 'idle' | 'checking' | 'summarizing' | 'emailing'
+  emailStatus:                 'idle' | 'checking' | 'summarizing' | 'inspecting' | 'emailing'
+  inspection:                  InspectionResult | null
+  inspectionLoading:           boolean
 }
 
 type NotesState = {
@@ -122,6 +125,7 @@ const INITIAL_UI: UIState = {
   formError: null, confirmDelete: null, feedbackDeal: null,
   feedbackSummary: null, feedbackSummaryGeneratedAt: null, loadingFeedbackSummary: false, copied: false,
   emailStatus: 'idle',
+  inspection: null, inspectionLoading: false,
 }
 
 const INITIAL_NOTES: NotesState = {
@@ -145,7 +149,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
   const { view, search, filterStage, filterOwner, filterStale, filterOverdue, sortCol, sortDir } = filters
   const { modal, editing, form, saving, formError, confirmDelete,
           feedbackDeal, feedbackSummary, feedbackSummaryGeneratedAt, loadingFeedbackSummary, copied,
-          emailStatus } = ui
+          emailStatus, inspection, inspectionLoading } = ui
   const { dealNotes, noteText, loggingNote, noteConfirmDelete, feedbackNotes } = notes
   const isAllDeals = initialData.isAllDeals ?? false
 
@@ -187,7 +191,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     resetNotesForm()
   }
   function closeFeedback() {
-    setUIState(prev => ({ ...prev, feedbackDeal: null, feedbackSummary: null, feedbackSummaryGeneratedAt: null, loadingFeedbackSummary: false, emailStatus: 'idle' }))
+    setUIState(prev => ({ ...prev, feedbackDeal: null, feedbackSummary: null, feedbackSummaryGeneratedAt: null, loadingFeedbackSummary: false, emailStatus: 'idle', inspection: null, inspectionLoading: false }))
     setNotesState(prev => ({ ...prev, feedbackNotes: [] }))
   }
   function closeAllModals() { closeModal(); closeFeedback() }
@@ -307,9 +311,9 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
   }
 
   async function openFeedback(deal: DealWithRelations) {
-    setUIState(prev => ({ ...prev, feedbackDeal: deal, feedbackSummary: null, feedbackSummaryGeneratedAt: null }))
+    setUIState(prev => ({ ...prev, feedbackDeal: deal, feedbackSummary: null, feedbackSummaryGeneratedAt: null, inspection: null }))
     setNotesUI('feedbackNotes', [])
-    const [notesResult, summaryRes] = await Promise.all([
+    const [notesResult, summaryRes, inspectRes] = await Promise.all([
       supabase
         .from('notes')
         .select('*, author:profiles!created_by(full_name)')
@@ -318,12 +322,19 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
         .order('created_at', { ascending: false })
         .limit(3),
       fetch(`/api/deals/${deal.id}/summarize`),
+      fetch(`/api/deals/${deal.id}/inspect`),
     ])
     setNotesUI('feedbackNotes', (notesResult.data ?? []) as NoteWithAuthor[])
     if (summaryRes.ok) {
       const body = await summaryRes.json()
       if (body.summary) {
         setUIState(prev => ({ ...prev, feedbackSummary: body.summary, feedbackSummaryGeneratedAt: body.generatedAt ?? null }))
+      }
+    }
+    if (inspectRes.ok) {
+      const body = await inspectRes.json()
+      if (body.result) {
+        setUI('inspection', body.result as InspectionResult)
       }
     }
   }
@@ -400,6 +411,19 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     setUI('confirmDelete', null)
   }
 
+  async function handleRunInspection() {
+    if (!feedbackDeal) return
+    setUI('inspectionLoading', true)
+    try {
+      const res = await fetch(`/api/deals/${feedbackDeal.id}/inspect`, { method: 'POST' })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.result) setUI('inspection', data.result as InspectionResult)
+      }
+    } catch (_e) { /* silent */ }
+    setUI('inspectionLoading', false)
+  }
+
   async function handleEmailOwner() {
     if (!feedbackDeal) return
     const ownerEmail = emailMap.get(feedbackDeal.deal_owner_id) ?? ''
@@ -413,10 +437,22 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
         if (res.ok) {
           const body = await res.json()
           if (body.summary) {
-            setUIState(prev => ({ ...prev, feedbackSummary: body.summary, feedbackSummaryGeneratedAt: body.generatedAt ?? null, emailStatus: 'emailing' }))
+            setUIState(prev => ({ ...prev, feedbackSummary: body.summary, feedbackSummaryGeneratedAt: body.generatedAt ?? null, emailStatus: 'inspecting' }))
           }
         }
       } catch (_e) { /* continue without summary */ }
+    }
+
+    // Run inspection if not already fresh in state
+    if (!inspection) {
+      setUI('emailStatus', 'inspecting')
+      try {
+        const res = await fetch(`/api/deals/${feedbackDeal.id}/inspect`, { method: 'POST' })
+        if (res.ok) {
+          const data = await res.json()
+          if (data.result) setUI('inspection', data.result as InspectionResult)
+        }
+      } catch (_e) { /* compose-email will run inspection server-side as fallback */ }
     }
 
     setUI('emailStatus', 'emailing')
@@ -425,6 +461,8 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
       if (res.ok) {
         const data = await res.json()
         if (data.subject && data.body) {
+          // Update inspection state if compose-email ran one
+          if (data.inspection) setUI('inspection', data.inspection as InspectionResult)
           window.open(`mailto:${ownerEmail}?subject=${encodeURIComponent(data.subject)}&body=${encodeURIComponent(data.body)}`, '_blank')
           setUI('emailStatus', 'idle')
           return
@@ -858,6 +896,77 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                     : <p className="text-xs text-gray-400">Click Summarize to generate an AI summary of this deal&apos;s notes.</p>}
                 </div>
               )}
+              {/* ── Deal Inspection ──────────────────────────────────────────────── */}
+              {(isAdmin || isSalesManager) && (
+                <div className="border-t border-gray-100 pt-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Deal Inspection</p>
+                      {inspection && (
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ring-1 ${
+                          inspection.score >= 70 ? 'bg-green-50 text-green-700 ring-green-200' :
+                          inspection.score >= 40 ? 'bg-amber-50 text-amber-700 ring-amber-200' :
+                          'bg-red-50 text-red-700 ring-red-200'
+                        }`}>
+                          {inspection.score}/100
+                        </span>
+                      )}
+                      {inspection?.runAt && (
+                        <span className="text-xs text-gray-400">
+                          {(() => {
+                            const mins = Math.floor((Date.now() - new Date(inspection.runAt).getTime()) / 60000)
+                            return mins < 2 ? 'just now' : mins < 60 ? `${mins}m ago` : `${Math.floor(mins / 60)}h ago`
+                          })()}
+                        </span>
+                      )}
+                    </div>
+                    <button
+                      onClick={handleRunInspection}
+                      disabled={inspectionLoading || emailStatus !== 'idle'}
+                      className="text-xs font-medium text-brand-600 hover:text-brand-700 disabled:opacity-50"
+                    >
+                      {inspectionLoading ? 'Inspecting…' : inspection ? 'Refresh' : 'Run Inspection'}
+                    </button>
+                  </div>
+
+                  {inspection ? (
+                    <div className="space-y-1">
+                      {inspection.checks.map(check => (
+                        <div key={check.id} className="flex items-start gap-2 py-1">
+                          <span className={`text-xs mt-0.5 shrink-0 font-bold ${
+                            check.status === 'pass' ? 'text-green-500' :
+                            check.severity === 'critical' ? 'text-red-500' : 'text-amber-500'
+                          }`}>
+                            {check.status === 'pass' ? '✓' : check.status === 'weak' || check.status === 'stale' ? '~' : '✗'}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <span className={`text-xs ${check.status === 'pass' ? 'text-gray-500' : 'text-gray-800 font-medium'}`}>
+                              {check.label}
+                            </span>
+                            {check.status !== 'pass' && (
+                              <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{check.explanation}</p>
+                            )}
+                          </div>
+                          {check.status !== 'pass' && (
+                            <span className={`text-xs px-1.5 py-0.5 rounded ring-1 shrink-0 ${
+                              check.severity === 'critical' ? 'bg-red-50 text-red-600 ring-red-200' :
+                              check.severity === 'medium'   ? 'bg-amber-50 text-amber-600 ring-amber-200' :
+                              'bg-gray-50 text-gray-500 ring-gray-200'
+                            }`}>
+                              {check.severity}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400">
+                      {inspectionLoading ? 'Running inspection…' : 'Click Run Inspection to evaluate this deal, or Email Owner to inspect and generate a targeted follow-up.'}
+                    </p>
+                  )}
+                </div>
+              )}
+
               <div className="border-t border-gray-100 pt-4">
                 <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">Recent Notes</p>
                 {feedbackNotes.length === 0 ? (
@@ -920,6 +1029,7 @@ Please review and let me know if any updates are needed.`
                     >
                       {emailStatus === 'checking' ? 'Checking summary…' :
                        emailStatus === 'summarizing' ? 'Generating summary…' :
+                       emailStatus === 'inspecting' ? 'Inspecting deal…' :
                        emailStatus === 'emailing' ? 'Generating email…' :
                        <><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z" /><path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" /></svg> Email Owner</>}
                     </button>

@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { runInspection, topMissingChecks, type InspectionCheckDef, type InspectionResult } from '@/lib/deal-inspect'
 
 // ── POST — compose an AI-generated follow-up email about a deal ───────────────
-// Uses stored ai_summary as primary context for email generation.
+// Runs (or reuses) a deal inspection, then generates a targeted manager email
+// asking the rep specifically about the top missing or weak items.
 // Returns { subject: string, body: string }
+
+const STALE_INSPECTION_HOURS = 2
 
 export async function POST(
   _req: NextRequest,
@@ -21,10 +25,10 @@ export async function POST(
 
   const admin = createAdminClient()
 
-  // Fetch deal metadata
+  // Fetch deal metadata + stored inspection result
   const { data: deal, error: dealErr } = await admin
     .from('deals')
-    .select('deal_name, deal_description, close_date, value_amount, health_score, ai_summary, deal_owner_id, deal_stages ( stage_name )')
+    .select('deal_name, deal_description, close_date, value_amount, health_score, ai_summary, deal_owner_id, inspection_result, inspection_run_at, deal_stages ( stage_name )')
     .eq('id', id)
     .single()
 
@@ -41,45 +45,88 @@ export async function POST(
     if (owner?.full_name) ownerName = owner.full_name
   }
 
-  const stagesArr = deal.deal_stages as { stage_name: string }[] | { stage_name: string } | null
-  const stageName = (Array.isArray(stagesArr) ? stagesArr[0] : stagesArr)?.stage_name ?? 'Unknown'
+  // Determine if we need a fresh inspection
+  const staleMs = STALE_INSPECTION_HOURS * 60 * 60 * 1000
+  const inspRunAt = deal.inspection_run_at ? new Date(deal.inspection_run_at as string).getTime() : 0
+  const inspectionIsStale = (Date.now() - inspRunAt) > staleMs
+
+  let inspectionResult: InspectionResult | null = null
+
+  if (deal.inspection_result && !inspectionIsStale) {
+    inspectionResult = deal.inspection_result as InspectionResult
+  } else {
+    // Run fresh inspection
+    try {
+      let configChecks: InspectionCheckDef[] | undefined
+      const { data: config } = await admin.from('inspection_config').select('checks').limit(1).single()
+      if (config?.checks) configChecks = config.checks as InspectionCheckDef[]
+
+      let staleDays = 14
+      const { data: hsConfig } = await admin.from('health_score_config').select('stale_days').limit(1).single()
+      if (hsConfig?.stale_days) staleDays = hsConfig.stale_days
+
+      inspectionResult = await runInspection(id, admin, configChecks, staleDays)
+    } catch (_e) {
+      // Proceed without inspection — fall back to summary-only email
+    }
+  }
+
+  const stagesVal = deal.deal_stages as { stage_name: string }[] | { stage_name: string } | null
+  const stageName = (Array.isArray(stagesVal) ? stagesVal[0] : stagesVal)?.stage_name ?? 'Unknown'
   const closeDate = deal.close_date
-    ? new Date(deal.close_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    ? new Date((deal.close_date as string) + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : 'Not set'
   const acv = deal.value_amount != null
-    ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(deal.value_amount)
+    ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(deal.value_amount as number)
     : 'N/A'
+  const ownerFirst = ownerName.split(' ')[0] ?? ownerName
+
+  // Build the missing-items block for the email prompt
+  let missingItemsBlock = ''
+  if (inspectionResult) {
+    const missing = topMissingChecks(inspectionResult, 6)
+    if (missing.length > 0) {
+      missingItemsBlock = `\nTOP MISSING / WEAK ITEMS (from deal inspection score ${inspectionResult.score}/100):\n` +
+        missing.map(c => `- [${c.severity.toUpperCase()}] ${c.label}: ${c.question ?? c.explanation}`).join('\n')
+    }
+  }
 
   const summaryContext = deal.ai_summary
     ? `AI SUMMARY:\n${deal.ai_summary}`
-    : '(No AI summary available — rely on deal metadata only)'
+    : '(No AI summary available)'
 
-  const systemPrompt = `You are a CRM assistant drafting professional follow-up emails for sales managers.
+  const systemPrompt = `You are a sales manager writing a concise deal quality follow-up email to a deal owner.
 
-Given deal information and an AI summary, write a concise, professional internal status-check email.
+You have been given:
+1. Deal metadata
+2. An AI summary of the deal notes
+3. A list of inspection gaps — missing or weak information that needs to be addressed
+
+Write a short, professional email that asks the rep specifically about the top missing items.
 
 Return your response as a JSON object with exactly two keys:
 - "subject": a short, specific email subject line (under 60 characters)
 - "body": the full email body as plain text
 
 Rules for the body:
-- Begin with "Hi [owner name],"
-- First paragraph: brief current status based on the AI summary
-- Second paragraph: any blockers or risks worth flagging (skip if none)
-- Final paragraph: clear ask — what action or update is needed
-- Sign off with "Thanks"
-- Keep it under 150 words total
-- Plain text only — no markdown, no bullet points, no headers`
+- Begin with "Hi ${ownerFirst},"
+- One sentence stating the purpose (deal quality review / forecast check)
+- List the specific questions from the inspection gaps as a short bullet-style list (use dashes)
+- Brief closing requesting an update before the next deal review
+- Sign off: "Thanks"
+- Plain text only — no markdown formatting, no headers
+- Under 180 words`
 
-  const userContent = `Deal: "${deal.deal_name}"
+  const userContent = `Deal: "${deal.deal_name as string}"
 Owner: ${ownerName}
 Stage: ${stageName}
 ACV: ${acv}
 Close Date: ${closeDate}
-Health Score: ${deal.health_score ?? 'N/A'}
-Description: ${deal.deal_description ?? 'N/A'}
+Health Score: ${(deal.health_score as number | null) ?? 'N/A'}
+Description: ${(deal.deal_description as string | null) ?? 'N/A'}
 
-${summaryContext}`
+${summaryContext}
+${missingItemsBlock}`
 
   const model = (process.env.OPENROUTER_MODEL || 'anthropic/claude-haiku-4-5').trim()
 
@@ -94,7 +141,7 @@ ${summaryContext}`
       },
       body: JSON.stringify({
         model,
-        max_tokens: 600,
+        max_tokens: 700,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: systemPrompt },
@@ -116,7 +163,11 @@ ${summaryContext}`
       return NextResponse.json({ error: 'Invalid response from AI' }, { status: 502 })
     }
 
-    return NextResponse.json({ subject: parsed.subject as string, body: parsed.body as string })
+    return NextResponse.json({
+      subject:    parsed.subject as string,
+      body:       parsed.body as string,
+      inspection: inspectionResult,
+    })
   } catch (err) {
     return NextResponse.json({ error: String(err) }, { status: 502 })
   }
