@@ -125,6 +125,15 @@ ${missingItemsBlock}`
 
   const model = (process.env.OPENROUTER_MODEL || 'anthropic/claude-haiku-4-5').trim()
 
+  function extractJSON(text: string): string {
+    const fenced = text.match(/```(?:json)?\s*([\s\S]+?)\s*```/)
+    if (fenced) return fenced[1]
+    const start = text.indexOf('{')
+    const end = text.lastIndexOf('}')
+    if (start !== -1 && end > start) return text.slice(start, end + 1)
+    return text
+  }
+
   try {
     const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
@@ -137,7 +146,6 @@ ${missingItemsBlock}`
       body: JSON.stringify({
         model,
         max_tokens: 700,
-        response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userContent },
@@ -152,7 +160,7 @@ ${missingItemsBlock}`
 
     const json = await res.json()
     const raw = (json.choices?.[0]?.message?.content ?? '').trim()
-    const parsed = JSON.parse(raw)
+    const parsed = JSON.parse(extractJSON(raw))
 
     if (!parsed.subject || !parsed.body) {
       return NextResponse.json({ error: 'Invalid response from AI' }, { status: 502 })

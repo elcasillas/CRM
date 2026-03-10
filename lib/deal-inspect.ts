@@ -161,6 +161,17 @@ export function evaluateStructuredChecks(
   return results
 }
 
+// ── JSON extraction helper (handles Claude's markdown-wrapped responses) ───────
+
+function extractJSON(text: string): string {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]+?)\s*```/)
+  if (fenced) return fenced[1]
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start !== -1 && end > start) return text.slice(start, end + 1)
+  return text
+}
+
 // ── LLM-based qualitative checks ─────────────────────────────────────────────
 
 interface DealContext {
@@ -239,7 +250,6 @@ ${notesBlock}`
     body: JSON.stringify({
       model,
       max_tokens: 1400,
-      response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userContent },
@@ -254,7 +264,7 @@ ${notesBlock}`
 
   const json = await res.json()
   const raw = (json.choices?.[0]?.message?.content ?? '').trim()
-  const parsed = JSON.parse(raw)
+  const parsed = JSON.parse(extractJSON(raw))
   const rawChecks: Array<{ id: string; status: string; explanation: string; question: string | null }> =
     parsed.checks ?? []
 
