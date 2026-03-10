@@ -27,11 +27,13 @@ An internal CRM for a software company's sales and service teams. Built with **N
 
 Key capabilities:
 - Deal pipeline management (table + kanban views, active vs. all deals)
-- Account and contact management with deal/HID/contract/note tabs
+- Account and contact management with deals/HIDs/contracts/contacts/notes tabs
 - AI-generated deal summaries via OpenRouter
 - Automated health scoring on every deal (6-component weighted score)
+- AI deal inspection — 15-point quality check grading deal completeness and qualitative signals
+- AI-generated targeted manager emails driven by inspection gaps
 - CSV import from legacy CRM exports
-- Admin tools: user management, deal stage config, health score tuning
+- Admin tools: user management, deal stage config, health score and inspection tuning
 
 ---
 
@@ -43,8 +45,9 @@ Key capabilities:
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Anon/public key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Yes | Service role — server-only, bypasses RLS |
 | `NEXT_PUBLIC_SLACK_TEAM_ID` | No | Slack workspace ID for deep-link buttons |
-| `OPENROUTER_API_KEY` | No | Required for AI deal summaries |
+| `OPENROUTER_API_KEY` | No | Required for AI summaries, inspection, and email generation |
 | `OPENROUTER_MODEL` | No | Defaults to `anthropic/claude-haiku-4-5` |
+| `OPENROUTER_IMAGE_MODEL` | No | Defined in `.env.local.example` but unused — dead config |
 
 Copy `.env.local.example` → `.env.local`. Same vars must be set in the Vercel project dashboard.
 
@@ -64,7 +67,7 @@ Copy `.env.local.example` → `.env.local`. Same vars must be set in the Vercel 
 
 ### Stack
 - **Framework:** Next.js 15 App Router — server components by default
-- **Styling:** Tailwind CSS, light theme (white/gray palette). No UI component library.
+- **Styling:** Tailwind CSS, light theme (white/gray palette; `brand-700` navy for modal headers). No UI component library.
 - **Backend:** Supabase — Postgres, Auth, RLS, RPCs
 - **AI:** OpenRouter API (`anthropic/claude-haiku-4-5` default)
 
@@ -95,46 +98,57 @@ Server page fetches data → assembles typed `InitialData` bundle → passes as 
 app/
   api/
     admin/
-      health-score-config/route.ts       # GET/PUT config; /recalculate POST
-      users/route.ts                     # GET/POST/PATCH/DELETE users (admin only)
-    auth/callback/route.ts               # PKCE code exchange
+      health-score-config/route.ts          # GET/PUT config; /recalculate POST
+      inspection-config/route.ts            # GET/PUT inspection check definitions (admin only)
+      users/route.ts                        # GET/POST/PATCH/DELETE users (admin only)
+    auth/callback/route.ts                  # PKCE code exchange
     deals/
-      import/route.ts                    # POST: CSV import
-      [id]/summarize/route.ts            # GET/POST: AI summary
-    invite/route.ts                      # POST: send invite email (admin only)
+      import/route.ts                       # POST: CSV import
+      [id]/
+        summarize/route.ts                  # GET/POST: AI summary
+        inspect/route.ts                    # GET/POST: 15-point deal inspection
+        compose-email/route.ts              # POST: AI-generated targeted manager email
+    invite/route.ts                         # POST: send invite email (admin only)
   dashboard/
-    layout.tsx                           # Auth guard + nav shell
-    page.tsx                             # Overview dashboard (server)
+    layout.tsx                              # Auth guard + nav shell (displays full_name or email)
+    page.tsx                                # Overview dashboard (server)
     deals/
-      page.tsx                           # Active deals (server)
-      all/page.tsx                       # All deals including closed (server)
-      import/page.tsx                    # CSV import UI (client)
-      DealsClient.tsx                    # Main deal UI — table/kanban, modals, filters
-      types.ts                           # DealFormData, DealsInitialData, DealPageRow
+      page.tsx                              # Active deals (server)
+      all/page.tsx                          # All deals including closed (server)
+      import/page.tsx                       # CSV import UI (client)
+      DealsClient.tsx                       # Main deal UI — table/kanban, modals, filters, AI features
+      types.ts                              # DealFormData, DealsInitialData, DealPageRow
     accounts/
-      page.tsx                           # Accounts list + CRUD (client)
-      [id]/page.tsx                      # Account detail — tabbed (client)
+      page.tsx                              # Accounts list + CRUD (client)
+      [id]/page.tsx                         # Account detail — tabs: Deals/HIDs/Contacts/Contracts/Notes (client)
     admin/
-      layout.tsx                         # Admin role guard (server)
-      users/page.tsx + users-client.tsx  # User management
-      stages/page.tsx                    # Deal stages CRUD
-      health-scoring/                    # Health score config UI
+      layout.tsx                            # Admin role guard (server) — non-admins → /dashboard/accounts
+      users/page.tsx + users-client.tsx     # User management
+      stages/page.tsx                       # Deal stages CRUD
+      health-scoring/
+        page.tsx                            # "Settings" nav item — renders both clients below
+        health-scoring-client.tsx           # Health score weights, keywords, thresholds
+      inspection/
+        page.tsx                            # Standalone route (not in nav, accessible by URL)
+        inspection-client.tsx               # Inspection check config — also embedded in health-scoring/page.tsx
   login/page.tsx
 components/
   nav-links.tsx          # Top nav with active highlighting, admin section
-  global-search.tsx      # Debounced cross-entity search (accounts/deals/HIDs/contacts)
+  global-search.tsx      # Debounced 280ms cross-entity search (accounts/deals/HIDs/contacts)
   sign-out-button.tsx
   dashboard/             # stat-card, deals-by-stage, contracts-renewing, recent-activity
 lib/
   types.ts               # All shared TypeScript types
   dealCalc.ts            # parseAmount, calcACV, calcTCV
+  deal-summarize.ts      # AI summary: buildCanonical, sha256Hex, callSummarizeLLM, getOrCreateSummary
+  deal-inspect.ts        # Inspection engine: DEFAULT_CHECKS, runInspection, computeScore, topMissingChecks
   api-helpers.ts         # assertAdmin()
   supabase/
     client.ts / server.ts / admin.ts
     database.types.ts    # Auto-generated — regenerate after schema changes
 supabase/
-  migrations/            # Ordered SQL migrations (source of truth for schema)
-  seed.sql               # Default deal stages, health score config, sample data
+  migrations/            # 28 ordered SQL migrations (source of truth for schema)
+  seed.sql               # Default deal stages, health score config, sample accounts/deals/notes
 tests/                   # Browser-based test harness (npx serve on port 8423)
 middleware.ts
 ```
@@ -153,9 +167,9 @@ middleware.ts
 | `/dashboard/deals/import` | Client | Drag-and-drop CSV upload with preview |
 | `/dashboard/accounts` | Client | Accounts list, filter/sort, full CRUD |
 | `/dashboard/accounts/[id]` | Client | Tabbed detail: Deals, HIDs, Contacts, Contracts, Notes |
-| `/dashboard/admin/users` | Server guard → Client | User list, invite, edit role/name/email/password |
+| `/dashboard/admin/users` | Server guard → Client | User list, invite, edit role/name/email/password/slack_id |
 | `/dashboard/admin/stages` | Client | Stage CRUD, sort order, flags |
-| `/dashboard/admin/health-scoring` | Client | Weight sliders, keywords, stale_days, new_deal_days |
+| `/dashboard/admin/health-scoring` | Client | **"Settings"** — health score config (weights/keywords/thresholds) + inspection config (severity/enabled) on one page |
 | `/auth/callback` | Route handler | PKCE exchange after invite link |
 
 ---
@@ -170,9 +184,14 @@ middleware.ts
 | `/api/admin/users` | DELETE | Admin | Delete user (blocks self-deletion) |
 | `/api/admin/health-score-config` | GET/PUT | Admin | Read/write health score config |
 | `/api/admin/health-score-config/recalculate` | POST | Admin | Recalculate all deal scores |
+| `/api/admin/inspection-config` | GET | Admin | Return merged inspection config (DB overrides + DEFAULT_CHECKS) |
+| `/api/admin/inspection-config` | PUT | Admin | Upsert inspection config (severity, enabled flags) |
 | `/api/deals/import` | POST | Any auth | CSV import (multipart/form-data) |
 | `/api/deals/[id]/summarize` | GET | Any auth | Return stored AI summary |
 | `/api/deals/[id]/summarize` | POST | Any auth | Generate/cache AI summary |
+| `/api/deals/[id]/inspect` | GET | Any auth | Return stored inspection result |
+| `/api/deals/[id]/inspect` | POST | Any auth | Run 15-point deal inspection; persist to DB |
+| `/api/deals/[id]/compose-email` | POST | Any auth | Generate targeted manager email using inspection gaps |
 | `/api/invite` | POST | Admin | Send Supabase invite email |
 | `/auth/callback` | GET | — | Exchange PKCE code, redirect to `/dashboard` |
 
@@ -180,32 +199,37 @@ middleware.ts
 
 ## Database Schema
 
-All tables: `user_id uuid references auth.users not null`, RLS enabled.
+All tables: RLS enabled. `created_at` / `updated_at` on all tables via `set_updated_at()` trigger.
 
 ### `profiles`
 Mirrors `auth.users`. Auto-created by `handle_new_user()` trigger.
 - `id` uuid PK, `full_name` text, `role` text, `slack_member_id` text
 - Roles: `admin` | `sales` | `sales_manager` | `solutions_engineer` | `service_manager` | `read_only`
-- All authenticated users can SELECT all profiles (separate policy for name lookups)
+- All authenticated users can SELECT all profiles (name lookups for dropdowns)
 
 ### `accounts`
-- `account_name`, `status` (`active`|`churned`|`prospect`|`inactive`), `city`, `country`, `description`
+- `account_name`, `account_website`, `address_line1`, `address_line2`, `city`, `region`, `postal`, `country`
+- `status` (`active`|`churned`|`prospect`|`inactive`), `description`
 - `account_owner_id` FK → profiles, `service_manager_id` FK → profiles
 - `last_activity_at` timestamptz
 
 ### `contacts`
 - `account_id` FK → accounts, `first_name`, `last_name`, `email`, `phone`, `title`
+- `is_primary` boolean
 
 ### `hid_records`
-- `account_id` FK → accounts, `hid_number`, `domain_name`, `status`, `expiry_date`, `notes`
+- `account_id` FK → accounts, `hid_number` (unique), `domain_name`, `dc_location`, `cluster_id`, `start_date`
+- `status`, `expiry_date`, `notes`
 
 ### `contracts`
-- `account_id` FK → accounts, `contract_name`, `entity_name`, `start_date`, `end_date`, `value`, `currency`, `status`
+- `account_id` FK → accounts, `contract_name`, `entity_name`
+- `effective_date`, `renewal_date` date, `renewal_term_months` int, `auto_renew` boolean
+- `value` numeric, `currency` text, `status` (`active`|`expired`|`cancelled`)
 
 ### `deal_stages`
-- `stage_name`, `sort_order`, `win_probability` (0–100), `is_closed`, `is_won`, `is_lost`
+- `stage_name` (unique), `sort_order`, `win_probability` (0–100), `is_closed`, `is_won`, `is_lost`
 - `is_won` / `is_lost` automatically set `is_closed = true`
-- Default stages (seeded): Initial Conversation, Solution Qualified, Presenting to EDM, Short Listed, Contract Negotiations, Contract Signed, Implementing, **Closed Implemented** (is_closed=true, is_won=true), **Closed Lost** (is_closed=true, is_lost=true)
+- **Default stages (seeded):** Initial Conversation, Solution Qualified, Presenting to EDM, Short Listed, Contract Negotiations, Contract Signed, Implementing, **Closed Implemented** (is_won=true), **Closed Lost** (is_lost=true)
 
 ### `deals`
 - `account_id` FK → accounts, `stage_id` FK → deal_stages
@@ -213,53 +237,60 @@ Mirrors `auth.users`. Auto-created by `handle_new_user()` trigger.
 - `deal_name`, `deal_description`, `currency` (default `'CAD'`), `close_date`
 - `amount` numeric — monthly contract amount (user input)
 - `contract_term_months` int
-- `value_amount` numeric — **ACV** (auto-computed, see calculation rules)
-- `total_contract_value` numeric — **TCV** (auto-computed)
+- `value_amount` numeric — **ACV** (auto-computed via `calcACV`)
+- `total_contract_value` numeric — **TCV** (auto-computed via `calcTCV`)
 - `last_activity_at` timestamptz
-- `health_score` smallint (0–100), `health_score_updated_at`
-- `ai_summary` text, `ai_summary_generated_at` timestamptz
+- **Health score:** `health_score` smallint (0–100), `health_score_updated_at`, individual component columns: `hs_stage_probability`, `hs_velocity`, `hs_activity_recency`, `hs_close_date`, `hs_acv`, `hs_notes_signal`, `health_debug` jsonb
+- **AI summary:** `ai_summary` text, `ai_summary_generated_at` timestamptz
+- **Inspection:** `inspection_score` smallint (0–100), `inspection_run_at` timestamptz, `inspection_result` jsonb (`{ checks[], score, runAt }`)
+- `notes_hash` text — SHA-256 of canonical notes (used by summary cache lookup)
 
 ### `notes`
 - `entity_id` uuid, `entity_type` text (`deal`|`account`|`contact`|`hid`|`contract`)
 - `note_text`, `created_at` (overridable for CSV import back-dating)
 
 ### `deal_stage_history`
-- `deal_id`, `stage_id`, `changed_at`, `changed_by` — populated by trigger
+- `deal_id`, `from_stage_id`, `to_stage_id`, `changed_at`, `changed_by` — populated by trigger on stage change
 
 ### `deal_summary_cache`
-- `deal_id`, `content_hash` (SHA-256 of canonical notes), `summary`, `model_tag`
-- Cache busted by changing `model_tag` constant (`MODEL_TAG = 'haiku-s1'`)
+- `deal_id`, `notes_hash` (SHA-256 of canonical notes), `summary`, `model` (model tag string)
+- Unique on `(deal_id, notes_hash, model)` — bust cache by changing `MODEL_TAG = 'haiku-s1'` in `lib/deal-summarize.ts`
 
 ### `health_score_config`
-Single row. `weights` jsonb, `keywords` jsonb (`positive[]`, `negative[]`), `stale_days` int, `new_deal_days` int.
+Single row. `weights` jsonb, `keywords` jsonb (`positive[]`, `negative[]`), `stale_days` int (default 30), `new_deal_days` int (default 7).
+
+### `inspection_config`
+Single row, same pattern as `health_score_config`.
+- `checks` jsonb — array of `{ id, label, severity, enabled }` overriding DEFAULT_CHECKS
+- Seeded with 15 default check definitions on migration `20260309000001`
 
 ---
 
 ## Database Functions & RPCs
 
 ### `get_deals_page(p_stale_days, p_active_only)` → table
-Main deals query. JOINs deals + accounts + stages + profiles (owner + SE) + lateral last-note aggregation in one round-trip. `p_active_only = true` adds `AND NOT COALESCE(ds.is_closed, false)`.
+Main deals query. JOINs deals + accounts + stages + profiles (owner + SE) + lateral last-note aggregation. Returns all health score component columns, `last_note_at`, computed `is_stale` and `is_overdue` flags. `p_active_only = true` excludes closed stages.
 
 ### `recompute_deal_health_score(p_deal_id)` → void
-Computes and stores `health_score` for one deal. See Health Scoring section.
+Computes and stores `health_score` + all component columns for one deal.
 
 ### `recompute_all_deal_health_scores()` → integer
 Loops all deals, calls above. Returns count updated.
 
-### `is_admin()` → boolean
-Used in RLS policies. Returns true when `auth.uid()` has `role = 'admin'` in profiles.
+### `is_admin(uid uuid)` → boolean
+SECURITY DEFINER. Used in RLS policies. Must be called as `is_admin(auth.uid())`.
 
-### `can_view_account(account_id)` → boolean
+### `can_view_account(uid uuid, account_id uuid)` → boolean
 Returns true for: admin, account_owner_id, service_manager_id.
 
 ### `handle_new_user()` trigger
-AFTER INSERT on `auth.users` → creates profiles row, role = 'sales'.
+AFTER INSERT on `auth.users` → creates profiles row with `role = 'sales'`.
 
 ### `set_updated_at()` trigger
 BEFORE UPDATE on all tables → sets `updated_at = now()`.
 
 ### Triggers on `deals`
-AFTER INSERT OR UPDATE OF `stage_id, value_amount, close_date, last_activity_at` → calls `recompute_deal_health_score`.
+AFTER INSERT OR UPDATE OF `(stage_id, value_amount, close_date, last_activity_at)` → calls `recompute_deal_health_score`.
 AFTER UPDATE OF `stage_id` → inserts into `deal_stage_history`.
 
 ### Triggers on `notes`
@@ -275,7 +306,7 @@ contract_term_months = 1  →  ACV = amount × 1   (single-month, not annualised
 contract_term_months > 1  →  ACV = amount × 12  (annualised monthly rate)
 contract_term_months unset →  ACV = amount × 12  (default)
 ```
-Implemented in `lib/dealCalc.ts → calcACV(amount, months?)`. Applied at: deal save (both client components), CSV import, DB migration for backfill.
+Implemented in `lib/dealCalc.ts → calcACV(amount, months?)`. Applied at: deal save, CSV import, DB migration backfill.
 
 ### TCV (`total_contract_value`)
 ```
@@ -302,10 +333,10 @@ Default positive keywords: `signed`, `approved`, `committed`, `verbal`, `contrac
 Default negative keywords: `stalled`, `lost`, `no budget`, `cancelled`, `delayed`, `ghosting`, `paused`, `not interested`, `competitor`, `no response`, `churn risk`
 
 ### Stale Deal
-Days since last note ≥ `health_score_config.stale_days` (default 14). Shown as amber badge in deals table.
+Days since last note ≥ `health_score_config.stale_days` (default 30). Shown as amber badge in deals table.
 
 ### New Deal Badge
-`created_at` within `health_score_config.new_deal_days` days (default 7). Shown as blue "New" badge.
+`created_at` within `new_deal_days` days (default 7). Shown as blue "New" badge.
 
 ### Overdue Deal
 `close_date` is in the past AND stage is not closed (`is_closed = false`). Shown as red badge.
@@ -316,34 +347,128 @@ Days since last note ≥ `health_score_config.stale_days` (default 14). Shown as
 
 | Role | Capabilities |
 |---|---|
-| `admin` | Everything: manage users/stages/config, delete deals, AI summaries, edit deal owner |
-| `sales_manager` | AI summaries, edit deal owner field |
+| `admin` | Everything: manage users/stages/config, delete deals, AI features, edit deal owner |
+| `sales_manager` | AI summaries + inspection, edit deal owner field |
 | `sales` | Create/edit own deals, all accounts |
 | `solutions_engineer` | Standard access, assigned as SE on deals |
 | `service_manager` | Standard access, assigned as service manager on accounts |
-| `read_only` | View only |
+| `read_only` | View only (enforced at DB/RLS layer) |
 
 Role is stored in `profiles.role`. Default on signup: `'sales'`.
 
 Role checks in code:
-- `isAdmin = currentUserRole === 'admin'` — delete, admin nav, admin API
-- `canEditOwner = isAdmin || isSalesManager` — deal owner field in edit modal
-- `canViewSummary = isAdmin || isSalesManager` — AI summary panel
+- `isAdmin = currentUserRole === 'admin'`
+- `canEditOwner = isAdmin || isSalesManager`
+- `canViewSummary = isAdmin || isSalesManager`
 
 ---
 
 ## AI Deal Summary
 
-- **Trigger:** "Regenerate AI Summary" in deal edit modal (admin/sales_manager only)
+- **Trigger:** "Regenerate AI Summary" in deal summary panel (admin/sales_manager only)
 - **API:** `POST /api/deals/[id]/summarize`
+- **Shared library:** `lib/deal-summarize.ts` — `getOrCreateSummary()` is reused by `runInspection()` to ensure a summary exists before LLM qualitative checks run
 - **Model:** `anthropic/claude-haiku-4-5` (override via `OPENROUTER_MODEL`)
-- **Caching:** SHA-256 of sorted deduplicated note text → `deal_summary_cache` table. Cache is model-tagged (`MODEL_TAG = 'haiku-s1'`); change this constant to bust all cached summaries.
-- **Output format** (enforced by system prompt):
+- **Caching:** SHA-256 of sorted deduplicated note text → `deal_summary_cache` table keyed on `(deal_id, notes_hash, model)`. Change `MODEL_TAG = 'haiku-s1'` in `lib/deal-summarize.ts` to bust all cached summaries.
+- **Output format** (enforced by system prompt, four sections always present):
   1. `## Current Status and Client Intent`
   2. `## Key Activities and Communications`
   3. `## Current Blockers`
   4. `## Timeline and Next Steps`
-- **Storage:** Summary and generation timestamp written to `deals.ai_summary` / `deals.ai_summary_generated_at`
+- **Storage:** `deals.ai_summary` / `deals.ai_summary_generated_at`
+- **Returns null** if deal has no notes
+
+---
+
+## AI Deal Inspection
+
+A 15-point deal quality check combining structured field checks and LLM-based qualitative evaluation.
+
+### How It Works
+1. Structured checks (programmatic, no LLM) evaluate 6 field-based criteria
+2. `getOrCreateSummary()` is called to ensure an AI summary exists before LLM checks
+3. LLM checks (OpenRouter) evaluate 9 qualitative criteria using the AI summary + 5 most recent notes
+4. Results merged, weighted score computed (0–100), persisted to `deals` table
+
+### Structured Checks (programmatic — no LLM)
+| ID | Severity | What it checks |
+|---|---|---|
+| `stage_valid` | critical | `stage_id` is set |
+| `close_date_credible` | critical | `close_date` present and in future |
+| `amount_reasonable` | critical | `amount > 0` |
+| `contract_term` | medium | `contract_term_months` set |
+| `acv_tcv_aligned` | medium | Both `value_amount` and `total_contract_value` computed |
+| `recent_update` | medium | Last activity/note within `stale_days` |
+
+### LLM Checks (qualitative — evaluated against AI summary + notes)
+| ID | Severity | What it evaluates |
+|---|---|---|
+| `next_step_defined` | critical | Clear next action documented |
+| `next_step_owner` | medium | Next step owner named |
+| `next_step_date` | medium | Date set for next step |
+| `decision_process` | critical | Customer buying process described |
+| `economic_buyer` | critical | Decision maker identified |
+| `business_problem` | medium | Use case or problem defined |
+| `blockers_documented` | medium | Risks or blockers noted |
+| `customer_intent` | critical | Commitment level assessed |
+| `implementation_target` | low | Rollout timeline noted |
+
+### Scoring
+- Weights: critical = 3, medium = 2, low = 1
+- Status values: `pass` (full weight), `weak`/`stale` (40% weight), `missing`/`mismatch` (0%)
+- Score = `ROUND(earned_weight / total_weight × 100)`
+
+### Storage
+- `deals.inspection_score` (0–100)
+- `deals.inspection_run_at` (timestamp)
+- `deals.inspection_result` jsonb (`{ checks[], score, runAt }`)
+
+### Configuration
+- Stored in `inspection_config` table
+- Admins can enable/disable checks and tune severity via Settings page (`/dashboard/admin/health-scoring`)
+- Config is merged with `DEFAULT_CHECKS` on each run; disabled checks are skipped
+- Stale threshold: the compose-email route re-runs inspection if `inspection_run_at` > 2h ago (`STALE_INSPECTION_HOURS = 2`, hardcoded)
+
+### Key Files
+- `lib/deal-inspect.ts` — inspection logic, types, scoring, `topMissingChecks()`
+- `app/api/deals/[id]/inspect/route.ts` — GET (stored result) / POST (run + persist)
+- `app/api/admin/inspection-config/route.ts` — GET/PUT config
+- `app/dashboard/admin/inspection/inspection-client.tsx` — config UI (also rendered inside health-scoring page)
+
+---
+
+## Email Owner Feature
+
+Generates a targeted AI manager email asking the deal owner about the top missing/weak inspection items.
+
+### Flow
+```
+User clicks "Email Owner"
+  → emailStatus = 'checking'
+  → Ensure AI summary exists (POST /summarize if needed) → emailStatus = 'summarizing'
+  → Ensure inspection exists (POST /inspect if none or > 2h stale) → emailStatus = 'inspecting'
+  → POST /compose-email → emailStatus = 'emailing'
+      reads inspection_result from DB
+      extracts top 6 non-passing checks ordered by severity (topMissingChecks)
+      builds targeted email prompt with gap questions
+      returns { subject, body, inspection }
+  → window.open("mailto:...")
+  → emailStatus = 'idle'
+```
+
+### Email Format
+- Direct, professional, plain text, under 160 words
+- Opens: "Hi [FirstName],"
+- One context sentence referencing the deal name
+- 3–6 dash-separated questions derived from top inspection gaps (critical first)
+- Closing: brief request to update deal record or reply before next review
+- Sign-off: "Thanks"
+
+### Fallback
+If compose-email returns an error, the client falls back to a deterministic template: subject "Deal Update: [deal_name]", generic body mentioning days since last update and close date.
+
+### OpenRouter JSON Parsing Note
+Claude models via OpenRouter do not support `response_format: { type: 'json_object' }` (OpenAI-specific). Both `callInspectionLLM` and `compose-email` use an `extractJSON(text)` helper that strips markdown code fences before calling `JSON.parse()`.
 
 ---
 
@@ -387,7 +512,8 @@ Role checks in code:
 ### OpenRouter (AI)
 - Base URL: `https://openrouter.ai/api/v1/chat/completions`
 - Auth: `Authorization: Bearer ${OPENROUTER_API_KEY}`
-- Only used in `app/api/deals/[id]/summarize/route.ts`
+- Used in: `lib/deal-summarize.ts`, `lib/deal-inspect.ts`, `app/api/deals/[id]/compose-email/route.ts`
+- **Do NOT use `response_format: { type: 'json_object' }`** — OpenAI-specific, breaks Claude via OpenRouter. Use `extractJSON()` helper to parse markdown-wrapped JSON responses.
 
 ### Slack
 - No API calls — deep links only: `slack://user?team=${NEXT_PUBLIC_SLACK_TEAM_ID}&id=${slack_member_id}`
@@ -395,8 +521,7 @@ Role checks in code:
 - "Slack Owner" button appears in deal summary modal when `slack_member_id` is set
 
 ### Supabase Auth
-- Email/password + magic link/invite
-- PKCE flow for invite links → `/auth/callback`
+- Email/password + invite link (PKCE flow)
 - Sessions managed via cookies using `@supabase/ssr`
 
 ---
@@ -427,21 +552,50 @@ interface AccountWithOwners extends Account {
 }
 ```
 
-**`DealPageRow`** (`app/dashboard/deals/types.ts`): flat alias for `Database['public']['Functions']['get_deals_page']['Returns'][number]` — used for mapping RPC results to `DealWithRelations`.
+**Inspection types** (`lib/deal-inspect.ts`):
+```typescript
+interface InspectionCheckDef { id: string; label: string; severity: 'critical'|'medium'|'low'; enabled: boolean }
+interface CheckResult { id, label, status: 'pass'|'missing'|'weak'|'stale'|'mismatch', explanation, question: string|null, severity }
+interface InspectionResult { checks: CheckResult[]; score: number; runAt: string }
+```
 
-**`DealsInitialData`** (`app/dashboard/deals/types.ts`): the full server-to-client prop bundle (deals, stages, accounts, profiles, lastNoteDates, emailMap, staleDays, newDealDays, currentUserId, currentUserRole, isAllDeals).
+**`DealPageRow`** (`app/dashboard/deals/types.ts`): flat alias for `get_deals_page` RPC return type — includes all health score components, `last_note_at`, `is_stale`, `is_overdue`.
+
+**`DealsInitialData`** (`app/dashboard/deals/types.ts`): full server-to-client prop bundle (deals, stages, accounts, profiles, lastNoteDates, emailMap, staleDays, newDealDays, currentUserId, currentUserRole, isAllDeals).
 
 ---
 
 ## Navigation
 
 Top nav rendered by `components/nav-links.tsx`:
-- Base items: Overview, Accounts, Deals (exact), All Deals (exact)
-- Admin items (when `isAdmin`): Stages, Users, Health Scoring
+
+**Base items (all authenticated users):**
+- Overview → `/dashboard` (exact match)
+- Accounts → `/dashboard/accounts`
+- Deals → `/dashboard/deals` (exact match)
+- All Deals → `/dashboard/deals/all` (exact match)
+
+**Admin items (when `isAdmin`):**
+- Stages → `/dashboard/admin/stages`
+- Users → `/dashboard/admin/users`
+- Settings → `/dashboard/admin/health-scoring` (hosts both health scoring config and inspection config)
+
+Header displays user's `full_name` from profiles; falls back to email if `full_name` is not set.
 
 Admin guard: `app/dashboard/admin/layout.tsx` (server component) — non-admins redirected to `/dashboard/accounts`.
 
 Global search (`components/global-search.tsx`): debounced 280ms, searches accounts/deals/hid_records/contacts, keyboard navigable, results link to account detail with `?tab=` param.
+
+---
+
+## Modal Styling Convention
+
+All modal headers use a consistent pattern across the app:
+- Container: `flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl`
+- Title: `font-semibold text-white`
+- Close button: `text-white/70 hover:text-white text-lg leading-none`
+- All modal titles use **Title Case**
+- The `Modal` component in `app/dashboard/accounts/[id]/page.tsx` is a shared shell covering 5 modals; standalone modals in other files replicate the same pattern inline
 
 ---
 
@@ -457,41 +611,47 @@ Global search (`components/global-search.tsx`): debounced 280ms, searches accoun
 
 ## Database Migrations
 
-Live in `supabase/migrations/`. Applied in filename order via `supabase db push`. Never edit an already-applied migration — add a new one instead.
+28 applied migrations in `supabase/migrations/`, named `YYYYMMDD######_description.sql`. Applied in filename order via `supabase db push`. Never edit an already-applied migration — add a new one instead.
 
-After any schema change that affects the RPC or table structure, regenerate types:
+Latest migration: `20260309000001_add_deal_inspection.sql`
+
+After any schema change affecting RPCs or table structure, regenerate types:
 ```bash
 supabase gen types typescript --linked 2>/dev/null > lib/supabase/database.types.ts
 ```
-
-Current migration count: ~18 files through `20260306000009_fix_acv_for_1month_deals.sql`.
 
 ---
 
 ## Known Issues / Technical Debt
 
-1. **`OPENROUTER_IMAGE_MODEL` env var** is defined in `.env.local.example` but not used anywhere in the codebase — dead config.
+1. **`OPENROUTER_IMAGE_MODEL` env var** — defined in `.env.local.example` but unused anywhere. Dead config.
 
-2. **`user_id` on `deal_stages`** — stages are global config but have a `user_id` column. The `user_id` is populated as the creating user but has no real ownership semantics; all authenticated users can read stages. This is confusing but harmless.
+2. **`user_id` on `deal_stages`** — stages are global config but have a `user_id` column with no real ownership semantics. Confusing but harmless.
 
-3. **`fetchDeals` in DealsClient** — post-mutation data refresh calls the `get_deals_page` RPC from the browser client. Since the RPC uses `SECURITY INVOKER`, it respects RLS. If RLS on `deals` is ever tightened to restrict cross-user reads, this will break for sales reps viewing other owners' deals.
+3. **`fetchDeals` in DealsClient** — post-mutation data refresh calls `get_deals_page` from the browser client (SECURITY INVOKER). If RLS on `deals` is tightened to restrict cross-user reads, this will break for sales reps viewing other owners' deals.
 
-4. **`database.types.ts` drift** — if a migration changes the schema or a function signature, this file must be manually regenerated. It is not auto-generated on build.
+4. **`database.types.ts` drift** — not auto-generated on build; must be manually regenerated after schema changes.
 
-5. **Health score on import** — deals inserted via CSV import do not have health scores computed immediately (trigger fires but the deal may lack `value_amount` or `close_date` at insert time). An admin "Recalculate All" run after import is recommended.
+5. **Health score on import** — CSV-imported deals may have zero health scores immediately because the trigger fires before `value_amount` or `close_date` are fully set. Run admin "Recalculate All" after import.
 
-6. **Currency is display-only** — `deals.currency` is stored and displayed but all ACV/TCV math assumes CAD. No multi-currency conversion logic exists.
+6. **Currency is display-only** — `deals.currency` is stored and displayed but all ACV/TCV math assumes CAD. No multi-currency conversion logic.
 
-7. **No pagination** — deals and accounts are fetched in full. Could become a performance issue at scale.
+7. **No pagination** — deals and accounts are fetched in full. Will become a performance issue at scale.
 
-8. **CLAUDE.md theme mismatch (now fixed)** — earlier versions of this file described a "dark slate palette" theme; the actual UI is a light theme (white/gray).
+8. **Inspection stale threshold hardcoded** — `STALE_INSPECTION_HOURS = 2` in `compose-email/route.ts` is not configurable via admin UI.
+
+9. **Inspection LLM fallback inflates urgency** — if `callInspectionLLM` fails (API key missing, network error), all 9 qualitative checks are marked `missing`, which drives an overly urgent email.
+
+10. **`/dashboard/admin/inspection` not in nav** — `inspection-client.tsx` is embedded in the Settings page, but the `/inspection` URL still works as a standalone route. This could be confusing.
 
 ---
 
 ## Open Questions / Assumptions
 
-- **Slack integration scope:** Currently deep-link only. There are `slack_member_id` fields but no Slack API calls (no notifications, no message posting).
-- **`read_only` role enforcement:** The role exists in the type system but there is no explicit UI gating for read_only users (no server-side read-only guards beyond RLS). Assumed to be enforced solely at the DB layer via RLS.
-- **Multiple accounts per deal:** The schema only allows one `account_id` per deal — deals are single-account.
-- **Win probability on stages:** The `win_probability` field is used in health scoring but is not displayed to users in the deal UI — it's set in the stage admin page only.
-- **`OPENROUTER_IMAGE_MODEL`:** Purpose unknown. May be reserved for a future feature (e.g., contract image parsing).
+- **Slack integration scope:** Deep-link only. No Slack API calls. `slack_member_id` must be set manually by admin.
+- **`read_only` role enforcement:** Exists in the type system but no explicit UI gating beyond RLS. Enforced solely at the DB layer.
+- **Multiple accounts per deal:** Schema allows only one `account_id` per deal — deals are single-account.
+- **`win_probability` on stages:** Used in health scoring but not displayed in the deal UI. Set in stage admin only.
+- **Inspection staleness (2h):** Hardcoded in `compose-email/route.ts`. Not configurable. May need to be surfaced in admin Settings.
+- **Seed data user dependency:** `supabase/seed.sql` requires a `v_user_id` UUID substitution to insert properly; not self-contained for fresh environments without that substitution.
+- **`notes_hash` column on `deals`:** Written during summary generation. Not currently used for anything else, but available for cache lookup optimization.
