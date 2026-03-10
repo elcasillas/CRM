@@ -19,10 +19,11 @@ export default async function DashboardLayout({
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('role')
+    .select('role, full_name')
     .eq('id', user.id)
     .single()
-  const isAdmin = (profile as { role: string } | null)?.role === 'admin'
+  const isAdmin    = (profile as { role: string; full_name: string | null } | null)?.role === 'admin'
+  const displayName = (profile as { role: string; full_name: string | null } | null)?.full_name || user.email
 
   return (
     <div>
@@ -41,7 +42,7 @@ export default async function DashboardLayout({
           </div>
           <div className="flex items-center gap-4">
             <GlobalSearch />
-            <span className="text-sm text-gray-400 hidden sm:block">{user.email}</span>
+            <span className="text-sm text-gray-400 hidden sm:block">{displayName}</span>
             <SignOutButton />
           </div>
         </div>
