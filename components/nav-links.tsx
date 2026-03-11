@@ -8,14 +8,16 @@ type NavItem = { href: string; label: string; exact?: boolean }
 const BASE_ITEMS: NavItem[] = [
   { href: '/dashboard',              label: 'Overview',  exact: true },
   { href: '/dashboard/accounts',     label: 'Accounts' },
+  { href: '/dashboard/partners',     label: 'Partners' },
   { href: '/dashboard/deals',        label: 'Deals',     exact: true },
   { href: '/dashboard/deals/all',    label: 'All Deals', exact: true },
 ]
 
 const ADMIN_ITEMS: NavItem[] = [
-  { href: '/dashboard/admin/stages',         label: 'Stages' },
-  { href: '/dashboard/admin/users',          label: 'Users' },
-  { href: '/dashboard/admin/health-scoring', label: 'Settings' },
+  { href: '/dashboard/admin/stages',          label: 'Stages' },
+  { href: '/dashboard/admin/users',           label: 'Users' },
+  { href: '/dashboard/admin/health-scoring',  label: 'Settings' },
+  { href: '/dashboard/admin/partner-health',  label: 'Partner Health' },
 ]
 
 const ACTIVE  = 'text-sm text-brand-700 bg-brand-50 font-medium px-3 py-1.5 rounded-lg'

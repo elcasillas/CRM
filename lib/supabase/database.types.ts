@@ -348,6 +348,9 @@ export type Database = {
           hs_stage_probability: number | null
           hs_velocity: number | null
           id: string
+          inspection_result: Json | null
+          inspection_run_at: string | null
+          inspection_score: number | null
           last_activity_at: string | null
           notes_hash: string | null
           solutions_engineer_id: string | null
@@ -377,6 +380,9 @@ export type Database = {
           hs_stage_probability?: number | null
           hs_velocity?: number | null
           id?: string
+          inspection_result?: Json | null
+          inspection_run_at?: string | null
+          inspection_score?: number | null
           last_activity_at?: string | null
           notes_hash?: string | null
           solutions_engineer_id?: string | null
@@ -406,6 +412,9 @@ export type Database = {
           hs_stage_probability?: number | null
           hs_velocity?: number | null
           id?: string
+          inspection_result?: Json | null
+          inspection_run_at?: string | null
+          inspection_score?: number | null
           last_activity_at?: string | null
           notes_hash?: string | null
           solutions_engineer_id?: string | null
@@ -519,6 +528,27 @@ export type Database = {
           },
         ]
       }
+      inspection_config: {
+        Row: {
+          checks: Json
+          id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          checks?: Json
+          id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          checks?: Json
+          id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       notes: {
         Row: {
           created_at: string
@@ -548,6 +578,347 @@ export type Database = {
           {
             foreignKeyName: "notes_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_ai_summaries: {
+        Row: {
+          created_at: string
+          executive_summary: string | null
+          generated_at: string
+          growth_summary: string | null
+          id: string
+          metrics_hash: string
+          model: string
+          outreach_email_body: string | null
+          outreach_email_subject: string | null
+          partner_id: string
+          qbr_talking_points: Json | null
+          recommended_actions: Json | null
+          risk_summary: string | null
+        }
+        Insert: {
+          created_at?: string
+          executive_summary?: string | null
+          generated_at?: string
+          growth_summary?: string | null
+          id?: string
+          metrics_hash: string
+          model: string
+          outreach_email_body?: string | null
+          outreach_email_subject?: string | null
+          partner_id: string
+          qbr_talking_points?: Json | null
+          recommended_actions?: Json | null
+          risk_summary?: string | null
+        }
+        Update: {
+          created_at?: string
+          executive_summary?: string | null
+          generated_at?: string
+          growth_summary?: string | null
+          id?: string
+          metrics_hash?: string
+          model?: string
+          outreach_email_body?: string | null
+          outreach_email_subject?: string | null
+          partner_id?: string
+          qbr_talking_points?: Json | null
+          recommended_actions?: Json | null
+          risk_summary?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_ai_summaries_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_health_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          id: string
+          is_active: boolean
+          message: string
+          partner_id: string
+          resolved_at: string | null
+          severity: string
+          triggered_at: string
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          message: string
+          partner_id: string
+          resolved_at?: string | null
+          severity: string
+          triggered_at?: string
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          message?: string
+          partner_id?: string
+          resolved_at?: string | null
+          severity?: string
+          triggered_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_health_alerts_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_health_config: {
+        Row: {
+          category_weights: Json
+          id: string
+          model_version: string
+          stale_days: number
+          thresholds: Json
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          category_weights?: Json
+          id?: string
+          model_version?: string
+          stale_days?: number
+          thresholds?: Json
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          category_weights?: Json
+          id?: string
+          model_version?: string
+          stale_days?: number
+          thresholds?: Json
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      partner_health_scores: {
+        Row: {
+          category_scores: Json | null
+          computed_at: string
+          confidence_score: number | null
+          created_at: string
+          growth_score: number | null
+          health_status: string | null
+          id: string
+          model_version: string
+          overall_score: number | null
+          partner_id: string
+          risk_score: number | null
+          score_debug: Json | null
+        }
+        Insert: {
+          category_scores?: Json | null
+          computed_at?: string
+          confidence_score?: number | null
+          created_at?: string
+          growth_score?: number | null
+          health_status?: string | null
+          id?: string
+          model_version?: string
+          overall_score?: number | null
+          partner_id: string
+          risk_score?: number | null
+          score_debug?: Json | null
+        }
+        Update: {
+          category_scores?: Json | null
+          computed_at?: string
+          confidence_score?: number | null
+          created_at?: string
+          growth_score?: number | null
+          health_status?: string | null
+          id?: string
+          model_version?: string
+          overall_score?: number | null
+          partner_id?: string
+          risk_score?: number | null
+          score_debug?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_health_scores_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: true
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_health_snapshots: {
+        Row: {
+          category_scores: Json | null
+          created_at: string
+          id: string
+          metric_summary: Json | null
+          overall_score: number | null
+          partner_id: string
+          snapshot_month: string
+        }
+        Insert: {
+          category_scores?: Json | null
+          created_at?: string
+          id?: string
+          metric_summary?: Json | null
+          overall_score?: number | null
+          partner_id: string
+          snapshot_month: string
+        }
+        Update: {
+          category_scores?: Json | null
+          created_at?: string
+          id?: string
+          metric_summary?: Json | null
+          overall_score?: number | null
+          partner_id?: string
+          snapshot_month?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_health_snapshots_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partner_metrics: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          id: string
+          metric_date: string
+          metric_key: string
+          metric_value: number | null
+          notes: string | null
+          partner_id: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          metric_date: string
+          metric_key: string
+          metric_value?: number | null
+          notes?: string | null
+          partner_id: string
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          metric_date?: string
+          metric_key?: string
+          metric_value?: number | null
+          notes?: string | null
+          partner_id?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partner_metrics_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partner_metrics_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "partners"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      partners: {
+        Row: {
+          account_id: string | null
+          account_manager_id: string | null
+          country: string | null
+          created_at: string
+          description: string | null
+          id: string
+          partner_name: string
+          partner_type: string
+          region: string | null
+          status: string
+          tier: string
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          account_manager_id?: string | null
+          country?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          partner_name: string
+          partner_type: string
+          region?: string | null
+          status?: string
+          tier?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          account_manager_id?: string | null
+          country?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          partner_name?: string
+          partner_type?: string
+          region?: string | null
+          status?: string
+          tier?: string
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "partners_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "partners_account_manager_id_fkey"
+            columns: ["account_manager_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
@@ -593,6 +964,14 @@ export type Database = {
       can_view_note_entity: {
         Args: { eid: string; etype: string; uid: string }
         Returns: boolean
+      }
+      can_view_partner: {
+        Args: { p_id: string; uid: string }
+        Returns: boolean
+      }
+      evaluate_partner_alerts: {
+        Args: { p_partner_id: string }
+        Returns: undefined
       }
       get_deals_page: {
         Args: {
@@ -643,12 +1022,55 @@ export type Database = {
           value_amount: number
         }[]
       }
+      get_partners_page: {
+        Args: {
+          p_owner_id?: string
+          p_search?: string
+          p_status?: string
+          p_tier?: string
+          p_type?: string
+        }
+        Returns: {
+          account_id: string
+          account_manager_id: string
+          account_manager_name: string
+          account_name: string
+          active_alert_count: number
+          category_scores: Json
+          computed_at: string
+          confidence_score: number
+          country: string
+          created_at: string
+          days_since_last_note: number
+          description: string
+          growth_score: number
+          health_status: string
+          id: string
+          overall_score: number
+          partner_name: string
+          partner_type: string
+          region: string
+          risk_score: number
+          score_delta_3mo: number
+          status: string
+          tier: string
+          top_alert_severity: string
+          updated_at: string
+          website: string
+        }[]
+      }
       is_admin: { Args: { uid: string }; Returns: boolean }
       recompute_all_deal_health_scores: { Args: never; Returns: number }
+      recompute_all_partner_health_scores: { Args: never; Returns: number }
       recompute_deal_health_score: {
         Args: { p_deal_id: string }
         Returns: undefined
       }
+      recompute_partner_health_score: {
+        Args: { p_partner_id: string }
+        Returns: undefined
+      }
+      snapshot_all_partner_health: { Args: never; Returns: number }
     }
     Enums: {
       [_ in never]: never
