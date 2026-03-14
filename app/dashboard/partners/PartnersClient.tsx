@@ -20,7 +20,7 @@ const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-
 const SELECT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-brand-500 text-sm'
 const LABEL = 'block text-xs font-medium text-gray-600 mb-1'
 
-type SortKey = 'partner_name' | 'overall_score' | 'account_manager_name' | 'days_since_last_note'
+type SortKey = 'account_name' | 'overall_score' | 'account_manager_name' | 'days_since_last_note'
 
 interface FiltersState {
   search:       string
@@ -240,8 +240,8 @@ export default function PartnersClient({ initialData }: { initialData: PartnersI
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
-                <th className="text-left px-4 py-3 font-medium text-gray-600 cursor-pointer" onClick={() => toggleSort('partner_name')}>
-                  Partner {sortIcon('partner_name')}
+                <th className="text-left px-4 py-3 font-medium text-gray-600 cursor-pointer" onClick={() => toggleSort('account_name')}>
+                  Partner {sortIcon('account_name')}
                 </th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Type / Tier</th>
                 <th className="text-center px-4 py-3 font-medium text-gray-600 cursor-pointer" onClick={() => toggleSort('overall_score')}>
@@ -272,10 +272,21 @@ export default function PartnersClient({ initialData }: { initialData: PartnersI
                 const delta = scoreDeltaDisplay(p.score_delta_3mo)
                 return (
                   <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                    {/* Partner Name */}
+                    {/* Partner / Account */}
                     <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{p.partner_name}</div>
-                      {p.account_name && <div className="text-xs text-gray-400 mt-0.5">{p.account_name}</div>}
+                      {p.account_id ? (
+                        <Link
+                          href={`/dashboard/accounts/${p.account_id}`}
+                          className="font-medium text-brand-700 hover:text-brand-900"
+                        >
+                          {p.account_name ?? p.partner_name}
+                        </Link>
+                      ) : (
+                        <div className="font-medium text-gray-900">{p.partner_name}</div>
+                      )}
+                      {p.account_id && (
+                        <div className="text-xs text-gray-400 mt-0.5">{p.partner_name}</div>
+                      )}
                     </td>
 
                     {/* Type / Tier */}
