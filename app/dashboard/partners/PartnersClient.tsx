@@ -148,6 +148,10 @@ export default function PartnersClient({ initialData }: { initialData: PartnersI
       setUI('error', 'Partner name is required')
       return
     }
+    if (!ui.form.account_id) {
+      setUI('error', 'Account is required')
+      return
+    }
     setUIRaw(prev => ({ ...prev, saving: true, error: '' }))
 
     const payload = {
@@ -442,9 +446,9 @@ export default function PartnersClient({ initialData }: { initialData: PartnersI
               </div>
 
               <div>
-                <label className={LABEL}>Linked CRM Account (optional)</label>
+                <label className={LABEL}>Account *</label>
                 <select value={ui.form.account_id} onChange={e => setFormField('account_id', e.target.value)} className={SELECT}>
-                  <option value="">— No linked account —</option>
+                  <option value="">— Select account —</option>
                   {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
                 </select>
               </div>
