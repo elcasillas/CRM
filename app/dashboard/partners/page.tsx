@@ -1,5 +1,5 @@
-import PartnersClient from './PartnersClient'
+import AHIClient from './PartnersClient'
 
-export default function PartnersPage() {
-  return <PartnersClient />
+export default function AHIPage() {
+  return <AHIClient />
 }
