@@ -111,7 +111,7 @@ export default function AHIClient() {
         .sort()
         .at(-1) ?? null
 
-      const lastActivity = [dealLatest, a.last_activity_at]
+      const lastActivity = [dealLatest, a.updated_at]
         .filter((t): t is string => t != null)
         .sort()
         .at(-1) ?? null
