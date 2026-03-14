@@ -13,7 +13,7 @@ interface DealRow {
   account_id:       string
   health_score:     number | null
   last_activity_at: string | null
-  deal_stages:      { is_closed: boolean } | null
+  deal_stages:      { is_closed: boolean }[] | null
 }
 
 interface AHIRow extends AccountWithOwners {
@@ -99,7 +99,7 @@ export default function AHIClient() {
     // Build AHI rows — aggregate health score from active deals only
     const ahiRows: AHIRow[] = accounts.map(a => {
       const accountDeals  = byAccount[a.id] ?? []
-      const activeDeals   = accountDeals.filter(d => !d.deal_stages?.is_closed)
+      const activeDeals   = accountDeals.filter(d => !d.deal_stages?.[0]?.is_closed)
       const scores        = activeDeals.map(d => d.health_score).filter((s): s is number => s != null)
       const avgScore      = scores.length > 0
         ? Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length)
