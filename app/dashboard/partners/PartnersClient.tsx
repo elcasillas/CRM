@@ -245,7 +245,7 @@ export default function PartnersClient({ initialData }: { initialData: PartnersI
             <thead>
               <tr className="border-b border-gray-100 bg-gray-50">
                 <th className="text-left px-4 py-3 font-medium text-gray-600 cursor-pointer" onClick={() => toggleSort('account_name')}>
-                  Partner {sortIcon('account_name')}
+                  Account {sortIcon('account_name')}
                 </th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Type / Tier</th>
                 <th className="text-center px-4 py-3 font-medium text-gray-600 cursor-pointer" onClick={() => toggleSort('overall_score')}>
@@ -276,21 +276,19 @@ export default function PartnersClient({ initialData }: { initialData: PartnersI
                 const delta = scoreDeltaDisplay(p.score_delta_3mo)
                 return (
                   <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50 transition-colors">
-                    {/* Partner / Account */}
+                    {/* Account */}
                     <td className="px-4 py-3">
                       {p.account_id ? (
                         <Link
                           href={`/dashboard/accounts/${p.account_id}`}
                           className="font-medium text-brand-700 hover:text-brand-900"
                         >
-                          {p.account_name ?? p.partner_name}
+                          {p.account_name}
                         </Link>
                       ) : (
-                        <div className="font-medium text-gray-900">{p.partner_name}</div>
+                        <span className="text-gray-300">—</span>
                       )}
-                      {p.account_id && (
-                        <div className="text-xs text-gray-400 mt-0.5">{p.partner_name}</div>
-                      )}
+                      <div className="text-xs text-gray-400 mt-0.5">{p.partner_name}</div>
                     </td>
 
                     {/* Type / Tier */}
