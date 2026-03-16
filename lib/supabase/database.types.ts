@@ -108,6 +108,35 @@ export type Database = {
           },
         ]
       }
+      contact_roles: {
+        Row: {
+          contact_id: string
+          created_at: string
+          id: string
+          role_type: string
+        }
+        Insert: {
+          contact_id: string
+          created_at?: string
+          id?: string
+          role_type: string
+        }
+        Update: {
+          contact_id?: string
+          created_at?: string
+          id?: string
+          role_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_roles_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           account_id: string

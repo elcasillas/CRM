@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useParams, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type {
-  Account, AccountWithOwners, Contact, Contract, DealStage, DealWithRelations,
+  Account, AccountWithOwners, Contact, ContactWithRoles, Contract, DealStage, DealWithRelations,
   HidRecord, NoteWithAuthor,
 } from '@/lib/types'
 
@@ -66,16 +66,30 @@ function stageBadgeClass(s: { is_won: boolean; is_lost: boolean; sort_order: num
 
 // ── Form types ────────────────────────────────────────────────────────────────
 
-type ContactForm = { first_name: string; last_name: string; email: string; phone: string; title: string; is_primary: boolean }
+type ContactForm = { first_name: string; last_name: string; email: string; phone: string; title: string; roles: string[] }
 type HidForm     = { hid_number: string; dc_location: string; cluster_id: string; start_date: string; domain_name: string }
 type ContractForm = { entity_name: string; effective_date: string; renewal_date: string; renewal_term_months: string; auto_renew: boolean; status: string }
 type DealForm    = { deal_name: string; deal_description: string; stage_id: string; deal_owner_id: string; solutions_engineer_id: string; amount: string; contract_term_months: string; currency: string; close_date: string }
 type AccountForm = { account_name: string; account_website: string; address_line1: string; address_line2: string; city: string; region: string; postal: string; country: string; status: string; account_owner_id: string; service_manager_id: string }
 
-const EMPTY_CONTACT: ContactForm  = { first_name: '', last_name: '', email: '', phone: '', title: '', is_primary: false }
+const EMPTY_CONTACT: ContactForm  = { first_name: '', last_name: '', email: '', phone: '', title: '', roles: [] }
 const EMPTY_HID: HidForm          = { hid_number: '', dc_location: '', cluster_id: '', start_date: '', domain_name: '' }
 const EMPTY_CONTRACT: ContractForm = { entity_name: '', effective_date: '', renewal_date: '', renewal_term_months: '', auto_renew: false, status: 'active' }
 const EMPTY_DEAL: DealForm        = { deal_name: '', deal_description: '', stage_id: '', deal_owner_id: '', solutions_engineer_id: '', amount: '', contract_term_months: '', currency: 'USD', close_date: '' }
+
+const CONTACT_ROLES = ['primary', 'billing', 'marketing', 'support', 'technical'] as const
+
+const ROLE_LABEL: Record<string, string> = {
+  primary: 'Primary', billing: 'Billing', marketing: 'Marketing', support: 'Support', technical: 'Technical',
+}
+
+const ROLE_COLOR: Record<string, string> = {
+  primary:   'bg-brand-50 text-brand-600 ring-1 ring-brand-200',
+  billing:   'bg-green-50 text-green-700 ring-1 ring-green-200',
+  marketing: 'bg-purple-50 text-purple-700 ring-1 ring-purple-200',
+  support:   'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+  technical: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
+}
 
 type Tab = 'contacts' | 'hids' | 'contracts' | 'deals' | 'notes'
 
@@ -125,7 +139,7 @@ export default function AccountDetailPage() {
   const initialTab  = (searchParams.get('tab') as Tab | null) ?? 'deals'
 
   const [account,   setAccount]   = useState<AccountWithOwners | null>(null)
-  const [contacts,  setContacts]  = useState<Contact[]>([])
+  const [contacts,  setContacts]  = useState<ContactWithRoles[]>([])
   const [hids,      setHids]      = useState<HidRecord[]>([])
   const [contracts, setContracts] = useState<Contract[]>([])
   const [deals,     setDeals]     = useState<DealWithRelations[]>([])
@@ -145,7 +159,7 @@ export default function AccountDetailPage() {
 
   // contact
   const [contactModal,   setContactModal]   = useState<'add' | 'edit' | null>(null)
-  const [editingContact, setEditingContact] = useState<Contact | null>(null)
+  const [editingContact, setEditingContact] = useState<ContactWithRoles | null>(null)
   const [contactForm,    setContactForm]    = useState<ContactForm>(EMPTY_CONTACT)
 
   // hid
@@ -195,8 +209,8 @@ export default function AccountDetailPage() {
   }, [id])
 
   const fetchContacts = useCallback(async () => {
-    const { data } = await supabase.from('contacts').select('*').eq('account_id', id).order('last_name')
-    setContacts(data ?? [])
+    const { data } = await supabase.from('contacts').select('*, contact_roles(role_type)').eq('account_id', id).order('last_name')
+    setContacts((data ?? []) as ContactWithRoles[])
   }, [id])
 
   const fetchHids = useCallback(async () => {
@@ -334,17 +348,46 @@ export default function AccountDetailPage() {
   // ── Contact CRUD ────────────────────────────────────────────────────────────
 
   function openAddContact()        { setContactForm(EMPTY_CONTACT); setEditingContact(null); clearError(); setContactModal('add') }
-  function openEditContact(c: Contact) { setContactForm({ first_name: c.first_name ?? '', last_name: c.last_name ?? '', email: c.email, phone: c.phone ?? '', title: c.title ?? '', is_primary: c.is_primary }); setEditingContact(c); clearError(); setContactModal('edit') }
+  function openEditContact(c: ContactWithRoles) { setContactForm({ first_name: c.first_name ?? '', last_name: c.last_name ?? '', email: c.email, phone: c.phone ?? '', title: c.title ?? '', roles: c.contact_roles.map(r => r.role_type) }); setEditingContact(c); clearError(); setContactModal('edit') }
   function closeContactModal()     { setContactModal(null); setEditingContact(null); clearError() }
 
   async function saveContact() {
+    if (contactForm.roles.length === 0) { setFormError('At least one role must be selected'); return }
     setSaving(true); clearError()
-    const payload = { account_id: id, first_name: contactForm.first_name.trim() || null, last_name: contactForm.last_name.trim() || null, email: contactForm.email.trim(), phone: contactForm.phone.trim() || null, title: contactForm.title.trim() || null, is_primary: contactForm.is_primary }
-    const { error } = contactModal === 'add'
-      ? await supabase.from('contacts').insert(payload)
-      : await supabase.from('contacts').update(payload).eq('id', editingContact!.id)
-    if (error) setFormError(error.message)
-    else { closeContactModal(); fetchContacts() }
+
+    const isPrimary = contactForm.roles.includes('primary')
+
+    // If setting primary, clear it from any other contact on this account first
+    if (isPrimary) {
+      const othersWithPrimary = contacts.filter(c =>
+        c.contact_roles.some(r => r.role_type === 'primary') && c.id !== editingContact?.id
+      )
+      for (const other of othersWithPrimary) {
+        await supabase.from('contact_roles').delete().eq('contact_id', other.id).eq('role_type', 'primary')
+        await supabase.from('contacts').update({ is_primary: false }).eq('id', other.id)
+      }
+    }
+
+    const payload = { account_id: id, first_name: contactForm.first_name.trim() || null, last_name: contactForm.last_name.trim() || null, email: contactForm.email.trim(), phone: contactForm.phone.trim() || null, title: contactForm.title.trim() || null, is_primary: isPrimary }
+
+    let contactId: string
+    if (contactModal === 'add') {
+      const { data, error } = await supabase.from('contacts').insert(payload).select('id').single()
+      if (error) { setFormError(error.message); setSaving(false); return }
+      contactId = data.id
+    } else {
+      const { error } = await supabase.from('contacts').update(payload).eq('id', editingContact!.id)
+      if (error) { setFormError(error.message); setSaving(false); return }
+      contactId = editingContact!.id
+      await supabase.from('contact_roles').delete().eq('contact_id', contactId)
+    }
+
+    const { error: rolesError } = await supabase.from('contact_roles').insert(
+      contactForm.roles.map(role_type => ({ contact_id: contactId, role_type }))
+    )
+    if (rolesError) { setFormError(rolesError.message); setSaving(false); return }
+
+    closeContactModal(); fetchContacts()
     setSaving(false)
   }
 
@@ -614,6 +657,7 @@ export default function AccountDetailPage() {
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roles</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
@@ -625,7 +669,17 @@ export default function AccountDetailPage() {
                     <tr key={c.id} className="hover:bg-brand-50">
                       <td className="px-5 py-3 font-medium">
                         <button onClick={() => openEditContact(c)} className="text-gray-900 hover:text-brand-600 text-left transition-colors">{contactName(c)}</button>
-                        {c.is_primary && <span className="ml-2 inline-flex px-1.5 py-0 rounded text-xs font-medium bg-brand-50 text-brand-600 ring-1 ring-brand-200">Primary</span>}
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {c.contact_roles.length === 0 ? (
+                            <span className="text-gray-400">—</span>
+                          ) : (
+                            c.contact_roles.map(r => (
+                              <span key={r.role_type} className={`inline-flex px-1.5 py-0 rounded text-xs font-medium ${ROLE_COLOR[r.role_type] ?? 'bg-gray-100 text-gray-600'}`}>{ROLE_LABEL[r.role_type] ?? r.role_type}</span>
+                            ))
+                          )}
+                        </div>
                       </td>
                       <td className="px-5 py-3 text-gray-500">{c.title ?? '—'}</td>
                       <td className="px-5 py-3 text-gray-500">{c.email}</td>
@@ -907,7 +961,7 @@ export default function AccountDetailPage() {
         <Modal
           title={contactModal === 'add' ? 'New Contact' : 'Edit Contact'}
           onClose={closeContactModal} onSave={saveContact}
-          saving={saving} disabled={!contactForm.email.trim()} error={formError}
+          saving={saving} disabled={!contactForm.email.trim() || contactForm.roles.length === 0} error={formError}
         >
           <div className="grid grid-cols-2 gap-4">
             <Field label="First name"><input type="text" value={contactForm.first_name} onChange={e => setContactForm(f => ({ ...f, first_name: e.target.value }))} className={INPUT} /></Field>
@@ -918,10 +972,24 @@ export default function AccountDetailPage() {
             <Field label="Phone"><input type="text" value={contactForm.phone} onChange={e => setContactForm(f => ({ ...f, phone: e.target.value }))} className={INPUT} /></Field>
             <Field label="Title"><input type="text" value={contactForm.title} onChange={e => setContactForm(f => ({ ...f, title: e.target.value }))} className={INPUT} /></Field>
           </div>
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={contactForm.is_primary} onChange={e => setContactForm(f => ({ ...f, is_primary: e.target.checked }))} className="w-4 h-4 rounded border-gray-300 text-brand-600" />
-            <span className="text-sm text-gray-700">Primary contact</span>
-          </label>
+          <Field label="Roles *">
+            <div className="flex flex-wrap gap-x-5 gap-y-2 pt-1">
+              {CONTACT_ROLES.map(role => (
+                <label key={role} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={contactForm.roles.includes(role)}
+                    onChange={e => setContactForm(f => ({
+                      ...f,
+                      roles: e.target.checked ? [...f.roles, role] : f.roles.filter(r => r !== role),
+                    }))}
+                    className="w-4 h-4 rounded border-gray-300 text-brand-600"
+                  />
+                  <span className="text-sm text-gray-700">{ROLE_LABEL[role]}</span>
+                </label>
+              ))}
+            </div>
+          </Field>
         </Modal>
       )}
 

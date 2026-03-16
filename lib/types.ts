@@ -16,12 +16,15 @@ export type NoteEntityType = 'account' | 'deal' | 'contact' | 'contract' | 'hid'
 // ── Table row types (generated aliases) ──────────────────────────────────────
 // Replace manual interface declarations — regenerate with `npm run gen-types`.
 
-export type Account   = Tables<'accounts'>
-export type Contact   = Tables<'contacts'>
-export type HidRecord = Tables<'hid_records'>
-export type Contract  = Tables<'contracts'>
-export type DealStage = Tables<'deal_stages'>
-export type Deal      = Tables<'deals'>
+export type Account     = Tables<'accounts'>
+export type Contact     = Tables<'contacts'>
+export type ContactRole = Tables<'contact_roles'>
+export type HidRecord   = Tables<'hid_records'>
+export type Contract    = Tables<'contracts'>
+export type DealStage   = Tables<'deal_stages'>
+export type Deal        = Tables<'deals'>
+
+export type ContactRoleType = 'primary' | 'billing' | 'marketing' | 'support' | 'technical'
 
 // Note and Profile override the generated `string` types for constrained columns
 // with narrower union types for better type safety.
@@ -35,6 +38,10 @@ export interface DealWithRelations extends Deal {
   deal_stages:        Pick<DealStage, 'stage_name' | 'sort_order' | 'is_closed' | 'is_won' | 'is_lost'> | null
   deal_owner:         { full_name: string | null } | null
   solutions_engineer: { full_name: string | null } | null
+}
+
+export interface ContactWithRoles extends Contact {
+  contact_roles: { role_type: string }[]
 }
 
 export interface AccountWithOwners extends Account {
