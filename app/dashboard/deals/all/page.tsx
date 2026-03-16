@@ -59,6 +59,8 @@ export default async function AllDealsPage() {
     value_amount:          row.value_amount,
     currency:              row.currency,
     close_date:            row.close_date,
+    region:                row.region,
+    deal_type:             row.deal_type,
     last_activity_at:      row.last_activity_at,
     created_at:            row.created_at,
     updated_at:            row.updated_at,
