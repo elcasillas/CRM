@@ -2,17 +2,18 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import type { DealStage, DealWithRelations, NoteWithAuthor } from '@/lib/types'
+import type { DealStage, DealWithRelations } from '@/lib/types'
 import type { DealFormData, DealsInitialData, DealPageRow } from './types'
 import { parseAmount, calcACV, calcTCV } from '@/lib/dealCalc'
-import type { InspectionResult } from '@/lib/deal-inspect'
 
 const supabase = createClient()
 
 const EMPTY_FORM: DealFormData = {
   deal_name: '', deal_description: '', account_id: '', stage_id: '',
   deal_owner_id: '', solutions_engineer_id: '', amount: '', contract_term_months: '', currency: 'USD', close_date: '',
+  region: '', deal_type: '',
 }
 
 const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
@@ -40,18 +41,6 @@ function formatClose(d: string | null): string | null {
   return new Date(y, m - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-function fmtTs(ts: string): string {
-  return new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-}
-
-function relativeTime(iso: string): string {
-  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  return `${Math.floor(hrs / 24)}d ago`
-}
 
 function healthBadgeClass(score: number | null): string {
   if (score == null) return 'bg-gray-100 text-gray-400'
@@ -91,28 +80,11 @@ type FiltersState = {
 }
 
 type UIState = {
-  modal:                       'add' | 'edit' | null
-  editing:                     DealWithRelations | null
-  form:                        DealFormData
-  saving:                      boolean
-  formError:                   string | null
-  confirmDelete:                string | null
-  feedbackDeal:                DealWithRelations | null
-  feedbackSummary:             string | null
-  feedbackSummaryGeneratedAt:  string | null
-  loadingFeedbackSummary:      boolean
-  copied:                      boolean
-  emailStatus:                 'idle' | 'checking' | 'summarizing' | 'inspecting' | 'emailing'
-  inspection:                  InspectionResult | null
-  inspectionLoading:           boolean
-}
-
-type NotesState = {
-  dealNotes:         NoteWithAuthor[]
-  noteText:          string
-  loggingNote:       boolean
-  noteConfirmDelete: string | null
-  feedbackNotes:     NoteWithAuthor[]
+  modal:         'add' | null
+  form:          DealFormData
+  saving:        boolean
+  formError:     string | null
+  confirmDelete: string | null
 }
 
 const INITIAL_FILTERS: FiltersState = {
@@ -121,15 +93,7 @@ const INITIAL_FILTERS: FiltersState = {
 }
 
 const INITIAL_UI: UIState = {
-  modal: null, editing: null, form: EMPTY_FORM, saving: false,
-  formError: null, confirmDelete: null, feedbackDeal: null,
-  feedbackSummary: null, feedbackSummaryGeneratedAt: null, loadingFeedbackSummary: false, copied: false,
-  emailStatus: 'idle',
-  inspection: null, inspectionLoading: false,
-}
-
-const INITIAL_NOTES: NotesState = {
-  dealNotes: [], noteText: '', loggingNote: false, noteConfirmDelete: null, feedbackNotes: [],
+  modal: null, form: EMPTY_FORM, saving: false, formError: null, confirmDelete: null,
 }
 
 export default function DealsClient({ initialData }: { initialData: DealsInitialData }) {
@@ -140,17 +104,13 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     () => new Map(Object.entries(initialData.lastNoteDates))
   )
 
-  // ── UI state (3 grouped hooks) ───────────────────────────────────────────────
+  // ── UI state ─────────────────────────────────────────────────────────────────
   const [filters, setFiltersState] = useState<FiltersState>(INITIAL_FILTERS)
   const [ui, setUIState]           = useState<UIState>(INITIAL_UI)
-  const [notes, setNotesState]     = useState<NotesState>(INITIAL_NOTES)
 
   // Destructure for readable access throughout the component
   const { view, search, filterStage, filterOwner, filterStale, filterOverdue, sortCol, sortDir } = filters
-  const { modal, editing, form, saving, formError, confirmDelete,
-          feedbackDeal, feedbackSummary, feedbackSummaryGeneratedAt, loadingFeedbackSummary, copied,
-          emailStatus, inspection, inspectionLoading } = ui
-  const { dealNotes, noteText, loggingNote, noteConfirmDelete, feedbackNotes } = notes
+  const { modal, form, saving, formError, confirmDelete } = ui
   const isAllDeals = initialData.isAllDeals ?? false
 
   // ── Props-derived constants ──────────────────────────────────────────────────
@@ -158,15 +118,9 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
   const accounts           = initialData.accounts
   const profiles           = initialData.profiles
   const isAdmin            = initialData.currentUserRole === 'admin'
-  const isSalesManager     = initialData.currentUserRole === 'sales_manager'
-  const userId             = initialData.currentUserId
   const staleDaysThreshold   = initialData.staleDays
   // Clamp to a valid positive integer; fall back to 14 if config is missing/invalid
   const newDealDaysThreshold = Math.max(1, Math.round(Number(initialData.newDealDays) || 14))
-  const emailMap           = useMemo(
-    () => new Map(Object.entries(initialData.emailMap)),
-    [initialData.emailMap]
-  )
 
   // ── Typed setter helpers ─────────────────────────────────────────────────────
   function setFilter<K extends keyof FiltersState>(key: K, value: FiltersState[K]) {
@@ -175,26 +129,13 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
   function setUI<K extends keyof UIState>(key: K, value: UIState[K]) {
     setUIState(prev => ({ ...prev, [key]: value }))
   }
-  function setNotesUI<K extends keyof NotesState>(key: K, value: NotesState[K]) {
-    setNotesState(prev => ({ ...prev, [key]: value }))
-  }
+
+  const router = useRouter()
 
   // ── Reset / close helpers ────────────────────────────────────────────────────
-  function resetDealForm() {
-    setUIState(prev => ({ ...prev, form: EMPTY_FORM, formError: null }))
-  }
-  function resetNotesForm() {
-    setNotesState(prev => ({ ...prev, dealNotes: [], noteText: '', noteConfirmDelete: null }))
-  }
   function closeModal() {
-    setUIState(prev => ({ ...prev, modal: null, editing: null, formError: null, form: EMPTY_FORM }))
-    resetNotesForm()
+    setUIState(prev => ({ ...prev, modal: null, formError: null, form: EMPTY_FORM }))
   }
-  function closeFeedback() {
-    setUIState(prev => ({ ...prev, feedbackDeal: null, feedbackSummary: null, feedbackSummaryGeneratedAt: null, loadingFeedbackSummary: false, emailStatus: 'idle', inspection: null, inspectionLoading: false }))
-    setNotesState(prev => ({ ...prev, feedbackNotes: [] }))
-  }
-  function closeAllModals() { closeModal(); closeFeedback() }
 
   // ── Data refresh (post-mutation) ─────────────────────────────────────────────
   async function fetchDeals() {
@@ -218,6 +159,8 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
       value_amount:          row.value_amount,
       currency:              row.currency,
       close_date:            row.close_date,
+      region:                row.region,
+      deal_type:             row.deal_type,
       last_activity_at:      row.last_activity_at,
       created_at:            row.created_at,
       updated_at:            row.updated_at,
@@ -241,16 +184,6 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
       deal_owner:         row.deal_owner_name ? { full_name: row.deal_owner_name } : null,
       solutions_engineer: row.se_name         ? { full_name: row.se_name }         : null,
     })) as DealWithRelations[])
-  }
-
-  async function fetchDealNotes(dealId: string) {
-    const { data } = await supabase
-      .from('notes')
-      .select('*, author:profiles!created_by(full_name)')
-      .eq('entity_type', 'deal')
-      .eq('entity_id', dealId)
-      .order('created_at', { ascending: false })
-    setNotesUI('dealNotes', (data ?? []) as NoteWithAuthor[])
   }
 
   async function fetchLastNoteDates() {
@@ -285,78 +218,8 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     setUIState(prev => ({
       ...prev,
       form: { ...EMPTY_FORM, stage_id: stageId || (stages[1]?.id ?? '') },
-      editing: null, formError: null, modal: 'add',
+      formError: null, modal: 'add',
     }))
-  }
-
-  function openEdit(deal: DealWithRelations) {
-    setUIState(prev => ({
-      ...prev,
-      form: {
-        deal_name:             deal.deal_name,
-        deal_description:      deal.deal_description ?? '',
-        account_id:            deal.account_id ?? '',
-        stage_id:              deal.stage_id,
-        deal_owner_id:         deal.deal_owner_id,
-        solutions_engineer_id: deal.solutions_engineer_id ?? '',
-        amount:                deal.amount != null ? new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(Number(deal.amount)) : '',
-        contract_term_months:  deal.contract_term_months != null ? String(deal.contract_term_months) : '',
-        currency:              deal.currency,
-        close_date:            deal.close_date ?? '',
-      },
-      editing: deal, formError: null, modal: 'edit',
-    }))
-    resetNotesForm()
-    fetchDealNotes(deal.id)
-  }
-
-  async function openFeedback(deal: DealWithRelations) {
-    setUIState(prev => ({ ...prev, feedbackDeal: deal, feedbackSummary: null, feedbackSummaryGeneratedAt: null, inspection: null }))
-    setNotesUI('feedbackNotes', [])
-    const [notesResult, summaryRes, inspectRes] = await Promise.all([
-      supabase
-        .from('notes')
-        .select('*, author:profiles!created_by(full_name)')
-        .eq('entity_type', 'deal')
-        .eq('entity_id', deal.id)
-        .order('created_at', { ascending: false })
-        .limit(3),
-      fetch(`/api/deals/${deal.id}/summarize`),
-      fetch(`/api/deals/${deal.id}/inspect`),
-    ])
-    setNotesUI('feedbackNotes', (notesResult.data ?? []) as NoteWithAuthor[])
-    if (summaryRes.ok) {
-      const body = await summaryRes.json()
-      if (body.summary) {
-        setUIState(prev => ({ ...prev, feedbackSummary: body.summary, feedbackSummaryGeneratedAt: body.generatedAt ?? null }))
-      }
-    }
-    if (inspectRes.ok) {
-      const body = await inspectRes.json()
-      if (body.result) {
-        setUI('inspection', body.result as InspectionResult)
-      }
-    }
-  }
-
-  // ── Note CRUD ────────────────────────────────────────────────────────────────
-  async function addDealNote() {
-    if (!noteText.trim() || !editing) return
-    setNotesUI('loggingNote', true)
-    const { error } = await supabase.from('notes').insert({
-      entity_type: 'deal', entity_id: editing.id, note_text: noteText.trim(), created_by: userId,
-    })
-    if (!error) { setNotesUI('noteText', ''); fetchDealNotes(editing.id); fetchLastNoteDates(); fetchDeals() }
-    setNotesUI('loggingNote', false)
-  }
-
-  async function deleteDealNote(noteId: string) {
-    const { error } = await supabase.from('notes').delete().eq('id', noteId)
-    if (!error) {
-      setNotesState(prev => ({ ...prev, dealNotes: prev.dealNotes.filter(n => n.id !== noteId) }))
-      fetchLastNoteDates()
-    }
-    setNotesUI('noteConfirmDelete', null)
   }
 
   // ── Deal CRUD ────────────────────────────────────────────────────────────────
@@ -382,24 +245,16 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
       currency:              form.currency || 'USD',
       close_date:            form.close_date || null,
       solutions_engineer_id: form.solutions_engineer_id || null,
-      ...(modal === 'edit' && form.deal_owner_id ? { deal_owner_id: form.deal_owner_id } : {}),
+      region:                form.region || null,
+      deal_type:             form.deal_type || null,
     }
-    if (modal === 'add') {
-      const { data: inserted, error } = await supabase.from('deals').insert({ ...payload, deal_owner_id: u!.id }).select('id').single()
-      if (error) { setUI('formError', error.message) } else { closeModal(); fetchDeals() }
-    } else if (modal === 'edit' && editing) {
-      const stageChanged = form.stage_id !== editing.stage_id
-      const { error } = await supabase.from('deals').update({ ...payload, last_activity_at: new Date().toISOString() }).eq('id', editing.id)
-      if (error) {
-        setUI('formError', error.message)
-      } else {
-        if (stageChanged) {
-          await supabase.from('deal_stage_history').insert({
-            deal_id: editing.id, from_stage_id: editing.stage_id, to_stage_id: form.stage_id, changed_by: u!.id,
-          })
-        }
-        closeModal(); fetchDeals()
-      }
+    const { data: inserted, error } = await supabase.from('deals').insert({ ...payload, deal_owner_id: u!.id }).select('id').single()
+    if (error) {
+      setUI('formError', error.message)
+    } else {
+      closeModal()
+      const backPath = encodeURIComponent(isAllDeals ? '/dashboard/deals/all' : '/dashboard/deals')
+      router.push(`/dashboard/deals/${inserted.id}?back=${backPath}`)
     }
     setUI('saving', false)
   }
@@ -409,75 +264,6 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     if (error) console.error('delete deal:', error.message)
     else setDeals(prev => prev.filter(d => d.id !== id))
     setUI('confirmDelete', null)
-  }
-
-  async function handleRunInspection() {
-    if (!feedbackDeal) return
-    setUI('inspectionLoading', true)
-    try {
-      const res = await fetch(`/api/deals/${feedbackDeal.id}/inspect`, { method: 'POST' })
-      if (res.ok) {
-        const data = await res.json()
-        if (data.result) setUI('inspection', data.result as InspectionResult)
-      }
-    } catch (_e) { /* silent */ }
-    setUI('inspectionLoading', false)
-  }
-
-  async function handleEmailOwner() {
-    if (!feedbackDeal) return
-    const ownerEmail = emailMap.get(feedbackDeal.deal_owner_id) ?? ''
-
-    setUI('emailStatus', 'checking')
-
-    if (!feedbackSummary) {
-      setUI('emailStatus', 'summarizing')
-      try {
-        const res = await fetch(`/api/deals/${feedbackDeal.id}/summarize`, { method: 'POST' })
-        if (res.ok) {
-          const body = await res.json()
-          if (body.summary) {
-            setUIState(prev => ({ ...prev, feedbackSummary: body.summary, feedbackSummaryGeneratedAt: body.generatedAt ?? null, emailStatus: 'inspecting' }))
-          }
-        }
-      } catch (_e) { /* continue without summary */ }
-    }
-
-    // Run inspection if not already fresh in state
-    if (!inspection) {
-      setUI('emailStatus', 'inspecting')
-      try {
-        const res = await fetch(`/api/deals/${feedbackDeal.id}/inspect`, { method: 'POST' })
-        if (res.ok) {
-          const data = await res.json()
-          if (data.result) setUI('inspection', data.result as InspectionResult)
-        }
-      } catch (_e) { /* compose-email will run inspection server-side as fallback */ }
-    }
-
-    setUI('emailStatus', 'emailing')
-    try {
-      const res = await fetch(`/api/deals/${feedbackDeal.id}/compose-email`, { method: 'POST' })
-      if (res.ok) {
-        const data = await res.json()
-        if (data.subject && data.body) {
-          // Update inspection state if compose-email ran one
-          if (data.inspection) setUI('inspection', data.inspection as InspectionResult)
-          window.open(`mailto:${ownerEmail}?subject=${encodeURIComponent(data.subject)}&body=${encodeURIComponent(data.body)}`, '_blank')
-          setUI('emailStatus', 'idle')
-          return
-        }
-      }
-    } catch (_e) { /* fall through to fallback */ }
-
-    // Client-side deterministic fallback
-    const ts = lastNoteDates.get(feedbackDeal.id)
-    const daysSince = ts ? `${Math.floor((Date.now() - new Date(ts).getTime()) / 86400000)} days` : 'N/A'
-    const closeDate = feedbackDeal.close_date ? new Date(feedbackDeal.close_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
-    const fallbackSubject = `Deal Update: ${feedbackDeal.deal_name}`
-    const fallbackBody = `Hi ${feedbackDeal.deal_owner?.full_name ?? 'there'},\n\nI wanted to follow up on "${feedbackDeal.deal_name}" (${feedbackDeal.deal_stages?.stage_name ?? 'unknown stage'}). ${daysSince !== 'N/A' ? `It has been ${daysSince} since the last update.` : ''} ${closeDate !== 'N/A' ? `The close date is ${closeDate}.` : ''}\n\nCould you please provide a current status update and flag any blockers?\n\nThanks.`
-    window.open(`mailto:${ownerEmail}?subject=${encodeURIComponent(fallbackSubject)}&body=${encodeURIComponent(fallbackBody)}`, '_blank')
-    setUI('emailStatus', 'idle')
   }
 
   // ── Sort ─────────────────────────────────────────────────────────────────────
@@ -703,7 +489,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                     <td className="px-4 py-3.5 text-gray-500">{deal.deal_owner?.full_name ?? '—'}</td>
                     <td className="px-4 py-3.5 font-medium text-gray-900 max-w-[220px]">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <button onClick={() => openEdit(deal)} title={deal.deal_name} className="truncate text-left hover:text-brand-600 transition-colors">{deal.deal_name}</button>
+                        <button onClick={() => router.push(`/dashboard/deals/${deal.id}?back=${encodeURIComponent(isAllDeals ? '/dashboard/deals/all' : '/dashboard/deals')}`)} title={deal.deal_name} className="truncate text-left hover:text-brand-600 transition-colors">{deal.deal_name}</button>
                         {(() => {
                           if (!deal.created_at) return false
                           const ms = new Date(deal.created_at).getTime()
@@ -754,7 +540,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                           </>
                         ) : (
                           <>
-<button onClick={() => openFeedback(deal)} title="Deal summary" className="text-gray-400 hover:text-gray-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M15.988 3.012A2.25 2.25 0 0118 5.25v6.5A2.25 2.25 0 0115.75 14H13.5V7A2.5 2.5 0 0011 4.5H8.128a2.252 2.252 0 011.884-1.488A2.25 2.25 0 0112.25 2h1.5a2.25 2.25 0 012.238 1.012zM11.5 3.25a.75.75 0 01.75-.75h1.5a.75.75 0 01.75.75v.25h-3v-.25z" clipRule="evenodd" /><path fillRule="evenodd" d="M2 7a1 1 0 011-1h8a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V7zm2 3.25a.75.75 0 01.75-.75h4.5a.75.75 0 010 1.5h-4.5a.75.75 0 01-.75-.75zm0 3.5a.75.75 0 01.75-.75h4.5a.75.75 0 010 1.5h-4.5a.75.75 0 01-.75-.75z" clipRule="evenodd" /></svg></button>
+<Link href={`/dashboard/deals/${deal.id}?back=${encodeURIComponent(isAllDeals ? '/dashboard/deals/all' : '/dashboard/deals')}`} title="Deal details" className="text-gray-400 hover:text-gray-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M15.988 3.012A2.25 2.25 0 0118 5.25v6.5A2.25 2.25 0 0115.75 14H13.5V7A2.5 2.5 0 0011 4.5H8.128a2.252 2.252 0 011.884-1.488A2.25 2.25 0 0112.25 2h1.5a2.25 2.25 0 012.238 1.012zM11.5 3.25a.75.75 0 01.75-.75h1.5a.75.75 0 01.75.75v.25h-3v-.25z" clipRule="evenodd" /><path fillRule="evenodd" d="M2 7a1 1 0 011-1h8a1 1 0 011 1v10a1 1 0 01-1 1H3a1 1 0 01-1-1V7zm2 3.25a.75.75 0 01.75-.75h4.5a.75.75 0 010 1.5h-4.5a.75.75 0 01-.75-.75zm0 3.5a.75.75 0 01.75-.75h4.5a.75.75 0 010 1.5h-4.5a.75.75 0 01-.75-.75z" clipRule="evenodd" /></svg></Link>
                             {isAdmin && <button onClick={() => setUI('confirmDelete', deal.id)} title="Delete" className="text-gray-500 hover:text-red-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C9.327 4.025 9.66 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg></button>}
                           </>
                         )}
@@ -806,7 +592,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                           {isAdmin && confirmDelete === deal.id ? (
                             <><span className="text-xs text-gray-400">Delete?</span><button onClick={() => handleDelete(deal.id)} className="text-xs text-red-600 hover:text-red-700 font-medium">Confirm</button><button onClick={() => setUI('confirmDelete', null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button></>
                           ) : (
-                            <><button onClick={() => openEdit(deal)} className="text-xs text-gray-500 hover:text-gray-700">Edit</button>{isAdmin && <button onClick={() => setUI('confirmDelete', deal.id)} className="text-xs text-gray-500 hover:text-red-600">Delete</button>}</>
+                            <><button onClick={() => router.push(`/dashboard/deals/${deal.id}?back=${encodeURIComponent(isAllDeals ? '/dashboard/deals/all' : '/dashboard/deals')}`)} className="text-xs text-gray-500 hover:text-gray-700">View</button>{isAdmin && <button onClick={() => setUI('confirmDelete', deal.id)} className="text-xs text-gray-500 hover:text-red-600">Delete</button>}</>
                           )}
                         </div>
                       </div>
@@ -820,247 +606,12 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
         </div>
       )}
 
-      {/* Feedback / Deal summary modal */}
-      {feedbackDeal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-2xl">
-            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
-              <h3 className="font-semibold text-white">Deal Summary</h3>
-              <button onClick={closeFeedback} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
-            </div>
-            <div className="px-6 py-5 space-y-4 max-h-[75vh] overflow-y-auto">
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Deal Name</p><p className="text-gray-900 font-medium">{feedbackDeal.deal_name}</p></div>
-                <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Deal Owner</p><p className="text-gray-900">{feedbackDeal.deal_owner?.full_name ?? '—'}</p></div>
-                <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Stage</p><p className="text-gray-900">{feedbackDeal.deal_stages?.stage_name ?? '—'}</p></div>
-                <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Amount</p><p className="text-gray-900 font-medium">{feedbackDeal.amount != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(feedbackDeal.amount) : '—'}</p></div>
-                <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Contract Term</p><p className="text-gray-900">{feedbackDeal.contract_term_months != null ? `${feedbackDeal.contract_term_months} months` : '—'}</p></div>
-                <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Closing Date</p><p className="text-gray-900">{feedbackDeal.close_date ? new Date(feedbackDeal.close_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</p></div>
-                <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">ACV (CAD)</p><p className="text-gray-900 font-medium">{(() => { const acv = feedbackDeal.amount != null ? calcACV(feedbackDeal.amount, feedbackDeal.contract_term_months) : feedbackDeal.value_amount; return acv != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(acv) : '—' })()}</p></div>
-                <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">TCV (CAD)</p><p className="text-gray-900 font-medium">{(() => { const tcv = feedbackDeal.amount != null && feedbackDeal.contract_term_months != null ? feedbackDeal.amount * feedbackDeal.contract_term_months : feedbackDeal.total_contract_value; return tcv != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(tcv) : '—' })()}</p></div>
-                <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Health Score</p><p>{feedbackDeal.health_score != null ? <span className={`inline-flex items-center justify-center w-8 h-6 rounded text-xs font-semibold ${healthBadgeClass(feedbackDeal.health_score)}`}>{feedbackDeal.health_score}</span> : <span className="text-gray-400">—</span>}</p></div>
-                <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Modified Date</p><p className="text-gray-900">{(() => { const ts = lastNoteDates.get(feedbackDeal.id); return ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—' })()}</p></div>
-                <div><p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-0.5">Days Since Update</p><p className="text-gray-900">{(() => { const ts = lastNoteDates.get(feedbackDeal.id); return ts ? `${Math.floor((Date.now() - new Date(ts).getTime()) / 86400000)} days` : '—' })()}</p></div>
-              </div>
-              <div className="border-t border-gray-100 pt-4">
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1.5">Description</p>
-                <p className="text-sm text-gray-700 leading-relaxed">{feedbackDeal.deal_description ?? <span className="text-gray-400 italic">No description</span>}</p>
-              </div>
-              {(isAdmin || isSalesManager) && (
-                <div className="border-t border-gray-100 pt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">AI Summary</p>
-                      {feedbackSummaryGeneratedAt && (
-                        <span className="text-xs text-gray-400">· Generated {relativeTime(feedbackSummaryGeneratedAt)}</span>
-                      )}
-                    </div>
-                    <button
-                      onClick={async () => {
-                        setUI('loadingFeedbackSummary', true)
-                        try {
-                          const res = await fetch(`/api/deals/${feedbackDeal.id}/summarize`, { method: 'POST' })
-                          const body = await res.json()
-                          if (res.ok) {
-                            setUIState(prev => ({ ...prev, feedbackSummary: body.summary, feedbackSummaryGeneratedAt: body.generatedAt ?? null }))
-                          } else {
-                            setUI('feedbackSummary', `Error: ${body.error}`)
-                          }
-                        } finally { setUI('loadingFeedbackSummary', false) }
-                      }}
-                      disabled={loadingFeedbackSummary}
-                      className="text-xs text-brand-600 hover:text-brand-700 disabled:opacity-50 font-medium"
-                    >
-                      {loadingFeedbackSummary ? 'Summarizing…' : feedbackSummary ? 'Refresh' : 'Summarize'}
-                    </button>
-                  </div>
-                  {feedbackSummary
-                    ? (
-                      <div className="bg-brand-50 rounded-lg p-4">
-                        {feedbackSummary.split('\n\n').filter(Boolean).map((block, i) => {
-                          if (block.startsWith('## ')) {
-                            const nl = block.indexOf('\n')
-                            const heading = nl === -1 ? block.slice(3) : block.slice(3, nl)
-                            const body = nl === -1 ? '' : block.slice(nl + 1).trim()
-                            return (
-                              <div key={i} className={i > 0 ? 'mt-5' : ''}>
-                                <p className="text-base font-semibold text-gray-900 mb-1.5 leading-snug">{heading}</p>
-                                {body && <p className="text-sm text-gray-700 leading-relaxed">{body}</p>}
-                              </div>
-                            )
-                          }
-                          return <p key={i} className={`text-sm text-gray-700 leading-relaxed${i > 0 ? ' mt-3' : ''}`}>{block}</p>
-                        })}
-                      </div>
-                    )
-                    : <p className="text-xs text-gray-400">Click Summarize to generate an AI summary of this deal&apos;s notes.</p>}
-                </div>
-              )}
-              {/* ── Deal Inspection ──────────────────────────────────────────────── */}
-              {(isAdmin || isSalesManager) && (
-                <div className="border-t border-gray-100 pt-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Deal Inspection</p>
-                      {inspection && (
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ring-1 ${
-                          inspection.score >= 70 ? 'bg-green-50 text-green-700 ring-green-200' :
-                          inspection.score >= 40 ? 'bg-amber-50 text-amber-700 ring-amber-200' :
-                          'bg-red-50 text-red-700 ring-red-200'
-                        }`}>
-                          {inspection.score}/100
-                        </span>
-                      )}
-                      {inspection?.runAt && (
-                        <span className="text-xs text-gray-400">
-                          {(() => {
-                            const mins = Math.floor((Date.now() - new Date(inspection.runAt).getTime()) / 60000)
-                            return mins < 2 ? 'just now' : mins < 60 ? `${mins}m ago` : `${Math.floor(mins / 60)}h ago`
-                          })()}
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      onClick={handleRunInspection}
-                      disabled={inspectionLoading || emailStatus !== 'idle'}
-                      className="text-xs font-medium text-brand-600 hover:text-brand-700 disabled:opacity-50"
-                    >
-                      {inspectionLoading ? 'Inspecting…' : inspection ? 'Refresh' : 'Run Inspection'}
-                    </button>
-                  </div>
-
-                  {inspection ? (
-                    <div className="space-y-1">
-                      {inspection.checks.map(check => (
-                        <div key={check.id} className="flex items-start gap-2 py-1">
-                          <span className={`text-xs mt-0.5 shrink-0 font-bold ${
-                            check.status === 'pass' ? 'text-green-500' :
-                            check.severity === 'critical' ? 'text-red-500' : 'text-amber-500'
-                          }`}>
-                            {check.status === 'pass' ? '✓' : check.status === 'weak' || check.status === 'stale' ? '~' : '✗'}
-                          </span>
-                          <div className="flex-1 min-w-0">
-                            <span className={`text-xs ${check.status === 'pass' ? 'text-gray-500' : 'text-gray-800 font-medium'}`}>
-                              {check.label}
-                            </span>
-                            {check.status !== 'pass' && (
-                              <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{check.explanation}</p>
-                            )}
-                          </div>
-                          {check.status !== 'pass' && (
-                            <span className={`text-xs px-1.5 py-0.5 rounded ring-1 shrink-0 ${
-                              check.severity === 'critical' ? 'bg-red-50 text-red-600 ring-red-200' :
-                              check.severity === 'medium'   ? 'bg-amber-50 text-amber-600 ring-amber-200' :
-                              'bg-gray-50 text-gray-500 ring-gray-200'
-                            }`}>
-                              {check.severity}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-gray-400">
-                      {inspectionLoading ? 'Running inspection…' : 'Click Run Inspection to evaluate this deal, or Email Owner to inspect and generate a targeted follow-up.'}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              <div className="border-t border-gray-100 pt-4">
-                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-3">Recent Notes</p>
-                {feedbackNotes.length === 0 ? (
-                  <p className="text-sm text-gray-400 italic">No notes yet</p>
-                ) : (
-                  <div className="space-y-3">
-                    {feedbackNotes.map(note => (
-                      <div key={note.id} className="bg-gray-50 rounded-lg p-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium text-gray-500">{note.author?.full_name ?? 'Unknown'}</span>
-                          <span className="text-xs text-gray-400">{new Date(note.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                        </div>
-                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{note.note_text}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-            {(() => {
-              const ts = lastNoteDates.get(feedbackDeal.id)
-              const modifiedDate = ts ? new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
-              const daysSince    = ts ? `${Math.floor((Date.now() - new Date(ts).getTime()) / 86400000)} days` : 'N/A'
-              const closeDate    = feedbackDeal.close_date ? new Date(feedbackDeal.close_date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'N/A'
-              const acvVal       = feedbackDeal.amount != null ? calcACV(feedbackDeal.amount, feedbackDeal.contract_term_months) : feedbackDeal.value_amount
-              const tcvVal       = feedbackDeal.amount != null && feedbackDeal.contract_term_months != null ? feedbackDeal.amount * feedbackDeal.contract_term_months : feedbackDeal.total_contract_value
-              const fmt          = (v: number | null) => v != null ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(v) : 'N/A'
-              const acv          = fmt(acvVal)
-              const notesBlock   = feedbackNotes.length > 0 ? feedbackNotes.map(n => `• ${new Date(n.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} — ${n.note_text}`).join('\n') : 'No notes recorded.'
-              const bodyText =
-`Hi ${feedbackDeal.deal_owner?.full_name ?? 'there'},
-
-Here is a summary for deal "${feedbackDeal.deal_name}":
-
-  Stage:             ${feedbackDeal.deal_stages?.stage_name ?? 'N/A'}
-  Amount (CAD):      ${feedbackDeal.amount != null ? fmt(feedbackDeal.amount) : 'N/A'}
-  Contract Term:     ${feedbackDeal.contract_term_months != null ? `${feedbackDeal.contract_term_months} months` : 'N/A'}
-  ACV (CAD):         ${acv}
-  TCV (CAD):         ${fmt(tcvVal)}
-  Closing Date:      ${closeDate}
-  Health Score:      ${feedbackDeal.health_score ?? 'N/A'}
-  Modified Date:     ${modifiedDate}
-  Days Since Update: ${daysSince}
-
-Description:
-${feedbackDeal.deal_description ?? 'No description provided.'}
-
-Recent Notes:
-${notesBlock}
-
-Please review and let me know if any updates are needed.`
-              const ownerProfile = profiles.find(p => p.id === feedbackDeal.deal_owner_id)
-              return (
-                <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handleEmailOwner}
-                      disabled={emailStatus !== 'idle'}
-                      className="inline-flex items-center gap-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-60 px-4 py-2 rounded-lg transition-colors"
-                    >
-                      {emailStatus === 'checking' ? 'Checking summary…' :
-                       emailStatus === 'summarizing' ? 'Generating summary…' :
-                       emailStatus === 'inspecting' ? 'Inspecting deal…' :
-                       emailStatus === 'emailing' ? 'Generating email…' :
-                       <><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z" /><path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" /></svg> Email Owner</>}
-                    </button>
-                    {ownerProfile?.slack_member_id && (
-                      <a href={`slack://user?team=T02FCU97B&id=${ownerProfile.slack_member_id}`} className="inline-flex items-center gap-2 text-sm font-medium text-white bg-[#4A154B] hover:bg-[#3a1039] px-4 py-2 rounded-lg transition-colors">
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg>
-                        Slack Owner
-                      </a>
-                    )}
-                    <button
-                      onClick={() => { navigator.clipboard.writeText(bodyText).then(() => { setUI('copied', true); setTimeout(() => setUI('copied', false), 2000) }) }}
-                      className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg transition-colors"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M7 3.5A1.5 1.5 0 018.5 2h3.879a1.5 1.5 0 011.06.44l3.122 3.12A1.5 1.5 0 0117 6.622V12.5a1.5 1.5 0 01-1.5 1.5h-1v-3.379a3 3 0 00-.879-2.121L10.5 5.379A3 3 0 008.379 4.5H7v-1z" /><path d="M4.5 6A1.5 1.5 0 003 7.5v9A1.5 1.5 0 004.5 18h7a1.5 1.5 0 001.5-1.5v-5.879a1.5 1.5 0 00-.44-1.06L9.44 6.439A1.5 1.5 0 008.378 6H4.5z" /></svg>
-                      {copied ? 'Copied!' : 'Copy Info'}
-                    </button>
-                  </div>
-                  <button onClick={closeFeedback} className="text-sm font-medium text-gray-600 hover:text-gray-800 px-4 py-2 rounded-lg border border-gray-200 hover:bg-brand-50 transition-colors">Close</button>
-                </div>
-              )
-            })()}
-          </div>
-        </div>
-      )}
-
-      {/* Add / Edit modal */}
+      {/* Add Deal modal */}
       {modal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-2xl">
             <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
-              <h3 className="font-semibold text-white">{modal === 'add' ? 'New Deal' : 'Edit Deal'}</h3>
+              <h3 className="font-semibold text-white">New Deal</h3>
               <button onClick={closeModal} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
             </div>
             <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
@@ -1093,17 +644,6 @@ Please review and let me know if any updates are needed.`
                   </select>
                 </Field>
               </div>
-              {modal === 'edit' && (
-                <Field label="Deal owner">
-                  {(isAdmin || isSalesManager) ? (
-                    <select value={form.deal_owner_id} onChange={set('deal_owner_id')} className={INPUT}>
-                      {profiles.filter(p => p.role === 'sales').map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
-                    </select>
-                  ) : (
-                    <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{profiles.find(p => p.id === form.deal_owner_id)?.full_name ?? '—'}</p>
-                  )}
-                </Field>
-              )}
               <Field label="Solutions Engineer">
                 <select value={form.solutions_engineer_id} onChange={set('solutions_engineer_id')} className={INPUT}>
                   <option value="">— none —</option>
@@ -1114,7 +654,7 @@ Please review and let me know if any updates are needed.`
                 <Field label="Amount"><div className="relative"><span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none">$</span><input type="text" value={form.amount} onChange={set('amount')} placeholder="0" className={`${INPUT} pl-6`} /></div></Field>
                 <Field label="Currency">
                   <select value={form.currency} onChange={set('currency')} className={INPUT}>
-                    <option value="USD">USD</option><option value="CAD">CAD</option><option value="EUR">EUR</option><option value="GBP">GBP</option>
+                    <option value="USD">USD</option><option value="CAD">CAD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="MXN">MXN</option>
                   </select>
                 </Field>
               </div>
@@ -1130,43 +670,25 @@ Please review and let me know if any updates are needed.`
                   <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount && form.contract_term_months ? (formatCurrency(calcTCV(form.amount, form.contract_term_months)) ?? '—') : '—'}</p>
                 </Field>
               </div>
-
-              {modal === 'edit' && (
-                <div className="border-t border-gray-100 pt-4">
-                  <p className="text-sm font-medium text-gray-700 mb-3">Notes</p>
-                  <div className="bg-white border border-gray-200 rounded-xl p-4 mb-4">
-                    <textarea value={noteText} onChange={e => setNotesUI('noteText', e.target.value)} rows={3} placeholder="Add a note…" className={`${INPUT} resize-none mb-3`} />
-                    <div className="flex justify-end">
-                      <button onClick={addDealNote} disabled={loggingNote || !noteText.trim()} className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-                        {loggingNote ? 'Saving…' : 'Add note'}
-                      </button>
-                    </div>
-                  </div>
-                  {dealNotes.length === 0 ? (
-                    <p className="text-sm text-gray-400">No notes yet.</p>
-                  ) : (
-                    <ul className="space-y-3">
-                      {dealNotes.map(n => (
-                        <li key={n.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
-                          <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{n.note_text}</p>
-                          <div className="flex items-center justify-between mt-3">
-                            <p className="text-xs text-gray-400">{n.author?.full_name ?? 'Unknown'} · {fmtTs(n.created_at)}</p>
-                            {noteConfirmDelete === n.id ? (
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs text-gray-400">Delete?</span>
-                                <button onClick={() => deleteDealNote(n.id)} className="text-xs text-red-600 hover:text-red-700 font-medium">Confirm</button>
-                                <button onClick={() => setNotesUI('noteConfirmDelete', null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
-                              </div>
-                            ) : (
-                              <button onClick={() => setNotesUI('noteConfirmDelete', n.id)} title="Delete" className="text-gray-400 hover:text-red-600"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M8.75 1A2.75 2.75 0 006 3.75v.443c-.795.077-1.584.176-2.365.298a.75.75 0 10.23 1.482l.149-.022.841 10.518A2.75 2.75 0 007.596 19h4.807a2.75 2.75 0 002.742-2.53l.841-10.52.149.023a.75.75 0 00.23-1.482A41.03 41.03 0 0014 4.193V3.75A2.75 2.75 0 0011.25 1h-2.5zM10 4c.84 0 1.673.025 2.5.075V3.75c0-.69-.56-1.25-1.25-1.25h-2.5c-.69 0-1.25.56-1.25 1.25v.325C9.327 4.025 9.66 4 10 4zM8.58 7.72a.75.75 0 00-1.5.06l.3 7.5a.75.75 0 101.5-.06l-.3-7.5zm4.34.06a.75.75 0 10-1.5-.06l-.3 7.5a.75.75 0 101.5.06l.3-7.5z" clipRule="evenodd" /></svg></button>
-                            )}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-              )}
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Region">
+                  <select value={form.region} onChange={set('region')} className={INPUT}>
+                    <option value="">— none —</option>
+                    <option value="North America">North America</option>
+                    <option value="Europe/Asia/Pacific/Africa">Europe/Asia/Pacific/Africa</option>
+                    <option value="Latin America/Caribbean">Latin America/Caribbean</option>
+                  </select>
+                </Field>
+                <Field label="Type of Deal">
+                  <select value={form.deal_type} onChange={set('deal_type')} className={INPUT}>
+                    <option value="">— none —</option>
+                    <option value="Migration">Migration</option>
+                    <option value="Organic One-Time">Organic One-Time</option>
+                    <option value="Organic Recurring">Organic Recurring</option>
+                    <option value="Pro Services">Pro Services</option>
+                  </select>
+                </Field>
+              </div>
               {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">

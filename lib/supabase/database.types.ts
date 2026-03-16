@@ -368,6 +368,7 @@ export type Database = {
           deal_description: string | null
           deal_name: string
           deal_owner_id: string
+          deal_type: string | null
           health_debug: Json | null
           health_score: number | null
           hs_activity_recency: number | null
@@ -382,6 +383,7 @@ export type Database = {
           inspection_score: number | null
           last_activity_at: string | null
           notes_hash: string | null
+          region: string | null
           solutions_engineer_id: string | null
           stage_id: string
           total_contract_value: number | null
@@ -400,6 +402,7 @@ export type Database = {
           deal_description?: string | null
           deal_name: string
           deal_owner_id: string
+          deal_type?: string | null
           health_debug?: Json | null
           health_score?: number | null
           hs_activity_recency?: number | null
@@ -414,6 +417,7 @@ export type Database = {
           inspection_score?: number | null
           last_activity_at?: string | null
           notes_hash?: string | null
+          region?: string | null
           solutions_engineer_id?: string | null
           stage_id: string
           total_contract_value?: number | null
@@ -432,6 +436,7 @@ export type Database = {
           deal_description?: string | null
           deal_name?: string
           deal_owner_id?: string
+          deal_type?: string | null
           health_debug?: Json | null
           health_score?: number | null
           hs_activity_recency?: number | null
@@ -446,6 +451,7 @@ export type Database = {
           inspection_score?: number | null
           last_activity_at?: string | null
           notes_hash?: string | null
+          region?: string | null
           solutions_engineer_id?: string | null
           stage_id?: string
           total_contract_value?: number | null
@@ -1024,6 +1030,7 @@ export type Database = {
           deal_name: string
           deal_owner_id: string
           deal_owner_name: string
+          deal_type: string
           health_debug: Json
           health_score: number
           hs_activity_recency: number
@@ -1038,6 +1045,7 @@ export type Database = {
           last_activity_at: string
           last_note_at: string
           notes_hash: string
+          region: string
           se_name: string
           solutions_engineer_id: string
           stage_id: string

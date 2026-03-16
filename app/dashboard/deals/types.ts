@@ -12,6 +12,8 @@ export type DealFormData = {
   contract_term_months:  string   // user-entered; TCV = amount × term (auto)
   currency:              string
   close_date:            string
+  region:                string   // '' → null on save
+  deal_type:             string   // '' → null on save
 }
 
 export type ProfileRow = {

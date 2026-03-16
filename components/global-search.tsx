@@ -93,9 +93,7 @@ export function GlobalSearch() {
         id:       row.id,
         label:    row.deal_name,
         sublabel: acct,
-        href:     row.account_id
-          ? `/dashboard/accounts/${row.account_id}?tab=deals`
-          : '/dashboard/deals',
+        href:     `/dashboard/deals/${row.id}`,
       })
     }
     for (const row of hidRes.data ?? []) {

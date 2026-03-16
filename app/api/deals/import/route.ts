@@ -95,6 +95,8 @@ interface ParsedDeal {
   close_date: string | null
   deal_description: string
   account_name: string
+  region: string | null
+  deal_type: string | null
   notes: ParsedNote[]
 }
 
@@ -126,6 +128,8 @@ function parseCSVDeals(csvText: string): ParsedDeal[] {
   const iNotes        = idx('Note Content')
   const iDesc         = idx('Description')
   const iModifiedTime = idx('Modified Time (Notes)')
+  const iRegion       = idx('Region')
+  const iDealType     = idx('Type of Deal') >= 0 ? idx('Type of Deal') : idx('Deal Type')
 
   // Collect rows per deal; notes deduped by text within the CSV
   const dealMap = new Map<string, ParsedDeal & { noteMap: Map<string, ParsedNote> }>()
@@ -150,6 +154,13 @@ function parseCSVDeals(csvText: string): ParsedDeal[] {
     const noteRaw     = iNotes    >= 0 ? (row[iNotes]    ?? '').trim() : ''
     const descRaw     = iDesc     >= 0 ? (row[iDesc]     ?? '').trim() : ''
     const modifiedRaw = iModifiedTime >= 0 ? (row[iModifiedTime] ?? '').trim() : ''
+
+    const VALID_REGIONS = ['North America', 'Europe/Asia/Pacific/Africa', 'Latin America/Caribbean']
+    const VALID_TYPES   = ['Migration', 'Organic One-Time', 'Organic Recurring', 'Pro Services']
+    const regionRaw   = iRegion   >= 0 ? (row[iRegion]   ?? '').trim() : ''
+    const dealTypeRaw = iDealType >= 0 ? (row[iDealType] ?? '').trim() : ''
+    const parsedRegion   = VALID_REGIONS.includes(regionRaw)   ? regionRaw   : null
+    const parsedDealType = VALID_TYPES.includes(dealTypeRaw)   ? dealTypeRaw : null
 
     // New value fields — all optional; gracefully absent in legacy CSVs
     const amountRaw = iAmount     >= 0 ? (row[iAmount]     ?? '').trim() : ''
@@ -198,6 +209,8 @@ function parseCSVDeals(csvText: string): ParsedDeal[] {
         total_contract_value: parsedTCV,
         close_date:           closeDate,
         deal_description:     descRaw,
+        region:               parsedRegion,
+        deal_type:            parsedDealType,
         notes:                [],
         noteMap,
       })
@@ -278,7 +291,7 @@ export async function POST(req: NextRequest) {
   }
 
   const now = new Date().toISOString()
-  type DealRow = { account_id: string; stage_id: string; deal_name: string; deal_description: string | null; deal_owner_id: string; amount: number | null; contract_term_months: number | null; total_contract_value: number | null; value_amount: number | null; currency: string; close_date: string | null; last_activity_at: string; _notes: ParsedNote[]; _owner_id: string }
+  type DealRow = { account_id: string; stage_id: string; deal_name: string; deal_description: string | null; deal_owner_id: string; amount: number | null; contract_term_months: number | null; total_contract_value: number | null; value_amount: number | null; currency: string; close_date: string | null; region: string | null; deal_type: string | null; last_activity_at: string; _notes: ParsedNote[]; _owner_id: string }
   const rows = parsedDeals.map(d => {
     const resolvedAccountId =
       (d.account_name && accountNameMap.get(normalizeString(d.account_name))) ||
@@ -299,6 +312,8 @@ export async function POST(req: NextRequest) {
       value_amount:         d.value_amount > 0 ? d.value_amount : null,
       currency:             'CAD',
       close_date:           d.close_date,
+      region:               d.region,
+      deal_type:            d.deal_type,
       last_activity_at:     now,
       _notes:               d.notes,
       _owner_id:            ownerId,
