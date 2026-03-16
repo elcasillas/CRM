@@ -166,6 +166,7 @@ middleware.ts
 | `/dashboard/deals/all` | Server → Client | All deals including closed. `isAllDeals: true`. |
 | `/dashboard/deals/import` | Client | Drag-and-drop CSV upload with preview |
 | `/dashboard/accounts` | Client | Accounts list, filter/sort, full CRUD |
+| `/dashboard/products` | Client | Products list, CSV import, add, delete |
 | `/dashboard/accounts/[id]` | Client | Tabbed detail: Deals, HIDs, Contacts, Contracts, Notes |
 | `/dashboard/admin/users` | Server guard → Client | User list, invite, edit role/name/email/password/slack_id |
 | `/dashboard/admin/stages` | Client | Stage CRUD, sort order, flags |
@@ -187,6 +188,7 @@ middleware.ts
 | `/api/admin/inspection-config` | GET | Admin | Return merged inspection config (DB overrides + DEFAULT_CHECKS) |
 | `/api/admin/inspection-config` | PUT | Admin | Upsert inspection config (severity, enabled flags) |
 | `/api/deals/import` | POST | Any auth | CSV import (multipart/form-data) |
+| `/api/products/import` | POST | Any auth | CSV import for products (multipart/form-data) |
 | `/api/deals/[id]/summarize` | GET | Any auth | Return stored AI summary |
 | `/api/deals/[id]/summarize` | POST | Any auth | Generate/cache AI summary |
 | `/api/deals/[id]/inspect` | GET | Any auth | Return stored inspection result |
@@ -212,6 +214,11 @@ Mirrors `auth.users`. Auto-created by `handle_new_user()` trigger.
 - `status` (`active`|`churned`|`prospect`|`inactive`), `description`
 - `account_owner_id` FK → profiles, `service_manager_id` FK → profiles
 - `last_activity_at` timestamptz
+
+### `products`
+- `product_name` text NOT NULL, `unit_price` numeric (default 0), `product_code` text NULL
+- All authenticated users: SELECT + INSERT. Admin only: UPDATE + DELETE.
+- CSV import via `POST /api/products/import`; deduplicates by `LOWER(TRIM(product_name))`
 
 ### `contacts`
 - `account_id` FK → accounts, `first_name`, `last_name`, `email`, `phone`, `title`
