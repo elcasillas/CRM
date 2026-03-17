@@ -182,7 +182,7 @@ export default function ProductsPage() {
     if (error) {
       setFormError(error.message)
     } else {
-      closeModal()
+      forceCloseProduct()
       await fetchProducts()
     }
     setSaving(false)

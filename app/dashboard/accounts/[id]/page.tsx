@@ -311,6 +311,7 @@ export default function AccountDetailPage() {
     const { error } = await supabase.from('accounts').update(payload).eq('id', id)
     if (error) { setAccountFormError(error.message) } else {
       await fetchAccount()
+      modalInitialRef.current = JSON.stringify(accountForm)
       closeAccountModal()
     }
     setAccountSaving(false)
@@ -377,6 +378,7 @@ export default function AccountDetailPage() {
     )
     if (rolesError) { setFormError(rolesError.message); setSaving(false); return }
 
+    modalInitialRef.current = JSON.stringify(contactForm)
     closeContactModal(); fetchContacts()
     setSaving(false)
   }
@@ -394,7 +396,7 @@ export default function AccountDetailPage() {
       ? await supabase.from('hid_records').insert(payload)
       : await supabase.from('hid_records').update(payload).eq('id', editingHid!.id)
     if (error) setFormError(error.message)
-    else { closeHidModal(); fetchHids() }
+    else { modalInitialRef.current = JSON.stringify(hidForm); closeHidModal(); fetchHids() }
     setSaving(false)
   }
 
@@ -411,7 +413,7 @@ export default function AccountDetailPage() {
       ? await supabase.from('contracts').insert(payload)
       : await supabase.from('contracts').update(payload).eq('id', editingContract!.id)
     if (error) setFormError(error.message)
-    else { closeContractModal(); fetchContracts() }
+    else { modalInitialRef.current = JSON.stringify(contractForm); closeContractModal(); fetchContracts() }
     setSaving(false)
   }
 
@@ -427,6 +429,7 @@ export default function AccountDetailPage() {
     const payload = { account_id: id, stage_id: dealForm.stage_id, deal_name: dealForm.deal_name.trim(), deal_description: dealForm.deal_description.trim() || null, deal_owner_id: dealForm.deal_owner_id || userId, solutions_engineer_id: dealForm.solutions_engineer_id || null, amount: amountNum > 0 ? amountNum : null, contract_term_months: termNum > 0 ? termNum : null, value_amount: amountNum > 0 ? calcACV(dealForm.amount, dealForm.contract_term_months) : null, total_contract_value: amountNum > 0 && termNum > 0 ? amountNum * termNum : null, currency: dealForm.currency || 'USD', close_date: dealForm.close_date || null, region: dealForm.region || null, deal_type: dealForm.deal_type || null }
     const { data: inserted, error } = await supabase.from('deals').insert(payload).select('id').single()
     if (error) { setFormError(error.message); setSaving(false); return }
+    modalInitialRef.current = JSON.stringify(dealForm)
     closeDealModal()
     router.push(`/dashboard/deals/${inserted.id}?back=${encodeURIComponent(`/dashboard/accounts/${id}?tab=deals`)}`)
     setSaving(false)

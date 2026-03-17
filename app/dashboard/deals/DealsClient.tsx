@@ -296,7 +296,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     if (error) {
       setUI('formError', error.message)
     } else {
-      closeModal()
+      forceCloseModal()
       const backPath = encodeURIComponent(isAllDeals ? '/dashboard/deals/all' : '/dashboard/deals')
       router.push(`/dashboard/deals/${inserted.id}?back=${backPath}`)
     }

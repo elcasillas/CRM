@@ -203,10 +203,10 @@ export default function AccountsPage() {
     if (modal === 'add') {
       const { data: { user } } = await supabase.auth.getUser()
       const { error } = await supabase.from('accounts').insert({ ...payload, account_owner_id: user!.id })
-      if (error) { setFormError(error.message) } else { closeModal(); fetchAccounts() }
+      if (error) { setFormError(error.message) } else { forceCloseAccount(); fetchAccounts() }
     } else if (modal === 'edit' && editing) {
       const { error } = await supabase.from('accounts').update(payload).eq('id', editing.id)
-      if (error) { setFormError(error.message) } else { closeModal(); fetchAccounts() }
+      if (error) { setFormError(error.message) } else { forceCloseAccount(); fetchAccounts() }
     }
     setSaving(false)
   }

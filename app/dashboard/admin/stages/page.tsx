@@ -124,10 +124,10 @@ export default function AdminStagesPage() {
     if (modal === 'add') {
       const maxOrder = stages.length > 0 ? Math.max(...stages.map(s => s.sort_order)) : 0
       const { error } = await supabase.from('deal_stages').insert({ ...payload, sort_order: maxOrder + 1 })
-      if (error) { setFormError(error.message) } else { closeModal(); fetchStages() }
+      if (error) { setFormError(error.message) } else { forceCloseStage(); fetchStages() }
     } else if (modal === 'edit' && editing) {
       const { error } = await supabase.from('deal_stages').update(payload).eq('id', editing.id)
-      if (error) { setFormError(error.message) } else { closeModal(); fetchStages() }
+      if (error) { setFormError(error.message) } else { forceCloseStage(); fetchStages() }
     }
     setSaving(false)
   }
