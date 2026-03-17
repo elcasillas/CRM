@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { parseAmount, calcACV, calcTCV } from '@/lib/dealCalc'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
@@ -9,6 +9,7 @@ import type {
   Account, AccountWithOwners, Contact, ContactWithRoles, Contract, DealStage, DealWithRelations,
   HidRecord, NoteWithAuthor,
 } from '@/lib/types'
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
 
 const supabase = createClient()
 
@@ -180,6 +181,11 @@ export default function AccountDetailPage() {
   const [descDraft,   setDescDraft]   = useState('')
   const [descSaving,  setDescSaving]  = useState(false)
 
+  // Unsaved changes tracking (shared across all modals)
+  const modalInitialRef = useRef<string>('')
+  const [showModalWarning, setShowModalWarning] = useState(false)
+  const [pendingModalClose, setPendingModalClose] = useState<(() => void) | null>(null)
+
   // note
   const [noteText,    setNoteText]    = useState('')
   const [loggingNote, setLoggingNote] = useState(false)
@@ -265,7 +271,7 @@ export default function AccountDetailPage() {
 
   function openEditAccount() {
     if (!account) return
-    setAccountForm({
+    const af: AccountForm = {
       account_name:       account.account_name,
       account_website:    account.account_website    ?? '',
       address_line1:      account.address_line1      ?? '',
@@ -277,12 +283,14 @@ export default function AccountDetailPage() {
       status:             account.status,
       account_owner_id:   account.account_owner_id   ?? '',
       service_manager_id: account.service_manager_id ?? '',
-    })
+    }
+    setAccountForm(af)
     setAccountFormError(null)
     setAccountModal(true)
+    modalInitialRef.current = JSON.stringify(af)
   }
 
-  function closeAccountModal() { setAccountModal(false); setAccountFormError(null) }
+  function closeAccountModal() { guardedClose(JSON.stringify(accountForm), () => { setAccountModal(false); setAccountFormError(null) }) }
 
   async function saveAccount() {
     if (!accountForm.account_name.trim()) { setAccountFormError('Account name is required'); return }
@@ -312,6 +320,15 @@ export default function AccountDetailPage() {
 
   function clearError() { setFormError(null) }
 
+  function guardedClose(currentFormJson: string, closeFn: () => void) {
+    if (currentFormJson !== modalInitialRef.current) {
+      setPendingModalClose(() => closeFn)
+      setShowModalWarning(true)
+    } else {
+      closeFn()
+    }
+  }
+
   function setF<T>(setter: React.Dispatch<React.SetStateAction<T>>) {
     return (field: keyof T) =>
       (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
@@ -320,9 +337,9 @@ export default function AccountDetailPage() {
 
   // ── Contact CRUD ────────────────────────────────────────────────────────────
 
-  function openAddContact()        { setContactForm(EMPTY_CONTACT); setEditingContact(null); clearError(); setContactModal('add') }
-  function openEditContact(c: ContactWithRoles) { setContactForm({ first_name: c.first_name ?? '', last_name: c.last_name ?? '', email: c.email, phone: c.phone ?? '', title: c.title ?? '', roles: c.contact_roles.map(r => r.role_type) }); setEditingContact(c); clearError(); setContactModal('edit') }
-  function closeContactModal()     { setContactModal(null); setEditingContact(null); clearError() }
+  function openAddContact()        { setContactForm(EMPTY_CONTACT); setEditingContact(null); clearError(); setContactModal('add'); modalInitialRef.current = JSON.stringify(EMPTY_CONTACT) }
+  function openEditContact(c: ContactWithRoles) { const cf = { first_name: c.first_name ?? '', last_name: c.last_name ?? '', email: c.email, phone: c.phone ?? '', title: c.title ?? '', roles: c.contact_roles.map(r => r.role_type) }; setContactForm(cf); setEditingContact(c); clearError(); setContactModal('edit'); modalInitialRef.current = JSON.stringify(cf) }
+  function closeContactModal()     { guardedClose(JSON.stringify(contactForm), () => { setContactModal(null); setEditingContact(null); clearError() }) }
 
   async function saveContact() {
     if (contactForm.roles.length === 0) { setFormError('At least one role must be selected'); return }
@@ -366,9 +383,9 @@ export default function AccountDetailPage() {
 
   // ── HID CRUD ────────────────────────────────────────────────────────────────
 
-  function openAddHid()          { setHidForm(EMPTY_HID); setEditingHid(null); clearError(); setHidModal('add') }
-  function openEditHid(h: HidRecord) { setHidForm({ hid_number: h.hid_number, dc_location: h.dc_location ?? '', cluster_id: h.cluster_id ?? '', start_date: h.start_date ?? '', domain_name: h.domain_name ?? '' }); setEditingHid(h); clearError(); setHidModal('edit') }
-  function closeHidModal()       { setHidModal(null); setEditingHid(null); clearError() }
+  function openAddHid()          { setHidForm(EMPTY_HID); setEditingHid(null); clearError(); setHidModal('add'); modalInitialRef.current = JSON.stringify(EMPTY_HID) }
+  function openEditHid(h: HidRecord) { const hf = { hid_number: h.hid_number, dc_location: h.dc_location ?? '', cluster_id: h.cluster_id ?? '', start_date: h.start_date ?? '', domain_name: h.domain_name ?? '' }; setHidForm(hf); setEditingHid(h); clearError(); setHidModal('edit'); modalInitialRef.current = JSON.stringify(hf) }
+  function closeHidModal()       { guardedClose(JSON.stringify(hidForm), () => { setHidModal(null); setEditingHid(null); clearError() }) }
 
   async function saveHid() {
     setSaving(true); clearError()
@@ -383,9 +400,9 @@ export default function AccountDetailPage() {
 
   // ── Contract CRUD ───────────────────────────────────────────────────────────
 
-  function openAddContract()             { setContractForm(EMPTY_CONTRACT); setEditingContract(null); clearError(); setContractModal('add') }
-  function openEditContract(c: Contract) { setContractForm({ entity_name: c.entity_name ?? '', effective_date: c.effective_date ?? '', renewal_date: c.renewal_date ?? '', renewal_term_months: c.renewal_term_months != null ? String(c.renewal_term_months) : '', auto_renew: c.auto_renew, status: c.status }); setEditingContract(c); clearError(); setContractModal('edit') }
-  function closeContractModal()          { setContractModal(null); setEditingContract(null); clearError() }
+  function openAddContract()             { setContractForm(EMPTY_CONTRACT); setEditingContract(null); clearError(); setContractModal('add'); modalInitialRef.current = JSON.stringify(EMPTY_CONTRACT) }
+  function openEditContract(c: Contract) { const cf = { entity_name: c.entity_name ?? '', effective_date: c.effective_date ?? '', renewal_date: c.renewal_date ?? '', renewal_term_months: c.renewal_term_months != null ? String(c.renewal_term_months) : '', auto_renew: c.auto_renew, status: c.status }; setContractForm(cf); setEditingContract(c); clearError(); setContractModal('edit'); modalInitialRef.current = JSON.stringify(cf) }
+  function closeContractModal()          { guardedClose(JSON.stringify(contractForm), () => { setContractModal(null); setEditingContract(null); clearError() }) }
 
   async function saveContract() {
     setSaving(true); clearError()
@@ -400,8 +417,8 @@ export default function AccountDetailPage() {
 
   // ── Deal CRUD ───────────────────────────────────────────────────────────────
 
-  function openAddDeal() { setDealForm({ ...EMPTY_DEAL, stage_id: stages[1]?.id ?? '', deal_owner_id: userId }); clearError(); setDealModal('add') }
-  function closeDealModal() { setDealModal(null); clearError() }
+  function openAddDeal() { const df = { ...EMPTY_DEAL, stage_id: stages[1]?.id ?? '', deal_owner_id: userId }; setDealForm(df); clearError(); setDealModal('add'); modalInitialRef.current = JSON.stringify(df) }
+  function closeDealModal() { guardedClose(JSON.stringify(dealForm), () => { setDealModal(null); clearError() }) }
 
   async function saveDeal() {
     setSaving(true); clearError()
@@ -1050,6 +1067,27 @@ export default function AccountDetailPage() {
             </Field>
           </div>
         </Modal>
+      )}
+
+      {/* Unsaved changes warning dialog */}
+      {showModalWarning && (
+        <UnsavedChangesDialog
+          onCancel={() => setShowModalWarning(false)}
+          onDiscard={() => {
+            setShowModalWarning(false)
+            pendingModalClose?.()
+            setPendingModalClose(null)
+          }}
+          onSave={async () => {
+            if (accountModal) await saveAccount()
+            else if (contactModal) await saveContact()
+            else if (hidModal) await saveHid()
+            else if (contractModal) await saveContract()
+            else if (dealModal) await saveDeal()
+            setShowModalWarning(false)
+          }}
+          saving={saving || accountSaving}
+        />
       )}
 
     </div>

@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useBeforeUnload, formIsDirty } from '@/hooks/useUnsavedChanges'
 
 type Weights = {
   stageProbability:   number
@@ -37,18 +38,25 @@ export default function HealthScoringClient() {
   const [saveMsg, setSaveMsg]               = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [recalcMsg, setRecalcMsg]           = useState<string | null>(null)
 
+  // Unsaved changes tracking
+  const initialConfigRef = useRef<{ weights: Weights; staleDays: number; newDealDays: number; positiveKws: string; negativeKws: string } | null>(null)
+
   useEffect(() => {
     fetch('/api/admin/health-score-config')
       .then(r => r.json())
       .then(data => {
         if (data.id) setConfigId(data.id)
-        if (data.weights) setWeights(data.weights)
-        if (data.keywords) {
-          setPositiveKws((data.keywords.positive ?? []).join('\n'))
-          setNegativeKws((data.keywords.negative ?? []).join('\n'))
-        }
-        if (data.stale_days   != null) setStaleDays(data.stale_days)
-        if (data.new_deal_days != null) setNewDealDays(data.new_deal_days)
+        const loadedWeights     = data.weights ?? { stageProbability: 25, velocity: 20, activityRecency: 15, closeDateIntegrity: 10, acv: 15, notesSignal: 15 }
+        const loadedPositiveKws = (data.keywords?.positive ?? []).join('\n')
+        const loadedNegativeKws = (data.keywords?.negative ?? []).join('\n')
+        const loadedStaleDays   = data.stale_days   ?? 30
+        const loadedNewDealDays = data.new_deal_days ?? 14
+        setWeights(loadedWeights)
+        setPositiveKws(loadedPositiveKws)
+        setNegativeKws(loadedNegativeKws)
+        setStaleDays(loadedStaleDays)
+        setNewDealDays(loadedNewDealDays)
+        initialConfigRef.current = { weights: loadedWeights, staleDays: loadedStaleDays, newDealDays: loadedNewDealDays, positiveKws: loadedPositiveKws, negativeKws: loadedNegativeKws }
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -56,6 +64,12 @@ export default function HealthScoringClient() {
 
   const weightTotal = Object.values(weights).reduce((s, v) => s + Number(v), 0)
   const totalOk = Math.abs(weightTotal - 100) < 0.5
+
+  const isDirty = formIsDirty(
+    { weights, staleDays, newDealDays, positiveKws, negativeKws },
+    initialConfigRef.current
+  )
+  useBeforeUnload(isDirty)
 
   function updateWeight(key: keyof Weights, val: string) {
     setWeights(w => ({ ...w, [key]: Number(val) || 0 }))
@@ -75,7 +89,12 @@ export default function HealthScoringClient() {
       body: JSON.stringify({ id: configId, weights, keywords, stale_days: staleDays, new_deal_days: newDealDays }),
     })
     const body = await res.json()
-    setSaveMsg(res.ok ? { type: 'ok', text: 'Settings saved.' } : { type: 'err', text: body.error ?? 'Save failed.' })
+    if (res.ok) {
+      setSaveMsg({ type: 'ok', text: 'Settings saved.' })
+      initialConfigRef.current = { weights, staleDays, newDealDays, positiveKws, negativeKws }
+    } else {
+      setSaveMsg({ type: 'err', text: body.error ?? 'Save failed.' })
+    }
     setSaving(false)
   }
 
@@ -217,6 +236,28 @@ export default function HealthScoringClient() {
         )}
         {recalcMsg && <span className="text-sm text-gray-500">{recalcMsg}</span>}
       </div>
+
+      {isDirty && (
+        <div className="fixed bottom-0 left-0 right-0 bg-amber-50 border-t border-amber-200 px-6 py-3 flex items-center justify-between z-40">
+          <span className="text-sm text-amber-800 font-medium">You have unsaved changes</span>
+          <div className="flex gap-3">
+            <button onClick={() => {
+              if (initialConfigRef.current) {
+                setWeights(initialConfigRef.current.weights)
+                setStaleDays(initialConfigRef.current.staleDays)
+                setNewDealDays(initialConfigRef.current.newDealDays)
+                setPositiveKws(initialConfigRef.current.positiveKws)
+                setNegativeKws(initialConfigRef.current.negativeKws)
+              }
+            }} className="text-sm text-amber-700 hover:text-amber-900 font-medium">
+              Discard
+            </button>
+            <button onClick={handleSave} disabled={saving || !totalOk} className="text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors">
+              {saving ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

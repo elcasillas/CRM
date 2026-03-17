@@ -1,8 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { DealStage } from '@/lib/types'
+import { formIsDirty } from '@/hooks/useUnsavedChanges'
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
 
 const supabase = createClient()
 
@@ -36,6 +38,10 @@ export default function AdminStagesPage() {
   const [formError, setFormError] = useState<string | null>(null)
   const [deleteError, setDeleteError] = useState<Record<string, string>>({})
 
+  // Unsaved changes tracking
+  const stageInitialRef = useRef<FormData | null>(null)
+  const [showStageWarning, setShowStageWarning] = useState(false)
+
   const fetchStages = useCallback(async () => {
     const { data, error } = await supabase
       .from('deal_stages')
@@ -64,16 +70,31 @@ export default function AdminStagesPage() {
   }
 
   function openAdd() {
-    setForm({ stage_name: '', is_closed: false, is_won: false, is_lost: false, win_probability: '' })
+    const emptyForm: FormData = { stage_name: '', is_closed: false, is_won: false, is_lost: false, win_probability: '' }
+    setForm(emptyForm)
+    stageInitialRef.current = emptyForm
     setEditing(null); setFormError(null); setModal('add')
   }
 
   function openEdit(s: DealStage) {
-    setForm({ stage_name: s.stage_name, is_closed: s.is_closed, is_won: s.is_won, is_lost: s.is_lost, win_probability: s.win_probability != null ? String(s.win_probability) : '' })
+    const formValues: FormData = { stage_name: s.stage_name, is_closed: s.is_closed, is_won: s.is_won, is_lost: s.is_lost, win_probability: s.win_probability != null ? String(s.win_probability) : '' }
+    setForm(formValues)
+    stageInitialRef.current = formValues
     setEditing(s); setFormError(null); setModal('edit')
   }
 
-  function closeModal() { setModal(null); setEditing(null); setFormError(null) }
+  const isStageDirty = modal !== null && formIsDirty(form, stageInitialRef.current)
+
+  function guardedCloseStage() {
+    if (isStageDirty) { setShowStageWarning(true); return }
+    setModal(null); setEditing(null); setFormError(null); stageInitialRef.current = null
+  }
+
+  function forceCloseStage() {
+    setModal(null); setEditing(null); setFormError(null); stageInitialRef.current = null; setShowStageWarning(false)
+  }
+
+  function closeModal() { guardedCloseStage() }
 
   function setFlag(field: 'is_closed' | 'is_won' | 'is_lost') {
     return (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -267,6 +288,14 @@ export default function AdminStagesPage() {
                 {saving ? 'Saving…' : 'Save'}
               </button>
             </div>
+            {showStageWarning && (
+              <UnsavedChangesDialog
+                onCancel={() => setShowStageWarning(false)}
+                onDiscard={forceCloseStage}
+                onSave={async () => { await handleSave(); setShowStageWarning(false) }}
+                saving={saving}
+              />
+            )}
           </div>
         </div>
       )}

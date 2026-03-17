@@ -1,8 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { Profile, UserRole } from '@/lib/types'
+import { formIsDirty } from '@/hooks/useUnsavedChanges'
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
 
 const supabase = createClient()
 
@@ -42,6 +44,15 @@ export function AdminUsersClient() {
   const [editForm, setEditForm]       = useState({ full_name: '', email: '', role: 'sales' as UserRole, new_password: '', slack_member_id: '' })
   const [editError, setEditError]     = useState<string | null>(null)
   const [editSaving, setEditSaving]   = useState(false)
+
+  // Unsaved changes tracking
+  const addUserInitialRef  = useRef<typeof addForm | null>(null)
+  const editUserInitialRef = useRef<typeof editForm | null>(null)
+  const [showAddWarning,  setShowAddWarning]  = useState(false)
+  const [showEditWarning, setShowEditWarning] = useState(false)
+
+  const isAddFormDirty  = addModal  && formIsDirty(addForm,  addUserInitialRef.current)
+  const isEditFormDirty = !!editingUser && formIsDirty(editForm, editUserInitialRef.current)
 
   const fetchUsers = useCallback(async () => {
     setLoading(true)
@@ -97,7 +108,9 @@ export function AdminUsersClient() {
 
   function openEdit(u: MergedUser) {
     setEditingUser(u)
-    setEditForm({ full_name: u.full_name ?? '', email: u.email ?? '', role: u.role, new_password: '', slack_member_id: u.slack_member_id ?? '' })
+    const ef = { full_name: u.full_name ?? '', email: u.email ?? '', role: u.role, new_password: '', slack_member_id: u.slack_member_id ?? '' }
+    setEditForm(ef)
+    editUserInitialRef.current = ef
     setEditError(null)
   }
 
@@ -172,7 +185,13 @@ export function AdminUsersClient() {
           <p className="text-sm text-gray-500 mt-0.5">Manage roles and invite new team members.</p>
         </div>
         <button
-          onClick={() => { setAddForm({ email: '', full_name: '', password: '', role: 'sales' }); setAddError(null); setAddModal(true) }}
+          onClick={() => {
+            const emptyAddForm = { email: '', full_name: '', password: '', role: 'sales' as UserRole }
+            setAddForm(emptyAddForm)
+            addUserInitialRef.current = emptyAddForm
+            setAddError(null)
+            setAddModal(true)
+          }}
           className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
           + Add user
@@ -278,7 +297,7 @@ export function AdminUsersClient() {
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
               <h3 className="font-semibold text-white">Edit User</h3>
-              <button onClick={() => setEditingUser(null)} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
+              <button onClick={() => { if (isEditFormDirty) { setShowEditWarning(true) } else { setEditingUser(null) } }} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
             </div>
             <div className="px-6 py-5 space-y-4">
               <div>
@@ -340,7 +359,7 @@ export function AdminUsersClient() {
               {editError && <p className="text-red-600 text-sm font-medium">{editError}</p>}
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-              <button onClick={() => setEditingUser(null)} className="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
+              <button onClick={() => { if (isEditFormDirty) { setShowEditWarning(true) } else { setEditingUser(null) } }} className="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
               <button
                 onClick={handleEditUser}
                 disabled={editSaving || !editForm.email.trim()}
@@ -349,6 +368,14 @@ export function AdminUsersClient() {
                 {editSaving ? 'Saving…' : 'Save changes'}
               </button>
             </div>
+            {showEditWarning && (
+              <UnsavedChangesDialog
+                onCancel={() => setShowEditWarning(false)}
+                onDiscard={() => { setShowEditWarning(false); setEditingUser(null); editUserInitialRef.current = null }}
+                onSave={async () => { await handleEditUser(); setShowEditWarning(false) }}
+                saving={editSaving}
+              />
+            )}
           </div>
         </div>
       )}
@@ -359,7 +386,7 @@ export function AdminUsersClient() {
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
               <h3 className="font-semibold text-white">Add User</h3>
-              <button onClick={() => setAddModal(false)} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
+              <button onClick={() => { if (isAddFormDirty) { setShowAddWarning(true) } else { setAddModal(false) } }} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
             </div>
             <div className="px-6 py-5 space-y-4">
               <div>
@@ -408,7 +435,7 @@ export function AdminUsersClient() {
               {addError && <p className="text-red-600 text-sm font-medium">{addError}</p>}
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-              <button onClick={() => setAddModal(false)} className="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
+              <button onClick={() => { if (isAddFormDirty) { setShowAddWarning(true) } else { setAddModal(false) } }} className="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
               <button
                 onClick={handleAddUser}
                 disabled={addSaving || !addForm.email.trim() || !addForm.password.trim()}
@@ -417,6 +444,14 @@ export function AdminUsersClient() {
                 {addSaving ? 'Creating…' : 'Create user'}
               </button>
             </div>
+            {showAddWarning && (
+              <UnsavedChangesDialog
+                onCancel={() => setShowAddWarning(false)}
+                onDiscard={() => { setShowAddWarning(false); setAddModal(false); addUserInitialRef.current = null }}
+                onSave={async () => { await handleAddUser(); setShowAddWarning(false) }}
+                saving={addSaving}
+              />
+            )}
           </div>
         </div>
       )}

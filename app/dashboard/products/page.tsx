@@ -1,8 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { formIsDirty } from '@/hooks/useUnsavedChanges'
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
 
 const supabase = createClient()
 
@@ -69,6 +71,10 @@ export default function ProductsPage() {
   const [formError,     setFormError]     = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
+  // Unsaved changes tracking
+  const productInitialRef = useRef<FormData | null>(null)
+  const [showProductWarning, setShowProductWarning] = useState(false)
+
 
   // ── Init ────────────────────────────────────────────────────────────────────
 
@@ -124,21 +130,32 @@ export default function ProductsPage() {
   function openAdd() {
     setEditingId(null)
     setForm(EMPTY_FORM)
+    productInitialRef.current = EMPTY_FORM
     setFormError(null)
     setModal(true)
   }
 
   function openEdit(p: Product) {
+    const formValues: FormData = { product_name: p.product_name, unit_price: p.unit_price.toFixed(2), product_code: p.product_code ?? '' }
     setEditingId(p.id)
-    setForm({ product_name: p.product_name, unit_price: p.unit_price.toFixed(2), product_code: p.product_code ?? '' })
+    setForm(formValues)
+    productInitialRef.current = formValues
     setFormError(null)
     setModal(true)
   }
 
-  function closeModal() {
-    setModal(false)
-    setEditingId(null)
+  const isProductFormDirty = modal && isAdmin && formIsDirty(form, productInitialRef.current)
+
+  function guardedCloseProduct() {
+    if (isProductFormDirty) { setShowProductWarning(true); return }
+    setModal(false); setEditingId(null); productInitialRef.current = null
   }
+
+  function forceCloseProduct() {
+    setModal(false); setEditingId(null); productInitialRef.current = null; setShowProductWarning(false)
+  }
+
+  function closeModal() { guardedCloseProduct() }
 
   function set(field: keyof FormData) {
     return (e: React.ChangeEvent<HTMLInputElement>) =>
@@ -368,6 +385,14 @@ export default function ProductsPage() {
                 </button>
               )}
             </div>
+            {showProductWarning && (
+              <UnsavedChangesDialog
+                onCancel={() => setShowProductWarning(false)}
+                onDiscard={forceCloseProduct}
+                onSave={async () => { await handleSave(); setShowProductWarning(false) }}
+                saving={saving}
+              />
+            )}
           </div>
         </div>
       )}

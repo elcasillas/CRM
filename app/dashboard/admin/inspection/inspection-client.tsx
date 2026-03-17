@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { DEFAULT_CHECKS, type InspectionCheckDef } from '@/lib/deal-inspect'
+import { useBeforeUnload, formIsDirty } from '@/hooks/useUnsavedChanges'
 
 const SEVERITY_OPTIONS = ['critical', 'medium', 'low'] as const
 const SEVERITY_LABELS: Record<string, string> = { critical: 'Critical', medium: 'Medium', low: 'Low' }
@@ -18,18 +19,24 @@ export default function InspectionConfigClient() {
   const [saving, setSaving]     = useState(false)
   const [saveMsg, setSaveMsg]   = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
+  // Unsaved changes tracking
+  const initialChecksRef = useRef<InspectionCheckDef[] | null>(null)
+
   useEffect(() => {
     fetch('/api/admin/inspection-config')
       .then(r => r.json())
       .then(data => {
         if (data.id) setConfigId(data.id)
-        if (Array.isArray(data.checks) && data.checks.length > 0) {
-          setChecks(data.checks)
-        }
+        const loadedChecks = Array.isArray(data.checks) && data.checks.length > 0 ? data.checks : DEFAULT_CHECKS
+        setChecks(loadedChecks)
+        initialChecksRef.current = loadedChecks
       })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  const isDirty = formIsDirty(checks, initialChecksRef.current)
+  useBeforeUnload(isDirty)
 
   function updateCheck(id: string, field: 'severity' | 'enabled', value: string | boolean) {
     setChecks(prev => prev.map(c => c.id === id ? { ...c, [field]: value } : c))
@@ -45,7 +52,12 @@ export default function InspectionConfigClient() {
       body: JSON.stringify({ id: configId, checks }),
     })
     const body = await res.json()
-    setSaveMsg(res.ok ? { type: 'ok', text: 'Settings saved.' } : { type: 'err', text: body.error ?? 'Save failed.' })
+    if (res.ok) {
+      setSaveMsg({ type: 'ok', text: 'Settings saved.' })
+      initialChecksRef.current = checks
+    } else {
+      setSaveMsg({ type: 'err', text: body.error ?? 'Save failed.' })
+    }
     setSaving(false)
   }
 
@@ -119,6 +131,22 @@ export default function InspectionConfigClient() {
           </span>
         )}
       </div>
+
+      {isDirty && (
+        <div className="fixed bottom-0 left-0 right-0 bg-amber-50 border-t border-amber-200 px-6 py-3 flex items-center justify-between z-40">
+          <span className="text-sm text-amber-800 font-medium">You have unsaved changes</span>
+          <div className="flex gap-3">
+            <button onClick={() => {
+              if (initialChecksRef.current) setChecks(initialChecksRef.current)
+            }} className="text-sm text-amber-700 hover:text-amber-900 font-medium">
+              Discard
+            </button>
+            <button onClick={handleSave} disabled={saving} className="text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors">
+              {saving ? 'Saving…' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

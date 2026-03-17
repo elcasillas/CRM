@@ -1,8 +1,10 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { formIsDirty } from '@/hooks/useUnsavedChanges'
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
 import type { AccountWithOwners } from '@/lib/types'
 
 const supabase = createClient()
@@ -54,6 +56,10 @@ export default function AccountsPage() {
   const [saving, setSaving]               = useState(false)
   const [formError, setFormError]         = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+
+  // Unsaved changes tracking
+  const accountInitialRef = useRef<FormData | null>(null)
+  const [showAccountWarning, setShowAccountWarning] = useState(false)
 
   // Filter state
   const [search, setSearch]         = useState('')
@@ -138,10 +144,11 @@ export default function AccountsPage() {
 
   function openAdd() {
     setForm(EMPTY_FORM); setEditing(null); setFormError(null); setModal('add')
+    accountInitialRef.current = EMPTY_FORM
   }
 
   function openEdit(a: AccountWithOwners) {
-    setForm({
+    const formValues: FormData = {
       account_name:     a.account_name,
       account_website:  a.account_website  ?? '',
       address_line1:    a.address_line1    ?? '',
@@ -153,11 +160,24 @@ export default function AccountsPage() {
       status:             a.status,
       account_owner_id:   a.account_owner_id,
       service_manager_id: a.service_manager_id ?? '',
-    })
+    }
+    setForm(formValues)
+    accountInitialRef.current = formValues
     setEditing(a); setFormError(null); setModal('edit')
   }
 
-  function closeModal() { setModal(null); setEditing(null); setFormError(null) }
+  const isAccountFormDirty = modal !== null && formIsDirty(form, accountInitialRef.current)
+
+  function guardedCloseAccount() {
+    if (isAccountFormDirty) { setShowAccountWarning(true); return }
+    setModal(null); setEditing(null); setFormError(null); accountInitialRef.current = null
+  }
+
+  function forceCloseAccount() {
+    setModal(null); setEditing(null); setFormError(null); accountInitialRef.current = null; setShowAccountWarning(false)
+  }
+
+  function closeModal() { guardedCloseAccount() }
 
   function set(field: keyof FormData) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -384,6 +404,14 @@ export default function AccountsPage() {
                 {saving ? 'Saving…' : 'Save'}
               </button>
             </div>
+            {showAccountWarning && (
+              <UnsavedChangesDialog
+                onCancel={() => setShowAccountWarning(false)}
+                onDiscard={forceCloseAccount}
+                onSave={async () => { await handleSave(); setShowAccountWarning(false) }}
+                saving={saving}
+              />
+            )}
           </div>
         </div>
       )}

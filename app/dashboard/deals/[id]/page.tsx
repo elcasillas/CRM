@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -8,6 +8,8 @@ import { parseAmount, calcACV, calcTCV } from '@/lib/dealCalc'
 import type { DealStage, NoteWithAuthor } from '@/lib/types'
 import type { InspectionResult } from '@/lib/deal-inspect'
 import { DealDetailsModal } from '../DealDetailsModal'
+import { useBeforeUnload, formIsDirty } from '@/hooks/useUnsavedChanges'
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
 
 const supabase = createClient()
 const SLACK_TEAM_ID = process.env.NEXT_PUBLIC_SLACK_TEAM_ID ?? ''
@@ -135,6 +137,12 @@ export default function DealDetailPage() {
   // Delete confirm
   const [confirmDelete, setConfirmDelete] = useState(false)
 
+  // Unsaved changes tracking
+  const initialFormRef = useRef<FormData | null>(null)
+  const pendingNavRef  = useRef<string | null>(null)
+  const [showNavWarning, setShowNavWarning] = useState(false)
+  const [navWarnSaving, setNavWarnSaving]   = useState(false)
+
   // Deal Details Modal
   const [showDetailsModal,          setShowDetailsModal]          = useState(false)
   const [detailsSummary,            setDetailsSummary]            = useState<string | null>(null)
@@ -154,7 +162,7 @@ export default function DealDetailPage() {
       .single()
     if (error || !data) { setNotFound(true); return }
     setDeal(data as unknown as DealData)
-    setFormState({
+    const newForm: FormData = {
       deal_name:             data.deal_name,
       deal_description:      data.deal_description ?? '',
       account_id:            data.account_id ?? '',
@@ -167,7 +175,9 @@ export default function DealDetailPage() {
       close_date:            data.close_date ?? '',
       region:                (data as unknown as DealData).region ?? '',
       deal_type:             (data as unknown as DealData).deal_type ?? '',
-    })
+    }
+    setFormState(newForm)
+    initialFormRef.current = newForm
   }, [id])
 
   const fetchNotes = useCallback(async () => {
@@ -204,6 +214,9 @@ export default function DealDetailPage() {
   }, [fetchDeal, fetchNotes])
 
   const canViewAI = isAdmin || isSalesManager
+
+  const isDirty = formIsDirty(form, initialFormRef.current)
+  useBeforeUnload(isDirty)
 
   // ── Deal Details Modal ───────────────────────────────────────────────────────
 
@@ -257,8 +270,8 @@ export default function DealDetailPage() {
 
   // ── Save deal ────────────────────────────────────────────────────────────────
 
-  async function saveDeal() {
-    if (!form || !deal) return
+  async function saveDeal(): Promise<boolean> {
+    if (!form || !deal) return false
     setSaving(true); setSaveError(null); setSaved(false)
     const { data: { user: u } } = await supabase.auth.getUser()
     const amountNum = parseAmount(form.amount)
@@ -284,6 +297,8 @@ export default function DealDetailPage() {
     const { error } = await supabase.from('deals').update(payload).eq('id', id)
     if (error) {
       setSaveError(error.message)
+      setSaving(false)
+      return false
     } else {
       if (form.stage_id !== prevStageId) {
         await supabase.from('deal_stage_history').insert({
@@ -295,6 +310,7 @@ export default function DealDetailPage() {
       await fetchDeal()
     }
     setSaving(false)
+    return true
   }
 
   // ── Notes ────────────────────────────────────────────────────────────────────
@@ -351,7 +367,13 @@ export default function DealDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3 min-w-0">
-          <Link href={backHref} className="text-sm text-gray-400 hover:text-gray-600 transition-colors shrink-0">← Back</Link>
+          <button
+            onClick={() => {
+              if (isDirty) { pendingNavRef.current = backHref; setShowNavWarning(true) }
+              else router.push(backHref)
+            }}
+            className="text-sm text-gray-400 hover:text-gray-600 transition-colors shrink-0"
+          >← Back</button>
           <h1 className="text-xl font-semibold text-gray-900 truncate">{deal.deal_name}</h1>
           {deal.deal_stages && (
             <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-md ${stageBadgeClass(deal.deal_stages)}`}>
@@ -556,6 +578,21 @@ export default function DealDetailPage() {
         {deal.updated_at && <span>Updated {fmtDate(deal.updated_at.split('T')[0])}</span>}
         {deal.deal_owner && <span>Owner: {deal.deal_owner.full_name ?? '—'}</span>}
       </div>
+
+      {/* Nav unsaved changes dialog */}
+      {showNavWarning && (
+        <UnsavedChangesDialog
+          saving={navWarnSaving}
+          onCancel={() => setShowNavWarning(false)}
+          onDiscard={() => { setShowNavWarning(false); router.push(pendingNavRef.current ?? backHref) }}
+          onSave={async () => {
+            setNavWarnSaving(true)
+            const ok = await saveDeal()
+            setNavWarnSaving(false)
+            if (ok) { setShowNavWarning(false); router.push(pendingNavRef.current ?? backHref) }
+          }}
+        />
+      )}
 
       {/* Deal Details Modal */}
       {showDetailsModal && (

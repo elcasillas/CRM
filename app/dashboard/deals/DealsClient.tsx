@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -9,6 +9,8 @@ import type { DealFormData, DealsInitialData, DealPageRow } from './types'
 import type { InspectionResult } from '@/lib/deal-inspect'
 import { DealDetailsModal } from './DealDetailsModal'
 import { parseAmount, calcACV, calcTCV } from '@/lib/dealCalc'
+import { formIsDirty } from '@/hooks/useUnsavedChanges'
+import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
 
 const supabase = createClient()
 
@@ -150,6 +152,11 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
 
   const router = useRouter()
 
+  // ── Add Deal dirty tracking ──────────────────────────────────────────────────
+  const addDealInitialRef = useRef<DealFormData | null>(null)
+  const [showAddDealWarning, setShowAddDealWarning] = useState(false)
+  const isAddDealDirty = modal === 'add' && formIsDirty(form, addDealInitialRef.current)
+
   // ── Feedback modal state ─────────────────────────────────────────────────────
   const [feedbackDeal,              setFeedbackDeal]              = useState<DealWithRelations | null>(null)
   const [feedbackNote,              setFeedbackNote]              = useState<NoteWithAuthor | null>(null)
@@ -162,7 +169,14 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
 
   // ── Reset / close helpers ────────────────────────────────────────────────────
   function closeModal() {
+    if (isAddDealDirty) { setShowAddDealWarning(true); return }
+    forceCloseModal()
+  }
+
+  function forceCloseModal() {
     setUIState(prev => ({ ...prev, modal: null, formError: null, form: EMPTY_FORM }))
+    addDealInitialRef.current = null
+    setShowAddDealWarning(false)
   }
 
   // ── Data refresh (post-mutation) ─────────────────────────────────────────────
@@ -243,11 +257,13 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
 
   // ── Deal modal helpers ────────────────────────────────────────────────────────
   function openAdd(stageId = '') {
+    const initialForm = { ...EMPTY_FORM, stage_id: stageId || (stages[1]?.id ?? '') }
     setUIState(prev => ({
       ...prev,
-      form: { ...EMPTY_FORM, stage_id: stageId || (stages[1]?.id ?? '') },
+      form: initialForm,
       formError: null, modal: 'add',
     }))
+    addDealInitialRef.current = initialForm
   }
 
   // ── Deal CRUD ────────────────────────────────────────────────────────────────
@@ -835,6 +851,14 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                 {saving ? 'Saving…' : 'Save'}
               </button>
             </div>
+            {showAddDealWarning && (
+              <UnsavedChangesDialog
+                onCancel={() => setShowAddDealWarning(false)}
+                onDiscard={forceCloseModal}
+                onSave={async () => { await handleSave(); setShowAddDealWarning(false) }}
+                saving={saving}
+              />
+            )}
           </div>
         </div>
       )}
