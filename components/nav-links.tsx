@@ -15,7 +15,6 @@ const BASE_ITEMS: NavItem[] = [
 ]
 
 const ADMIN_ITEMS: NavItem[] = [
-  { href: '/dashboard/admin/stages',          label: 'Stages' },
   { href: '/dashboard/admin/users',           label: 'Users' },
   { href: '/dashboard/admin/health-scoring',  label: 'Settings' },
   { href: '/dashboard/admin/partner-health',  label: 'Partner Health' },
