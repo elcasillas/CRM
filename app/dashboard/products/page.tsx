@@ -49,6 +49,7 @@ export default function ProductsPage() {
   const [sortCol,       setSortCol]       = useState('product_name')
   const [sortDir,       setSortDir]       = useState<'asc' | 'desc'>('asc')
   const [modal,         setModal]         = useState(false)
+  const [editingId,     setEditingId]     = useState<string | null>(null)
   const [form,          setForm]          = useState<FormData>(EMPTY_FORM)
   const [saving,        setSaving]        = useState(false)
   const [formError,     setFormError]     = useState<string | null>(null)
@@ -104,12 +105,25 @@ export default function ProductsPage() {
     })
   }, [products, search, sortCol, sortDir])
 
-  // ── Add Product ─────────────────────────────────────────────────────────────
+  // ── Add / Edit Product ──────────────────────────────────────────────────────
 
   function openAdd() {
+    setEditingId(null)
     setForm(EMPTY_FORM)
     setFormError(null)
     setModal(true)
+  }
+
+  function openEdit(p: Product) {
+    setEditingId(p.id)
+    setForm({ product_name: p.product_name, unit_price: String(p.unit_price), product_code: p.product_code ?? '' })
+    setFormError(null)
+    setModal(true)
+  }
+
+  function closeModal() {
+    setModal(false)
+    setEditingId(null)
   }
 
   function set(field: keyof FormData) {
@@ -126,15 +140,18 @@ export default function ProductsPage() {
       return
     }
     setSaving(true); setFormError(null)
-    const { error } = await supabase.from('products').insert({
+    const payload = {
       product_name: name,
       unit_price:   form.unit_price.trim() !== '' ? price : 0,
       product_code: form.product_code.trim() || null,
-    })
+    }
+    const { error } = editingId
+      ? await supabase.from('products').update(payload).eq('id', editingId)
+      : await supabase.from('products').insert(payload)
     if (error) {
       setFormError(error.message)
     } else {
-      setModal(false)
+      closeModal()
       await fetchProducts()
     }
     setSaving(false)
@@ -237,7 +254,11 @@ export default function ProductsPage() {
             <tbody className="divide-y divide-gray-100">
               {displayed.map(p => (
                 <tr key={p.id} className="hover:bg-brand-50 transition-colors">
-                  <td className="px-4 py-3.5 font-medium text-gray-900 max-w-xs truncate">{p.product_name}</td>
+                  <td className="px-4 py-3.5 max-w-xs truncate">
+                    <button onClick={() => openEdit(p)} className="font-medium text-brand-600 hover:text-brand-800 hover:underline text-left truncate max-w-full">
+                      {p.product_name}
+                    </button>
+                  </td>
                   <td className="px-4 py-3.5 text-gray-500">{p.product_code ?? <span className="text-gray-300">—</span>}</td>
                   <td className="px-4 py-3.5 text-gray-700 font-medium">{fmtPrice(p.unit_price)}</td>
                   <td className="px-4 py-3.5 text-gray-400 text-xs">{fmtDate(p.created_at)}</td>
@@ -271,13 +292,13 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {/* Add Product modal */}
+      {/* Add / Edit Product modal */}
       {modal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md">
             <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
-              <h3 className="font-semibold text-white">New Product</h3>
-              <button onClick={() => setModal(false)} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
+              <h3 className="font-semibold text-white">{editingId ? 'Edit Product' : 'New Product'}</h3>
+              <button onClick={closeModal} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
             </div>
             <div className="px-6 py-5 space-y-4">
               <Field label="Product Name *">
@@ -288,6 +309,7 @@ export default function ProductsPage() {
                   placeholder="e.g. OneList Plus INT"
                   className={INPUT}
                   autoFocus
+                  readOnly={editingId !== null && !isAdmin}
                 />
               </Field>
               <Field label="Unit Price">
@@ -301,6 +323,7 @@ export default function ProductsPage() {
                     onChange={set('unit_price')}
                     placeholder="0.00"
                     className={`${INPUT} pl-6`}
+                    readOnly={editingId !== null && !isAdmin}
                   />
                 </div>
               </Field>
@@ -311,19 +334,24 @@ export default function ProductsPage() {
                   onChange={set('product_code')}
                   placeholder="e.g. ISPEMAIL (optional)"
                   className={INPUT}
+                  readOnly={editingId !== null && !isAdmin}
                 />
               </Field>
               {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-              <button onClick={() => setModal(false)} className="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
-              <button
-                onClick={handleSave}
-                disabled={saving || !form.product_name.trim()}
-                className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-              >
-                {saving ? 'Saving…' : 'Save'}
+              <button onClick={closeModal} className="text-sm text-gray-500 hover:text-gray-700 font-medium">
+                {editingId && !isAdmin ? 'Close' : 'Cancel'}
               </button>
+              {isAdmin && (
+                <button
+                  onClick={handleSave}
+                  disabled={saving || !form.product_name.trim()}
+                  className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                >
+                  {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Save'}
+                </button>
+              )}
             </div>
           </div>
         </div>
