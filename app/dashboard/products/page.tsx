@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { CsvDropzone, DropzoneUploadState } from '@/components/csv-dropzone'
 
 const supabase = createClient()
 
@@ -54,9 +54,6 @@ export default function ProductsPage() {
   const [formError,     setFormError]     = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
-  // CSV import
-  const [uploadState, setUploadState] = useState<DropzoneUploadState>('idle')
-  const [uploadMsg,   setUploadMsg]   = useState('')
 
   // ── Init ────────────────────────────────────────────────────────────────────
 
@@ -151,30 +148,6 @@ export default function ProductsPage() {
     setConfirmDelete(null)
   }
 
-  // ── CSV Import ──────────────────────────────────────────────────────────────
-
-  async function handleFile(file: File) {
-    setUploadState('uploading')
-    setUploadMsg('')
-    const body = new FormData()
-    body.append('file', file)
-    try {
-      const res  = await fetch('/api/products/import', { method: 'POST', body })
-      const data = await res.json()
-      if (res.ok) {
-        setUploadMsg(`Import complete — ${data.inserted} added, ${data.existing} already existed, ${data.skipped} skipped.`)
-        setUploadState('success')
-        await fetchProducts()
-      } else {
-        setUploadMsg(data.error ?? 'Import failed.')
-        setUploadState('error')
-      }
-    } catch {
-      setUploadMsg('Network error during import.')
-      setUploadState('error')
-    }
-  }
-
   // ── Sort header ─────────────────────────────────────────────────────────────
 
   function Th({ col, label }: { col: string; label: string }) {
@@ -208,23 +181,20 @@ export default function ProductsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Products</h2>
-        <button
-          onClick={openAdd}
-          className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-        >
-          + New Product
-        </button>
-      </div>
-
-      {/* CSV import dropzone */}
-      <div className="mb-6">
-        <CsvDropzone
-          onFile={handleFile}
-          uploadState={uploadState}
-          statusMessage={uploadMsg}
-          instructions="Expects columns: Product Name, Unit Price, Product Code"
-          onReset={() => { setUploadState('idle'); setUploadMsg('') }}
-        />
+        <div className="flex items-center gap-3">
+          <Link
+            href="/dashboard/products/import"
+            className="text-sm text-gray-500 hover:text-gray-700 font-medium border border-gray-300 px-3 py-2 rounded-lg transition-colors"
+          >
+            Import CSV
+          </Link>
+          <button
+            onClick={openAdd}
+            className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          >
+            + New Product
+          </button>
+        </div>
       </div>
 
       {/* Search + count */}
