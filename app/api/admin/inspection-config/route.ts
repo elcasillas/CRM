@@ -21,10 +21,12 @@ export async function GET() {
   const storedMap = new Map<string, InspectionCheckDef>(
     ((data?.checks ?? []) as InspectionCheckDef[]).map((c: InspectionCheckDef) => [c.id, c])
   )
-  const mergedChecks: InspectionCheckDef[] = DEFAULT_CHECKS.map(def => ({
-    ...def,
-    ...(storedMap.get(def.id) ?? {}),
-  }))
+  const mergedChecks: InspectionCheckDef[] = DEFAULT_CHECKS.map(def => {
+    const override = storedMap.get(def.id)
+    if (!override) return def
+    // Only apply configurable fields — label always comes from DEFAULT_CHECKS
+    return { ...def, severity: override.severity, enabled: override.enabled }
+  })
 
   return NextResponse.json({ id: data?.id ?? null, checks: mergedChecks })
 }
