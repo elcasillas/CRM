@@ -38,7 +38,7 @@ export const DEFAULT_CHECKS: InspectionCheckDef[] = [
   { id: 'next_step_date',        label: 'Next step date is present',                          severity: 'medium',   enabled: true },
   { id: 'recent_update',         label: 'Last meaningful update is recent',                   severity: 'medium',   enabled: true },
   { id: 'decision_process',      label: 'Customer decision process is described',             severity: 'critical', enabled: true },
-  { id: 'economic_buyer',        label: 'Economic buyer or key decision maker is identified', severity: 'critical', enabled: true },
+  { id: 'economic_buyer',        label: 'Executive decision maker is identified',             severity: 'critical', enabled: true },
   { id: 'business_problem',      label: 'Business problem or use case is defined',            severity: 'medium',   enabled: true },
   { id: 'blockers_documented',   label: 'Blockers or risks are documented',                   severity: 'medium',   enabled: true },
   { id: 'customer_intent',       label: 'Customer intent or commitment level is described',   severity: 'critical', enabled: true },
