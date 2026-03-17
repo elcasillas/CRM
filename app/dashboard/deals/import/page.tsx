@@ -1,8 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { CsvDropzone } from '@/components/csv-dropzone'
 
 const supabase = createClient()
 
@@ -113,8 +114,6 @@ function fmtCurrency(v: number) {
 
 export default function ImportDealsPage() {
   const router = useRouter()
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [dragOver, setDragOver]     = useState(false)
   const [csvFile, setCsvFile]       = useState<File | null>(null)
   const [preview, setPreview]       = useState<PreviewRow[] | null>(null)
   const [parseError, setParseError] = useState<string | null>(null)
@@ -141,17 +140,6 @@ export default function ImportDealsPage() {
     }
     reader.readAsText(file)
   }, [])
-
-  function onDrop(e: React.DragEvent) {
-    e.preventDefault(); setDragOver(false)
-    const file = e.dataTransfer.files[0]
-    if (file) processFile(file)
-  }
-
-  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (file) processFile(file)
-  }
 
   const allHaveAccount = !!preview && preview.length > 0 && preview.every(r => r.account_name)
 
@@ -191,21 +179,14 @@ export default function ImportDealsPage() {
       ) : (
         <>
           {/* Drop zone */}
-          <div
-            onDragOver={e => { e.preventDefault(); setDragOver(true) }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={onDrop}
-            onClick={() => inputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${dragOver ? 'border-brand-400 bg-brand-50' : 'border-gray-300 hover:border-gray-400 bg-white'}`}
-          >
-            <input ref={inputRef} type="file" accept=".csv" className="hidden" onChange={onFileChange} />
-            <p className="text-gray-500 text-sm">
-              {csvFile ? <span className="font-medium text-gray-800">{csvFile.name}</span> : 'Drop a CSV file here or click to browse'}
-            </p>
-            <p className="text-xs text-gray-400 mt-1">Expects columns: Deal Owner, Account Name, Deal Name, Stage, Annual Contract Value, Closing Date, Note Content</p>
-          </div>
-
-          {parseError && <p className="mt-3 text-red-600 text-sm font-medium">{parseError}</p>}
+          <CsvDropzone
+            onFile={processFile}
+            uploadState={parseError ? 'error' : 'idle'}
+            statusMessage={parseError ?? undefined}
+            fileName={csvFile?.name}
+            instructions="Expects columns: Deal Owner, Account Name, Deal Name, Stage, Annual Contract Value, Closing Date, Note Content"
+            onReset={parseError ? () => { setCsvFile(null); setParseError(null) } : undefined}
+          />
 
           {preview && (
             <>

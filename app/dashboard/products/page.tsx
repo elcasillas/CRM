@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { CsvDropzone, DropzoneUploadState } from '@/components/csv-dropzone'
 
 const supabase = createClient()
 
@@ -54,10 +55,8 @@ export default function ProductsPage() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
 
   // CSV import
-  const [importing,    setImporting]    = useState(false)
-  const [importResult, setImportResult] = useState<{ inserted: number; existing: number; skipped: number } | null>(null)
-  const [importError,  setImportError]  = useState<string | null>(null)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [uploadState, setUploadState] = useState<DropzoneUploadState>('idle')
+  const [uploadMsg,   setUploadMsg]   = useState('')
 
   // ── Init ────────────────────────────────────────────────────────────────────
 
@@ -154,26 +153,26 @@ export default function ProductsPage() {
 
   // ── CSV Import ──────────────────────────────────────────────────────────────
 
-  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setImporting(true); setImportResult(null); setImportError(null)
+  async function handleFile(file: File) {
+    setUploadState('uploading')
+    setUploadMsg('')
     const body = new FormData()
     body.append('file', file)
     try {
-      const res = await fetch('/api/products/import', { method: 'POST', body })
+      const res  = await fetch('/api/products/import', { method: 'POST', body })
       const data = await res.json()
       if (res.ok) {
-        setImportResult(data)
+        setUploadMsg(`Import complete — ${data.inserted} added, ${data.existing} already existed, ${data.skipped} skipped.`)
+        setUploadState('success')
         await fetchProducts()
       } else {
-        setImportError(data.error ?? 'Import failed.')
+        setUploadMsg(data.error ?? 'Import failed.')
+        setUploadState('error')
       }
     } catch {
-      setImportError('Network error during import.')
+      setUploadMsg('Network error during import.')
+      setUploadState('error')
     }
-    setImporting(false)
-    e.target.value = ''
   }
 
   // ── Sort header ─────────────────────────────────────────────────────────────
@@ -209,47 +208,24 @@ export default function ProductsPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-semibold text-gray-900">Products</h2>
-        <div className="flex items-center gap-3">
-          <input
-            ref={fileInputRef as React.RefObject<HTMLInputElement>}
-            type="file"
-            accept=".csv"
-            onChange={handleImport}
-            className="hidden"
-          />
-          <button
-            onClick={() => { setImportResult(null); setImportError(null); fileInputRef.current?.click() }}
-            disabled={importing}
-            className="text-sm text-gray-500 hover:text-gray-700 font-medium border border-gray-300 px-3 py-2 rounded-lg transition-colors disabled:opacity-50"
-          >
-            {importing ? 'Importing…' : 'Import CSV'}
-          </button>
-          <button
-            onClick={openAdd}
-            className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-          >
-            + New Product
-          </button>
-        </div>
+        <button
+          onClick={openAdd}
+          className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+        >
+          + New Product
+        </button>
       </div>
 
-      {/* Import result banner */}
-      {importResult && (
-        <div className="mb-4 flex items-center justify-between bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-          <p className="text-sm text-green-800">
-            Import complete — <strong>{importResult.inserted}</strong> added,{' '}
-            <strong>{importResult.existing}</strong> already existed,{' '}
-            <strong>{importResult.skipped}</strong> skipped.
-          </p>
-          <button onClick={() => setImportResult(null)} className="text-green-500 hover:text-green-700 text-sm ml-4">✕</button>
-        </div>
-      )}
-      {importError && (
-        <div className="mb-4 flex items-center justify-between bg-red-50 border border-red-200 rounded-xl px-4 py-3">
-          <p className="text-sm text-red-700">{importError}</p>
-          <button onClick={() => setImportError(null)} className="text-red-400 hover:text-red-600 text-sm ml-4">✕</button>
-        </div>
-      )}
+      {/* CSV import dropzone */}
+      <div className="mb-6">
+        <CsvDropzone
+          onFile={handleFile}
+          uploadState={uploadState}
+          statusMessage={uploadMsg}
+          instructions="Expects columns: Product Name, Unit Price, Product Code"
+          onReset={() => { setUploadState('idle'); setUploadMsg('') }}
+        />
+      </div>
 
       {/* Search + count */}
       <div className="flex items-center gap-3 mb-4">
