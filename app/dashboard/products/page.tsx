@@ -20,7 +20,7 @@ type FormData = {
   product_code: string
 }
 
-const EMPTY_FORM: FormData = { product_name: '', unit_price: '', product_code: '' }
+const EMPTY_FORM: FormData = { product_name: '', unit_price: '0.00', product_code: '' }
 
 const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
 
@@ -33,8 +33,22 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
+// Strip to digits + one decimal point
+function sanitizePrice(v: string): string {
+  const stripped = v.replace(/[^0-9.]/g, '')
+  const dot = stripped.indexOf('.')
+  if (dot === -1) return stripped
+  return stripped.slice(0, dot + 1) + stripped.slice(dot + 1).replace(/\./g, '')
+}
+
+// Format to exactly 2 decimal places; default to '0.00'
+function formatPrice(v: string): string {
+  const num = parseFloat(v)
+  return isNaN(num) || v.trim() === '' ? '0.00' : num.toFixed(2)
+}
+
 function fmtPrice(n: number): string {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n)
+  return '$' + new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n)
 }
 
 function fmtDate(iso: string): string {
@@ -116,7 +130,7 @@ export default function ProductsPage() {
 
   function openEdit(p: Product) {
     setEditingId(p.id)
-    setForm({ product_name: p.product_name, unit_price: String(p.unit_price), product_code: p.product_code ?? '' })
+    setForm({ product_name: p.product_name, unit_price: p.unit_price.toFixed(2), product_code: p.product_code ?? '' })
     setFormError(null)
     setModal(true)
   }
@@ -135,14 +149,14 @@ export default function ProductsPage() {
     const name = form.product_name.trim()
     if (!name) { setFormError('Product name is required.'); return }
     const price = parseFloat(form.unit_price)
-    if (form.unit_price !== '' && (isNaN(price) || price < 0)) {
+    if (isNaN(price) || price < 0) {
       setFormError('Unit price must be a non-negative number.')
       return
     }
     setSaving(true); setFormError(null)
     const payload = {
       product_name: name,
-      unit_price:   form.unit_price.trim() !== '' ? price : 0,
+      unit_price:   price,
       product_code: form.product_code.trim() || null,
     }
     const { error } = editingId
@@ -246,7 +260,7 @@ export default function ProductsPage() {
               <tr className="border-b border-gray-200 bg-gray-50">
                 <Th col="product_name" label="Product Name" />
                 <Th col="product_code" label="Product Code" />
-                <Th col="unit_price"   label="Unit Price" />
+                <Th col="unit_price"   label="Unit Price (CAD)" />
                 <Th col="created_at"   label="Added" />
                 <th className="px-4 py-3"></th>
               </tr>
@@ -312,15 +326,16 @@ export default function ProductsPage() {
                   readOnly={editingId !== null && !isAdmin}
                 />
               </Field>
-              <Field label="Unit Price">
+              <Field label="Unit Price (CAD)">
                 <div className="relative">
                   <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none">$</span>
                   <input
-                    type="number"
-                    min="0"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
                     value={form.unit_price}
-                    onChange={set('unit_price')}
+                    onChange={e => setForm(prev => ({ ...prev, unit_price: sanitizePrice(e.target.value) }))}
+                    onBlur={e => setForm(prev => ({ ...prev, unit_price: formatPrice(e.target.value) }))}
+                    onFocus={e => e.target.select()}
                     placeholder="0.00"
                     className={`${INPUT} pl-6`}
                     readOnly={editingId !== null && !isAdmin}
