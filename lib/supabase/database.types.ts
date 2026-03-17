@@ -231,6 +231,33 @@ export type Database = {
           },
         ]
       }
+      dc_cluster_mappings: {
+        Row: {
+          cluster_id: string
+          created_at: string
+          dc_location: string
+          id: string
+          is_active: boolean
+          updated_at: string
+        }
+        Insert: {
+          cluster_id: string
+          created_at?: string
+          dc_location: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Update: {
+          cluster_id?: string
+          created_at?: string
+          dc_location?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       deal_stage_history: {
         Row: {
           changed_at: string

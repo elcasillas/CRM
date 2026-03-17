@@ -140,6 +140,7 @@ export default function AccountDetailPage() {
   const [notes,     setNotes]     = useState<NoteWithAuthor[]>([])
   const [stages,    setStages]    = useState<DealStage[]>([])
   const [profiles,  setProfiles]  = useState<{ id: string; full_name: string | null; role: string }[]>([])
+  const [dcMappings, setDcMappings] = useState<{ dc_location: string; cluster_id: string }[]>([])
   const [userId,    setUserId]    = useState('')
   const [loading,   setLoading]   = useState(true)
   const [notFound,  setNotFound]  = useState(false)
@@ -237,6 +238,16 @@ export default function AccountDetailPage() {
     setStages(data ?? [])
   }, [])
 
+  const fetchDcMappings = useCallback(async () => {
+    const { data } = await supabase
+      .from('dc_cluster_mappings')
+      .select('dc_location, cluster_id')
+      .eq('is_active', true)
+      .order('dc_location')
+      .order('cluster_id')
+    setDcMappings(data ?? [])
+  }, [])
+
   const [isAdmin, setIsAdmin] = useState(false)
 
   const fetchProfiles = useCallback(async () => {
@@ -251,9 +262,9 @@ export default function AccountDetailPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => { if (user) setUserId(user.id) })
-    Promise.all([fetchAccount(), fetchContacts(), fetchHids(), fetchContracts(), fetchDeals(), fetchNotes(), fetchStages(), fetchProfiles()])
+    Promise.all([fetchAccount(), fetchContacts(), fetchHids(), fetchContracts(), fetchDeals(), fetchNotes(), fetchStages(), fetchProfiles(), fetchDcMappings()])
       .then(() => setLoading(false))
-  }, [fetchAccount, fetchContacts, fetchHids, fetchContracts, fetchDeals, fetchNotes, fetchStages, fetchProfiles])
+  }, [fetchAccount, fetchContacts, fetchHids, fetchContracts, fetchDeals, fetchNotes, fetchStages, fetchProfiles, fetchDcMappings])
 
   // ── Description ─────────────────────────────────────────────────────────────
 
@@ -390,8 +401,15 @@ export default function AccountDetailPage() {
   function closeHidModal()       { guardedClose(JSON.stringify(hidForm), () => { setHidModal(null); setEditingHid(null); clearError() }) }
 
   async function saveHid() {
+    const dc = hidForm.dc_location.trim()
+    const cluster = hidForm.cluster_id.trim()
+    // Validate combination against lookup table when both are provided
+    if (dc && cluster) {
+      const valid = dcMappings.some(m => m.dc_location === dc && m.cluster_id === cluster)
+      if (!valid) { setFormError(`Cluster ID "${cluster}" is not valid for DC Location "${dc}".`); return }
+    }
     setSaving(true); clearError()
-    const payload = { account_id: id, hid_number: hidForm.hid_number.trim(), dc_location: hidForm.dc_location.trim() || null, cluster_id: hidForm.cluster_id.trim() || null, start_date: hidForm.start_date || null, domain_name: hidForm.domain_name.trim() || null }
+    const payload = { account_id: id, hid_number: hidForm.hid_number.trim(), dc_location: dc || null, cluster_id: cluster || null, start_date: hidForm.start_date || null, domain_name: hidForm.domain_name.trim() || null }
     const { error } = hidModal === 'add'
       ? await supabase.from('hid_records').insert(payload)
       : await supabase.from('hid_records').update(payload).eq('id', editingHid!.id)
@@ -951,23 +969,65 @@ export default function AccountDetailPage() {
       )}
 
       {/* HID modal */}
-      {hidModal && (
-        <Modal
-          title={hidModal === 'add' ? 'New HID Record' : 'Edit HID Record'}
-          onClose={closeHidModal} onSave={saveHid}
-          saving={saving} disabled={!hidForm.hid_number.trim()} error={formError}
-        >
-          <Field label="HID number *"><input type="text" value={hidForm.hid_number} onChange={e => setHidForm(f => ({ ...f, hid_number: e.target.value }))} className={INPUT} /></Field>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="DC Location"><input type="text" value={hidForm.dc_location} onChange={e => setHidForm(f => ({ ...f, dc_location: e.target.value }))} className={INPUT} /></Field>
-            <Field label="Cluster ID"><input type="text" value={hidForm.cluster_id} onChange={e => setHidForm(f => ({ ...f, cluster_id: e.target.value }))} className={INPUT} /></Field>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Start date"><input type="date" value={hidForm.start_date} onChange={e => setHidForm(f => ({ ...f, start_date: e.target.value }))} className={INPUT} /></Field>
-            <Field label="Domain name"><input type="text" value={hidForm.domain_name} onChange={e => setHidForm(f => ({ ...f, domain_name: e.target.value }))} className={INPUT} /></Field>
-          </div>
-        </Modal>
-      )}
+      {hidModal && (() => {
+        // Derived lists for dependent dropdowns
+        const dcLocations = Array.from(new Set(dcMappings.map(m => m.dc_location)))
+        const clusterIds  = hidForm.dc_location
+          ? dcMappings.filter(m => m.dc_location === hidForm.dc_location).map(m => m.cluster_id)
+          : dcMappings.map(m => m.cluster_id)
+
+        function handleDcChange(dc: string) {
+          // Changing DC: clear cluster only if it's no longer valid for the new DC
+          const stillValid = !dc || dcMappings.some(m => m.dc_location === dc && m.cluster_id === hidForm.cluster_id)
+          setHidForm(f => ({ ...f, dc_location: dc, cluster_id: stillValid ? f.cluster_id : '' }))
+        }
+
+        function handleClusterChange(cluster: string) {
+          // Selecting a cluster auto-resolves the DC location
+          const match = dcMappings.find(m => m.cluster_id === cluster)
+          setHidForm(f => ({ ...f, cluster_id: cluster, dc_location: match ? match.dc_location : f.dc_location }))
+        }
+
+        return (
+          <Modal
+            title={hidModal === 'add' ? 'New HID Record' : 'Edit HID Record'}
+            onClose={closeHidModal} onSave={saveHid}
+            saving={saving} disabled={!hidForm.hid_number.trim()} error={formError}
+          >
+            <Field label="HID number *"><input type="text" value={hidForm.hid_number} onChange={e => setHidForm(f => ({ ...f, hid_number: e.target.value }))} className={INPUT} /></Field>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="DC Location">
+                <select
+                  value={hidForm.dc_location}
+                  onChange={e => handleDcChange(e.target.value)}
+                  className={INPUT}
+                >
+                  <option value="">— select —</option>
+                  {dcLocations.map(dc => (
+                    <option key={dc} value={dc}>{dc}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Cluster ID">
+                <select
+                  value={hidForm.cluster_id}
+                  onChange={e => handleClusterChange(e.target.value)}
+                  className={INPUT}
+                >
+                  <option value="">— select —</option>
+                  {clusterIds.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Start date"><input type="date" value={hidForm.start_date} onChange={e => setHidForm(f => ({ ...f, start_date: e.target.value }))} className={INPUT} /></Field>
+              <Field label="Domain name"><input type="text" value={hidForm.domain_name} onChange={e => setHidForm(f => ({ ...f, domain_name: e.target.value }))} className={INPUT} /></Field>
+            </div>
+          </Modal>
+        )
+      })()}
 
       {/* Contract modal */}
       {contractModal && (
