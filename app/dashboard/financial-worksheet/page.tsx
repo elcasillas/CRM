@@ -85,6 +85,15 @@ function evictCachedRate(currency: string) {
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Returns the symbol for a given ISO 4217 currency code. */
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  CAD: '$', USD: '$', MXN: '$',
+  EUR: '€', GBP: '£',
+}
+function getCurrencySymbol(code: string): string {
+  return CURRENCY_SYMBOLS[code] ?? code
+}
+
 /** Parse a possibly-formatted string to a number; returns 0 on failure. */
 function parseNum(s: string): number {
   const n = parseFloat(s.replace(/[^0-9.\-]/g, ''))
@@ -391,7 +400,7 @@ export default function FinancialWorksheetPage() {
                       {/* Unit Price — 2dp enforced on blur */}
                       <td className="px-3 py-2">
                         <div className="relative">
-                          <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none">$</span>
+                          <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none select-none">{getCurrencySymbol(currency)}</span>
                           <input
                             type="text"
                             inputMode="decimal"
