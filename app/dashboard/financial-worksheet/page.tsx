@@ -103,6 +103,18 @@ function fmtSpreadPct(s: string): string {
   return n.toFixed(2)
 }
 
+/** Normalise a units count: whole number, no decimals. */
+function fmtUnits(s: string): string {
+  const n = Math.max(0, Math.round(parseNum(s)))
+  return String(n)
+}
+
+/** Normalise a churn % to exactly 2 decimal places, clamped 0–100. */
+function fmtChurn(s: string): string {
+  const n = Math.min(100, Math.max(0, parseNum(s)))
+  return n.toFixed(2)
+}
+
 /** Format a number as a local-currency string with 2dp. */
 function fmtMoney(n: number, currency = 'CAD'): string {
   return new Intl.NumberFormat('en-CA', {
@@ -485,26 +497,28 @@ export default function FinancialWorksheetPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Units</label>
                   <input
-                    type="number"
-                    min="0"
+                    type="text"
+                    inputMode="decimal"
                     value={units}
-                    onChange={e => setUnits(e.target.value)}
-                    className={INPUT}
+                    onChange={e => setUnits(e.target.value.replace(/[^0-9]/g, ''))}
+                    onBlur={e  => setUnits(fmtUnits(e.target.value))}
+                    onFocus={e => e.target.select()}
+                    className={INPUT_RIGHT}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1.5">Estimated Churn Out</label>
                   <div className="relative">
                     <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="0.1"
+                      type="text"
+                      inputMode="decimal"
                       value={churnPct}
-                      onChange={e => setChurnPct(e.target.value)}
-                      className={`${INPUT} pr-7`}
+                      onChange={e => setChurnPct(e.target.value.replace(/[^0-9.]/g, ''))}
+                      onBlur={e  => setChurnPct(fmtChurn(e.target.value))}
+                      onFocus={e => e.target.select()}
+                      className={INPUT_SPREAD}
                     />
-                    <span className="absolute inset-y-0 right-3 flex items-center text-gray-400 text-sm pointer-events-none">%</span>
+                    <span className="absolute inset-y-0 right-3 flex items-center text-gray-400 text-sm pointer-events-none select-none">%</span>
                   </div>
                 </div>
               </div>
