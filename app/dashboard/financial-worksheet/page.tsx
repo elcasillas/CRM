@@ -14,11 +14,74 @@ type ProductRow = {
 type ExchangeRateResult =
   | { status: 'idle' }
   | { status: 'loading' }
-  | { status: 'ok';    rate: number; source: string; fetchedAt: string | null }
+  | { status: 'ok';    rate: number; source: string; fetchedAt: string | null; cacheMonth: string }
+  | { status: 'stale'; rate: number; fetchedAt: string; cacheMonth: string }   // API failed, using old cache
   | { status: 'error'; message: string }
 
 const CURRENCIES = ['CAD', 'USD', 'EUR', 'GBP', 'MXN'] as const
 type Currency = typeof CURRENCIES[number]
+
+// ── Exchange rate localStorage cache ─────────────────────────────────────────
+
+const FX_LS_KEY = 'fw_fx_cache'
+
+type FxCacheEntry = {
+  rate:       number
+  fetchedAt:  string  // ISO string
+  cacheMonth: string  // "YYYY-MM"
+}
+
+type FxCache = Partial<Record<string, FxCacheEntry>>
+
+/** Returns the current calendar month as "YYYY-MM". */
+function currentMonth(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+function loadFxCache(): FxCache {
+  try {
+    return JSON.parse(localStorage.getItem(FX_LS_KEY) ?? '{}') as FxCache
+  } catch {
+    return {}
+  }
+}
+
+function saveFxCache(cache: FxCache) {
+  try { localStorage.setItem(FX_LS_KEY, JSON.stringify(cache)) } catch { /* ignore storage quota errors */ }
+}
+
+/**
+ * Returns the cached entry for `currency` if it is from the current calendar
+ * month, otherwise returns null (cache miss / expired).
+ */
+function getCachedRate(currency: string): FxCacheEntry | null {
+  const entry = loadFxCache()[currency]
+  if (!entry || entry.cacheMonth !== currentMonth()) return null
+  return entry
+}
+
+/** Stores a freshly-fetched rate for `currency` in localStorage. */
+function setCachedRate(currency: string, rate: number, fetchedAt: string) {
+  const cache = loadFxCache()
+  cache[currency] = { rate, fetchedAt, cacheMonth: currentMonth() }
+  saveFxCache(cache)
+}
+
+/**
+ * Returns the most recent cached entry for `currency` regardless of month
+ * (used as a fallback when the API is unreachable).
+ */
+function getStaleCachedRate(currency: string): FxCacheEntry | null {
+  return loadFxCache()[currency] ?? null
+}
+
+/** Removes the localStorage cache entry for `currency`, forcing a fresh fetch. */
+function evictCachedRate(currency: string) {
+  const cache = loadFxCache()
+  delete cache[currency]
+  saveFxCache(cache)
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -54,6 +117,12 @@ function fmtRate(r: number): string {
   return r.toFixed(6).replace(/\.?0+$/, '')
 }
 
+/** Format "YYYY-MM" as a human-readable month string, e.g. "March 2026". */
+function fmtMonth(ym: string): string {
+  const [y, m] = ym.split('-')
+  return new Date(Number(y), Number(m) - 1, 1).toLocaleString('en-CA', { month: 'long', year: 'numeric' })
+}
+
 /** Round to 2dp to avoid floating-point drift in spread validation. */
 function round2(n: number): number {
   return Math.round(n * 100) / 100
@@ -80,7 +149,7 @@ function makeDefaultProducts(): ProductRow[] {
 const INPUT        = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
 const INPUT_RIGHT  = `${INPUT} text-right`
 // Extra pr-7 leaves room for the absolutely-positioned '%' suffix (right-3)
-const INPUT_SPREAD = 'w-full bg-white border border-gray-300 rounded-lg pl-3 pr-7 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm text-right'
+const INPUT_SPREAD     = 'w-full bg-white border border-gray-300 rounded-lg pl-3 pr-7 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm text-right'
 const INPUT_SPREAD_ERR = 'w-full bg-white border border-red-300 rounded-lg pl-3 pr-7 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 text-sm text-right'
 const INPUT_ERR    = 'w-full bg-white border border-red-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 text-sm text-right'
 
@@ -119,25 +188,78 @@ export default function FinancialWorksheetPage() {
 
   // ── Exchange rate ─────────────────────────────────────────────────────────
 
-  const fetchRate = useCallback(async (cur: Currency) => {
+  /**
+   * Fetch the exchange rate for `cur`, respecting the monthly localStorage cache.
+   * Pass `force = true` to bypass the cache (Refresh button).
+   */
+  const fetchRate = useCallback(async (cur: Currency, force = false) => {
     if (cur === 'CAD') {
-      setFxResult({ status: 'ok', rate: 1, source: 'CAD is the base currency — no conversion needed', fetchedAt: null })
+      setFxResult({
+        status: 'ok',
+        rate: 1,
+        source: 'CAD is the base currency — no conversion needed',
+        fetchedAt: null,
+        cacheMonth: currentMonth(),
+      })
       return
     }
+
+    // Evict if forcing a refresh
+    if (force) evictCachedRate(cur)
+
+    // Check localStorage first — valid for the current calendar month
+    const cached = getCachedRate(cur)
+    if (cached) {
+      setFxResult({
+        status: 'ok',
+        rate: cached.rate,
+        source: 'monthly cache',
+        fetchedAt: cached.fetchedAt,
+        cacheMonth: cached.cacheMonth,
+      })
+      return
+    }
+
     setFxResult({ status: 'loading' })
+
     try {
       const res  = await fetch(`/api/exchange-rate?currency=${cur}`)
       const body = await res.json()
-      if (!res.ok) setFxResult({ status: 'error', message: body.error ?? `HTTP ${res.status}` })
-      else         setFxResult({ status: 'ok', rate: body.rate, source: body.source, fetchedAt: body.fetchedAt })
+
+      if (!res.ok) {
+        // API error — fall back to stale cache with a warning
+        const stale = getStaleCachedRate(cur)
+        if (stale) {
+          setFxResult({ status: 'stale', rate: stale.rate, fetchedAt: stale.fetchedAt, cacheMonth: stale.cacheMonth })
+        } else {
+          setFxResult({ status: 'error', message: body.error ?? `HTTP ${res.status}` })
+        }
+        return
+      }
+
+      const fetchedAt = body.fetchedAt ?? new Date().toISOString()
+      setCachedRate(cur, body.rate, fetchedAt)
+      setFxResult({
+        status: 'ok',
+        rate: body.rate,
+        source: body.source,
+        fetchedAt,
+        cacheMonth: body.cacheMonth ?? currentMonth(),
+      })
     } catch {
-      setFxResult({ status: 'error', message: 'Network error — could not reach exchange rate service.' })
+      // Network error — fall back to stale cache with a warning
+      const stale = getStaleCachedRate(cur)
+      if (stale) {
+        setFxResult({ status: 'stale', rate: stale.rate, fetchedAt: stale.fetchedAt, cacheMonth: stale.cacheMonth })
+      } else {
+        setFxResult({ status: 'error', message: 'Network error — could not reach exchange rate service.' })
+      }
     }
   }, [])
 
   useEffect(() => { fetchRate(currency) }, [currency, fetchRate])
 
-  const rate   = fxResult.status === 'ok' ? fxResult.rate : null
+  const rate   = (fxResult.status === 'ok' || fxResult.status === 'stale') ? fxResult.rate : null
   const mrrCad = rate != null ? mrr * rate : null
   const acvCad = rate != null ? acv * rate : null
   const tcvCad = rate != null ? tcv * rate : null
@@ -432,7 +554,11 @@ export default function FinancialWorksheetPage() {
             </div>
           </div>
 
-          <ExchangeRateCard currency={currency} result={fxResult} onRefresh={() => fetchRate(currency)} />
+          <ExchangeRateCard
+            currency={currency}
+            result={fxResult}
+            onRefresh={() => fetchRate(currency, true)}
+          />
         </div>
       </div>
     </div>
@@ -442,8 +568,8 @@ export default function FinancialWorksheetPage() {
 // ── Exchange Rate Card ────────────────────────────────────────────────────────
 
 function ExchangeRateCard({ currency, result, onRefresh }: {
-  currency: string
-  result:   ExchangeRateResult
+  currency:  string
+  result:    ExchangeRateResult
   onRefresh: () => void
 }) {
   if (currency === 'CAD') {
@@ -479,7 +605,37 @@ function ExchangeRateCard({ currency, result, onRefresh }: {
     )
   }
 
-  const { rate, source, fetchedAt } = result
+  // Stale fallback: API failed but we have an old cached value
+  if (result.status === 'stale') {
+    const { rate, fetchedAt, cacheMonth } = result
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-xl px-5 py-4 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+            <p className="text-sm font-medium text-amber-800">Exchange Rate (stale)</p>
+          </div>
+          <button onClick={onRefresh} className="text-xs text-amber-600 hover:text-amber-800 transition-colors" title="Retry fetch">
+            ↻ Retry
+          </button>
+        </div>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-2xl font-semibold text-gray-900 tabular-nums">{fmtRate(rate)}</span>
+          <span className="text-sm text-gray-500">
+            {currency} → CAD <span className="text-xs">(1 {currency} = {fmtRate(rate)} CAD)</span>
+          </span>
+        </div>
+        <div className="text-xs text-amber-700 space-y-0.5">
+          <p>Could not fetch current rate — using last known value from {fmtMonth(cacheMonth)}.</p>
+          {fetchedAt && <p>Originally fetched: {new Date(fetchedAt).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })}</p>}
+        </div>
+      </div>
+    )
+  }
+
+  // Normal ok state
+  const { rate, source, fetchedAt, cacheMonth } = result
+  const fromCache = source === 'monthly cache'
   return (
     <div className="bg-white border border-gray-200 rounded-xl px-5 py-4 space-y-2">
       <div className="flex items-center justify-between">
@@ -498,8 +654,16 @@ function ExchangeRateCard({ currency, result, onRefresh }: {
         </span>
       </div>
       <div className="text-xs text-gray-400 space-y-0.5">
-        <p>Source: {source}</p>
-        {fetchedAt && <p>Rate as of: {new Date(fetchedAt).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })}</p>}
+        {fromCache
+          ? <p>Exchange rates last updated: {fmtMonth(cacheMonth)} (cached — refreshes next month)</p>
+          : <p>Source: {source}</p>
+        }
+        {fetchedAt && !fromCache && (
+          <p>Rate as of: {new Date(fetchedAt).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+        )}
+        {fetchedAt && fromCache && (
+          <p>Fetched: {new Date(fetchedAt).toLocaleString('en-CA', { dateStyle: 'medium', timeStyle: 'short' })}</p>
+        )}
       </div>
     </div>
   )
