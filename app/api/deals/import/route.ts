@@ -329,13 +329,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No deals could be matched to a valid stage' }, { status: 422 })
   }
 
-  // Deduplicate: find deals already in DB with matching (account_id, deal_name)
-  const dealNames  = rows.map(r => r.deal_name)
+  // Deduplicate: find deals already in DB with matching (account_id, deal_name).
+  // Query by account_id only — deal_name list can be 1000+ entries and exceeds
+  // PostgREST URL length limits. The existingDealMap key includes deal_name so
+  // false matches from other deals on the same account are correctly excluded.
   const accountIds = [...new Set(rows.map(r => r.account_id))]
   const { data: existingDeals } = await admin
     .from('deals')
     .select('id, deal_name, account_id')
-    .in('deal_name', dealNames)
     .in('account_id', accountIds)
   const existingDealMap = new Map(
     (existingDeals ?? []).map((d: { id: string; deal_name: string; account_id: string }) =>
@@ -404,34 +405,49 @@ export async function POST(req: NextRequest) {
     await admin.from('notes').insert(noteRows)
   }
 
-  // Fix created_at on existing notes that have a real timestamp in the CSV
+  // Fix created_at on existing notes that have a real timestamp in the CSV.
+  // Chunked to avoid sequential await bottlenecks on large imports.
   const timestampFixes = allDealIds.flatMap(d =>
     d._notes
       .filter(note => note.modified_at && existingNoteMap.has(`${d.id}::${note.text}`))
       .map(note => ({ id: existingNoteMap.get(`${d.id}::${note.text}`)!, created_at: note.modified_at! }))
   )
-  for (const fix of timestampFixes) {
-    await admin.from('notes').update({ created_at: fix.created_at }).eq('id', fix.id)
+  const CHUNK = 50
+  for (let i = 0; i < timestampFixes.length; i += CHUNK) {
+    await Promise.all(
+      timestampFixes.slice(i, i + CHUNK).map(fix =>
+        admin.from('notes').update({ created_at: fix.created_at }).eq('id', fix.id)
+      )
+    )
   }
 
-  // Update existing deals: stage and value fields from CSV are authoritative
+  // Update existing deals: stage and value fields from CSV are authoritative.
+  // Chunked parallel updates prevent Vercel serverless timeout on large CSVs
+  // (sequential ~1295 × 10ms ≈ 13s would exceed the function limit).
   let updatedCount = 0
-  for (const r of existingRows) {
-    const payload: Record<string, unknown> = { stage_id: r.stage_id, last_activity_at: now }
-    if (r.close_date           != null) payload.close_date           = r.close_date
-    if (r.amount               != null) payload.amount               = r.amount
-    if (r.contract_term_months != null) payload.contract_term_months = r.contract_term_months
-    if (r.total_contract_value != null) payload.total_contract_value = r.total_contract_value
-    if (r.value_amount         != null) payload.value_amount         = r.value_amount
-    if (r.deal_description               ) payload.deal_description   = r.deal_description
-    const { error: updateErr } = await admin.from('deals').update(payload).eq('id', r.id)
-    if (updateErr) {
-      console.error(`[import] update failed for "${r.deal_name}" (${r.id}): ${updateErr.message}`)
-    } else {
-      console.log(`[import] updated "${r.deal_name}" (${r.id}) stage_id=${r.stage_id}`)
-      updatedCount++
-    }
+  const updateResults: boolean[] = []
+  for (let i = 0; i < existingRows.length; i += CHUNK) {
+    const chunk = existingRows.slice(i, i + CHUNK)
+    const results = await Promise.all(
+      chunk.map(async r => {
+        const payload: Record<string, unknown> = { stage_id: r.stage_id, last_activity_at: now }
+        if (r.close_date           != null) payload.close_date           = r.close_date
+        if (r.amount               != null) payload.amount               = r.amount
+        if (r.contract_term_months != null) payload.contract_term_months = r.contract_term_months
+        if (r.total_contract_value != null) payload.total_contract_value = r.total_contract_value
+        if (r.value_amount         != null) payload.value_amount         = r.value_amount
+        if (r.deal_description               ) payload.deal_description   = r.deal_description
+        const { error: updateErr } = await admin.from('deals').update(payload).eq('id', r.id)
+        if (updateErr) {
+          console.error(`[import] update failed for "${r.deal_name}" (${r.id}): ${updateErr.message}`)
+          return false
+        }
+        return true
+      })
+    )
+    updateResults.push(...results)
   }
+  updatedCount = updateResults.filter(Boolean).length
 
   return NextResponse.json({
     inserted: inserted?.length ?? 0,
