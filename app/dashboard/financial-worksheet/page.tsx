@@ -77,9 +77,12 @@ function makeDefaultProducts(): ProductRow[] {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const INPUT       = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
-const INPUT_RIGHT = `${INPUT} text-right`
-const INPUT_ERR   = 'w-full bg-white border border-red-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 text-sm text-right'
+const INPUT        = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
+const INPUT_RIGHT  = `${INPUT} text-right`
+// Extra pr-7 leaves room for the absolutely-positioned '%' suffix (right-3)
+const INPUT_SPREAD = 'w-full bg-white border border-gray-300 rounded-lg pl-3 pr-7 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm text-right'
+const INPUT_SPREAD_ERR = 'w-full bg-white border border-red-300 rounded-lg pl-3 pr-7 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 text-sm text-right'
+const INPUT_ERR    = 'w-full bg-white border border-red-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 text-sm text-right'
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -272,10 +275,10 @@ export default function FinancialWorksheetPage() {
                             onChange={e => setField(p.id, 'spread', e.target.value.replace(/[^0-9.]/g, ''))}
                             onBlur={e  => blurSpread(p.id, e.target.value)}
                             onFocus={e => e.target.select()}
-                            className={spreadError ? INPUT_ERR : INPUT_RIGHT}
+                            className={spreadError ? INPUT_SPREAD_ERR : INPUT_SPREAD}
                             placeholder="0.00"
                           />
-                          <span className="absolute inset-y-0 right-3 flex items-center text-gray-400 text-xs pointer-events-none">%</span>
+                          <span className="absolute inset-y-0 right-3 flex items-center text-gray-400 text-xs pointer-events-none select-none">%</span>
                         </div>
                       </td>
 
