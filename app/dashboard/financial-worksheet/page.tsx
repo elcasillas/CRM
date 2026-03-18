@@ -115,6 +115,12 @@ function fmtChurn(s: string): string {
   return n.toFixed(2)
 }
 
+/** Normalise a contract term: whole number of months, min 1. */
+function fmtContractTerm(s: string): string {
+  const n = Math.max(1, Math.round(parseNum(s)))
+  return String(n)
+}
+
 /** Format a number as a local-currency string with 2dp. */
 function fmtMoney(n: number, currency = 'CAD'): string {
   return new Intl.NumberFormat('en-CA', {
@@ -163,15 +169,18 @@ const INPUT_RIGHT  = `${INPUT} text-right`
 // Extra pr-7 leaves room for the absolutely-positioned '%' suffix (right-3)
 const INPUT_SPREAD     = 'w-full bg-white border border-gray-300 rounded-lg pl-3 pr-7 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm text-right'
 const INPUT_SPREAD_ERR = 'w-full bg-white border border-red-300 rounded-lg pl-3 pr-7 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 text-sm text-right'
+// Extra pr-9 leaves room for a two-character suffix like 'mo' (right-3)
+const INPUT_SUFFIX2    = 'w-full bg-white border border-gray-300 rounded-lg pl-3 pr-9 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm text-right'
 const INPUT_ERR    = 'w-full bg-white border border-red-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 text-sm text-right'
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function FinancialWorksheetPage() {
-  const [currency, setCurrency] = useState<Currency>('USD')
-  const [products, setProducts] = useState<ProductRow[]>(makeDefaultProducts)
-  const [units,    setUnits]    = useState('0')
-  const [churnPct, setChurnPct] = useState('0')
+  const [currency,      setCurrency]      = useState<Currency>('USD')
+  const [products,      setProducts]      = useState<ProductRow[]>(makeDefaultProducts)
+  const [units,         setUnits]         = useState('0')
+  const [churnPct,      setChurnPct]      = useState('0')
+  const [contractTerm,  setContractTerm]  = useState('36')
 
   const [fxResult, setFxResult] = useState<ExchangeRateResult>({ status: 'idle' })
 
@@ -190,13 +199,14 @@ export default function FinancialWorksheetPage() {
   const totalArpu = round2(arpu.reduce((s, v) => s + v, 0))
 
   // Assumptions
-  const unitsNum  = parseNum(units)
-  const churnFrac = parseNum(churnPct) / 100
+  const unitsNum        = parseNum(units)
+  const churnFrac       = parseNum(churnPct) / 100
+  const contractTermNum = Math.max(1, Math.round(parseNum(contractTerm)))
 
-  // MRR = Units × (1 − Churn%) × ARPU  — G16 = G10*(1-G11)*G9
+  // MRR = Units × (1 − Churn%) × ARPU
   const mrr = unitsNum * (1 - churnFrac) * totalArpu
-  const acv = mrr * 12   // G14 = G16*12
-  const tcv = mrr * 36   // G15 = G16*36
+  const acv = mrr * 12                 // ACV = MRR × 12
+  const tcv = mrr * contractTermNum    // TCV = MRR × Contract Term (months)
 
   // ── Exchange rate ─────────────────────────────────────────────────────────
 
@@ -514,6 +524,21 @@ export default function FinancialWorksheetPage() {
                       className={INPUT_SPREAD}
                     />
                     <span className="absolute inset-y-0 right-3 flex items-center text-gray-400 text-sm pointer-events-none select-none">%</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Contract Term</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={contractTerm}
+                      onChange={e => setContractTerm(e.target.value.replace(/[^0-9]/g, ''))}
+                      onBlur={e  => setContractTerm(fmtContractTerm(e.target.value))}
+                      onFocus={e => e.target.select()}
+                      className={INPUT_SUFFIX2}
+                    />
+                    <span className="absolute inset-y-0 right-3 flex items-center text-gray-400 text-sm pointer-events-none select-none">mo</span>
                   </div>
                 </div>
               </div>
