@@ -187,7 +187,17 @@ export default function DealDetailPage() {
       .eq('entity_type', 'deal')
       .eq('entity_id', id)
       .order('created_at', { ascending: false })
-    setNotes((data ?? []) as NoteWithAuthor[])
+    // Defensive dedup: if duplicate DB rows exist (e.g. from CSV re-imports where
+    // the existingNotes dedup query hit URL length limits), de-duplicate by
+    // note_text + created_at before rendering so each note appears only once.
+    const seen = new Set<string>()
+    const deduped = (data ?? []).filter(n => {
+      const key = `${n.note_text}::${n.created_at}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    setNotes(deduped as NoteWithAuthor[])
   }, [id])
 
   useEffect(() => {

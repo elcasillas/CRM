@@ -296,6 +296,7 @@ export async function POST(req: NextRequest) {
   }
 
   const now = new Date().toISOString()
+  const CHUNK = 50  // max entity IDs per PostgREST .in() query to avoid URL length limits
   type DealRow = { account_id: string; stage_id: string; deal_name: string; deal_description: string | null; deal_owner_id: string; amount: number | null; contract_term_months: number | null; total_contract_value: number | null; value_amount: number | null; currency: string; close_date: string | null; region: string | null; deal_type: string | null; last_activity_at: string; _notes: ParsedNote[]; _owner_id: string }
   const rows = parsedDeals.map(d => {
     const resolvedAccountId =
@@ -376,17 +377,24 @@ export async function POST(req: NextRequest) {
     ...existingRows,
   ]
 
-  // Load existing notes (id + text) for all deals to deduplicate and fix timestamps
+  // Load existing notes (id + text) for all deals to deduplicate and fix timestamps.
+  // Chunked to avoid PostgREST URL length limits when allIds has 1000+ entries —
+  // a failed query returns null, which would empty the dedup map and cause every
+  // note to be re-inserted as a duplicate on re-imports.
   const allIds = allDealIds.map(r => r.id)
-  const { data: existingNotes } = allIds.length > 0
-    ? await admin.from('notes').select('id, entity_id, note_text').eq('entity_type', 'deal').in('entity_id', allIds)
-    : { data: [] }
+  const existingNotesAll: { id: string; entity_id: string; note_text: string }[] = []
+  for (let i = 0; i < allIds.length; i += CHUNK) {
+    const { data } = await admin
+      .from('notes')
+      .select('id, entity_id, note_text')
+      .eq('entity_type', 'deal')
+      .in('entity_id', allIds.slice(i, i + CHUNK))
+    if (data) existingNotesAll.push(...data)
+  }
 
   // Map: "entity_id::note_text" → note row id (for timestamp updates)
   const existingNoteMap = new Map(
-    (existingNotes ?? []).map((n: { id: string; entity_id: string; note_text: string }) =>
-      [`${n.entity_id}::${n.note_text}`, n.id]
-    )
+    existingNotesAll.map(n => [`${n.entity_id}::${n.note_text}`, n.id])
   )
 
   // Insert only new notes with their modified_at timestamps
@@ -412,7 +420,6 @@ export async function POST(req: NextRequest) {
       .filter(note => note.modified_at && existingNoteMap.has(`${d.id}::${note.text}`))
       .map(note => ({ id: existingNoteMap.get(`${d.id}::${note.text}`)!, created_at: note.modified_at! }))
   )
-  const CHUNK = 50
   for (let i = 0; i < timestampFixes.length; i += CHUNK) {
     await Promise.all(
       timestampFixes.slice(i, i + CHUNK).map(fix =>
