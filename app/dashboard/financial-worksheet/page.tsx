@@ -310,12 +310,7 @@ export default function FinancialWorksheetPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900">Financial Worksheet</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Organic recurring revenue model — based on{' '}
-            <a href="/RevenueWorksheetTemplate.xlsx" download className="text-brand-600 hover:text-brand-700 underline underline-offset-2">
-              RevenueWorksheetTemplate.xlsx
-            </a>
-          </p>
+          <p className="text-sm text-gray-500 mt-1">Organic Recurring Revenue Model</p>
         </div>
         <div className="flex items-center gap-3 shrink-0">
           <span className="text-sm font-medium text-gray-700">Billing Currency</span>
