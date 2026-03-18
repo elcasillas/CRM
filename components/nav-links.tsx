@@ -10,8 +10,9 @@ const BASE_ITEMS: NavItem[] = [
   { href: '/dashboard/accounts',     label: 'Accounts' },
   { href: '/dashboard/products',     label: 'Products' },
   { href: '/dashboard/partners',     label: 'AHI' },
-  { href: '/dashboard/deals',        label: 'Deals',     exact: true },
-  { href: '/dashboard/deals/all',    label: 'All Deals', exact: true },
+  { href: '/dashboard/deals',                 label: 'Deals',      exact: true },
+  { href: '/dashboard/deals/all',             label: 'All Deals',  exact: true },
+  { href: '/dashboard/financial-worksheet',   label: 'Worksheet',  exact: true },
 ]
 
 const ADMIN_ITEMS: NavItem[] = [
