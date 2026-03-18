@@ -8,7 +8,9 @@
     { "label": "whitespace + symbol",    "input": "  $ 500 "   },
     { "label": "null",                   "input": null         },
     { "label": "non-numeric string",     "input": "abc"        },
-    { "label": "zero string",            "input": "0"          }
+    { "label": "zero string",            "input": "0"          },
+    { "label": "CAD-prefixed amount",    "input": "CAD 250,000.00" },
+    { "label": "USD-prefixed amount",    "input": "USD 1,000.00"   }
   ],
   "calcACV": [
     { "label": "12-month term",          "amount": 1000,    "months": 12   },
@@ -19,7 +21,8 @@
     { "label": "string amount, 1-month", "amount": "$500",  "months": 1    },
     { "label": "string amount, 6-month", "amount": "$500",  "months": 6    },
     { "label": "zero amount",            "amount": 0,       "months": 12   },
-    { "label": "invalid amount",         "amount": "invalid","months": 6   }
+    { "label": "invalid amount",         "amount": "invalid","months": 6   },
+    { "label": "CAD-prefixed, 36-month (Telus regression)", "amount": "CAD 250,000.00", "months": 36 }
   ],
   "calcTCV": [
     { "label": "1000 × 12",             "amount": "1000",   "months": "12" },
@@ -28,6 +31,7 @@
     { "label": "formatted amount × 24", "amount": "$1,200", "months": "24" },
     { "label": "invalid amount",        "amount": "abc",    "months": "12" },
     { "label": "empty months",          "amount": "1000",   "months": ""   },
-    { "label": "1000 × 6",             "amount": "1000",   "months": "6"  }
+    { "label": "1000 × 6",             "amount": "1000",   "months": "6"  },
+    { "label": "CAD-prefixed × 36 (Telus regression)", "amount": "CAD 250,000.00", "months": "36" }
   ]
 }

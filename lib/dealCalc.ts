@@ -1,10 +1,14 @@
 /**
- * Strip currency symbols, commas, and whitespace, then parse to a
- * non-negative float. Returns 0 for empty, invalid, or negative input.
+ * Strip currency symbols, commas, whitespace, and alphabetic currency-code
+ * prefixes (e.g. "CAD ", "USD "), then parse to a non-negative float.
+ * Returns 0 for empty, invalid, or negative input.
+ *
+ * Regex /[^0-9.\-]/g keeps only digits, decimal point, and minus sign so
+ * that "CAD 250,000.00" → "250000.00" → 250000 and "-100" → -100 → 0.
  */
 export function parseAmount(s: string | null | undefined): number {
   if (!s) return 0
-  const n = parseFloat(String(s).replace(/[$,\s]/g, ''))
+  const n = parseFloat(String(s).replace(/[^0-9.\-]/g, ''))
   return isFinite(n) && n > 0 ? n : 0
 }
 

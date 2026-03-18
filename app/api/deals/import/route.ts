@@ -45,10 +45,15 @@ function parseCSVText(text: string): string[][] {
   return rows
 }
 
-/** Strip formatting and parse a plain numeric value (no currency detection). */
+/**
+ * Strip formatting and parse a plain numeric value.
+ * Handles currency-code prefixes like "CAD " and "USD " in addition to
+ * symbols like "$" and commas — e.g. "CAD 250,000.00" → 250000.
+ * Keeps only digits, decimal point, and minus sign, then rejects negatives.
+ */
 function parseNumericValue(s: string): number {
   if (!s) return 0
-  const n = parseFloat(s.replace(/[$,\s]/g, ''))
+  const n = parseFloat(s.replace(/[^0-9.\-]/g, ''))
   return isFinite(n) && n >= 0 ? n : 0
 }
 
