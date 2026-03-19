@@ -1,15 +1,29 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+
+const supabase = createClient()
+
+// ── Product categories (source of truth) ──────────────────────────────────────
+
+const PRODUCT_CATEGORIES = [
+  'Domain', 'Email Business', 'Email ISP', 'Email Marketing',
+  'Fax Online', 'Logo DIFM', 'Marketing Online', 'Other',
+  'Pro Serve', 'SSL', 'Support', 'Website DIFM', 'Website DIY',
+] as const
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type ProductRow = {
   id:        string   // stable React key
-  name:      string   // A col — "Products or Plans"
+  category:  string   // product category — drives the Name dropdown
+  name:      string   // A col — "Products or Plans" (filtered by category)
   unitPrice: string   // B col — always normalised to "0.00" on blur
   spread:    string   // C col — entered as %, e.g. "25" = 25%; total must = 100%
 }
+
+type DbProduct = { product_name: string; product_category: string | null }
 
 type ExchangeRateResult =
   | { status: 'idle' }
@@ -164,10 +178,10 @@ function newId(): string { return String(++_idCounter) }
 
 function makeDefaultProducts(): ProductRow[] {
   return [
-    { id: newId(), name: '', unitPrice: '0.00', spread: '100.00' },
-    { id: newId(), name: '', unitPrice: '0.00', spread: '0.00'   },
-    { id: newId(), name: '', unitPrice: '0.00', spread: '0.00'   },
-    { id: newId(), name: '', unitPrice: '0.00', spread: '0.00'   },
+    { id: newId(), category: '', name: '', unitPrice: '0.00', spread: '100.00' },
+    { id: newId(), category: '', name: '', unitPrice: '0.00', spread: '0.00'   },
+    { id: newId(), category: '', name: '', unitPrice: '0.00', spread: '0.00'   },
+    { id: newId(), category: '', name: '', unitPrice: '0.00', spread: '0.00'   },
   ]
 }
 
@@ -191,7 +205,18 @@ export default function FinancialWorksheetPage() {
   const [churnPct,      setChurnPct]      = useState('0')
   const [contractTerm,  setContractTerm]  = useState('36')
 
-  const [fxResult, setFxResult] = useState<ExchangeRateResult>({ status: 'idle' })
+  const [fxResult,    setFxResult]    = useState<ExchangeRateResult>({ status: 'idle' })
+  const [dbProducts,  setDbProducts]  = useState<DbProduct[]>([])
+
+  // ── Fetch products from DB once ───────────────────────────────────────────
+
+  useEffect(() => {
+    supabase
+      .from('products')
+      .select('product_name, product_category')
+      .order('product_name')
+      .then(({ data }) => setDbProducts(data ?? []))
+  }, [])
 
   // ── Spread validation ─────────────────────────────────────────────────────
 
@@ -298,7 +323,17 @@ export default function FinancialWorksheetPage() {
   // ── Row management ────────────────────────────────────────────────────────
 
   function setField(id: string, field: keyof ProductRow, value: string) {
-    setProducts(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p))
+    setProducts(prev => prev.map(p => {
+      if (p.id !== id) return p
+      if (field === 'category') {
+        // Clear name if it no longer belongs to the new category
+        const validNames = new Set(
+          dbProducts.filter(dp => dp.product_category === value).map(dp => dp.product_name)
+        )
+        return { ...p, category: value, name: validNames.has(p.name) ? p.name : '' }
+      }
+      return { ...p, [field]: value }
+    }))
   }
 
   function blurUnitPrice(id: string, raw: string) {
@@ -310,7 +345,7 @@ export default function FinancialWorksheetPage() {
   }
 
   function addRow() {
-    setProducts(prev => [...prev, { id: newId(), name: '', unitPrice: '0.00', spread: '0.00' }])
+    setProducts(prev => [...prev, { id: newId(), category: '', name: '', unitPrice: '0.00', spread: '0.00' }])
   }
 
   function removeRow(id: string) {
@@ -369,10 +404,11 @@ export default function FinancialWorksheetPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200">
-                  <th className="px-4 py-2.5 text-left   text-xs font-medium text-gray-500">Name</th>
-                  <th className="px-4 py-2.5 text-right  text-xs font-medium text-gray-500">Unit Price</th>
-                  <th className="px-4 py-2.5 text-right  text-xs font-medium text-gray-500">Spread %</th>
-                  <th className="px-4 py-2.5 text-right  text-xs font-medium text-gray-500">ARPU</th>
+                  <th className="px-4 py-2.5 text-left  text-xs font-medium text-gray-500">Category</th>
+                  <th className="px-4 py-2.5 text-left  text-xs font-medium text-gray-500">Name</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">Unit Price</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">Spread %</th>
+                  <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">ARPU</th>
                   <th className="px-2 py-2.5 w-8"></th>
                 </tr>
               </thead>
@@ -383,18 +419,46 @@ export default function FinancialWorksheetPage() {
                   const spreadNum   = parseNum(p.spread)
                   const spreadError = spreadNum < 0 || spreadNum > 100
 
+                  const categoryProducts = dbProducts.filter(dp => dp.product_category === p.category)
+                  const nameDisabled = !p.category
+
                   return (
                     <tr key={p.id} className="hover:bg-gray-50 group">
 
-                      {/* Name */}
+                      {/* Category */}
                       <td className="px-3 py-2">
-                        <input
-                          type="text"
+                        <select
+                          value={p.category}
+                          onChange={e => setField(p.id, 'category', e.target.value)}
+                          className={INPUT}
+                        >
+                          <option value="">— Category —</option>
+                          {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </td>
+
+                      {/* Name — dependent on category */}
+                      <td className="px-3 py-2">
+                        <select
                           value={p.name}
                           onChange={e => setField(p.id, 'name', e.target.value)}
-                          placeholder="[Enter Name]"
-                          className={INPUT}
-                        />
+                          disabled={nameDisabled}
+                          title={nameDisabled ? 'Select a category first' : undefined}
+                          className={`${INPUT} disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed`}
+                        >
+                          {nameDisabled ? (
+                            <option value="">Select category first</option>
+                          ) : categoryProducts.length === 0 ? (
+                            <option value="">No products in this category</option>
+                          ) : (
+                            <>
+                              <option value="">— Select product —</option>
+                              {categoryProducts.map(dp => (
+                                <option key={dp.product_name} value={dp.product_name}>{dp.product_name}</option>
+                              ))}
+                            </>
+                          )}
+                        </select>
                       </td>
 
                       {/* Unit Price — 2dp enforced on blur */}
@@ -457,6 +521,7 @@ export default function FinancialWorksheetPage() {
               {/* Summary footer — mirrors template row 16 */}
               <tfoot>
                 <tr className={`border-t-2 ${spreadValid ? 'border-gray-200 bg-gray-50' : 'border-red-200 bg-red-50'}`}>
+                  <td className="px-4 py-2.5"></td>
                   <td className="px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">ARPU</td>
                   <td className="px-4 py-2.5"></td>
                   <td className="px-4 py-2.5 text-right tabular-nums">
