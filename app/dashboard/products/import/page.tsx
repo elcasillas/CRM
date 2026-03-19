@@ -30,10 +30,17 @@ function parseCSVText(text: string): string[][] {
 
 // ── Client-side preview parse ──────────────────────────────────────────────────
 
+const PRODUCT_CATEGORIES = new Set([
+  'Website DIY', 'Website DIFM', 'Email ISP', 'Email Business',
+  'Domain', 'Email Marketing', 'Fax Online', 'Logo DIFM',
+  'Marketing Online', 'SSL', 'Support', 'Pro Serve', 'Other',
+])
+
 interface PreviewRow {
-  product_name: string
-  unit_price:   number
-  product_code: string
+  product_name:     string
+  unit_price:       number
+  product_code:     string
+  product_category: string
 }
 
 function previewCSV(csvText: string): PreviewRow[] | string {
@@ -51,6 +58,7 @@ function previewCSV(csvText: string): PreviewRow[] | string {
   const iName  = idx('Product Name')
   const iPrice = idx('Unit Price')
   const iCode  = idx('Product Code')
+  const iCat   = idx('Product Category')
   if (iName === -1) return 'Missing required column: Product Name'
 
   const seen = new Set<string>()
@@ -62,9 +70,11 @@ function previewCSV(csvText: string): PreviewRow[] | string {
     const key = product_name.toLowerCase()
     if (seen.has(key)) continue
     seen.add(key)
-    const unit_price  = iPrice >= 0 ? (parseFloat((row[iPrice] ?? '').replace(/[$,\s]/g, '')) || 0) : 0
-    const product_code = iCode >= 0 ? (row[iCode] ?? '').trim() : ''
-    rows.push({ product_name, unit_price, product_code })
+    const unit_price     = iPrice >= 0 ? (parseFloat((row[iPrice] ?? '').replace(/[$,\s]/g, '')) || 0) : 0
+    const product_code   = iCode >= 0 ? (row[iCode] ?? '').trim() : ''
+    const rawCat         = iCat  >= 0 ? (row[iCat]  ?? '').trim() : ''
+    const product_category = PRODUCT_CATEGORIES.has(rawCat) ? rawCat : ''
+    rows.push({ product_name, unit_price, product_code, product_category })
   }
   return rows
 }
@@ -135,7 +145,7 @@ export default function ImportProductsPage() {
             uploadState={parseError ? 'error' : 'idle'}
             statusMessage={parseError ?? undefined}
             fileName={csvFile?.name}
-            instructions="Expects columns: Product Name, Unit Price, Product Code"
+            instructions="Expects columns: Product Name, Unit Price, Product Code, Product Category"
             onReset={parseError ? () => { setCsvFile(null); setParseError(null) } : undefined}
           />
 
@@ -153,6 +163,7 @@ export default function ImportProductsPage() {
                       <tr>
                         <th className="px-3 py-2.5 text-left font-medium text-gray-500">Product name</th>
                         <th className="px-3 py-2.5 text-left font-medium text-gray-500">Product code</th>
+                        <th className="px-3 py-2.5 text-left font-medium text-gray-500">Category</th>
                         <th className="px-3 py-2.5 text-right font-medium text-gray-500">Unit price</th>
                       </tr>
                     </thead>
@@ -161,6 +172,7 @@ export default function ImportProductsPage() {
                         <tr key={i} className="hover:bg-gray-50">
                           <td className="px-3 py-2 font-medium text-gray-900 max-w-[300px] truncate">{row.product_name}</td>
                           <td className="px-3 py-2 text-gray-500">{row.product_code || '—'}</td>
+                          <td className="px-3 py-2 text-gray-500">{row.product_category || '—'}</td>
                           <td className="px-3 py-2 text-gray-700 font-medium text-right">{fmtCurrency(row.unit_price)}</td>
                         </tr>
                       ))}

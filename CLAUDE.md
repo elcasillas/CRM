@@ -28,12 +28,15 @@ An internal CRM for a software company's sales and service teams. Built with **N
 Key capabilities:
 - Deal pipeline management (table + kanban views, active vs. all deals)
 - Account and contact management with deals/HIDs/contracts/contacts/notes tabs
+- Products catalog with CSV import and inline editing
+- Financial Worksheet — organic recurring revenue model with live multi-currency conversion
+- Account Health Index (AHI) — partner/account health scoring and snapshots
 - AI-generated deal summaries via OpenRouter
 - Automated health scoring on every deal (6-component weighted score)
 - AI deal inspection — 15-point quality check grading deal completeness and qualitative signals
 - AI-generated targeted manager emails driven by inspection gaps
 - CSV import from legacy CRM exports
-- Admin tools: user management, deal stage config, health score and inspection tuning
+- Admin tools: user management, deal stage config, health score and inspection tuning, DC/cluster mappings
 
 ---
 
@@ -47,7 +50,7 @@ Key capabilities:
 | `NEXT_PUBLIC_SLACK_TEAM_ID` | No | Slack workspace ID for deep-link buttons |
 | `OPENROUTER_API_KEY` | No | Required for AI summaries, inspection, and email generation |
 | `OPENROUTER_MODEL` | No | Defaults to `anthropic/claude-haiku-4-5` |
-| `OPENROUTER_IMAGE_MODEL` | No | Defined in `.env.local.example` but unused — dead config |
+| `EXCHANGERATE_API_KEY` | No | exchangerate.host API key for Financial Worksheet currency conversion |
 
 Copy `.env.local.example` → `.env.local`. Same vars must be set in the Vercel project dashboard.
 
@@ -101,6 +104,8 @@ app/
       health-score-config/route.ts          # GET/PUT config; /recalculate POST
       inspection-config/route.ts            # GET/PUT inspection check definitions (admin only)
       users/route.ts                        # GET/POST/PATCH/DELETE users (admin only)
+      dc-cluster-mappings/route.ts          # GET/POST/PATCH DC Location → Cluster ID mappings (admin only)
+      partner-health-config/route.ts        # GET/PUT partner health config; /recalculate POST (admin only)
     auth/callback/route.ts                  # PKCE code exchange
     deals/
       import/route.ts                       # POST: CSV import
@@ -108,7 +113,15 @@ app/
         summarize/route.ts                  # GET/POST: AI summary
         inspect/route.ts                    # GET/POST: 15-point deal inspection
         compose-email/route.ts              # POST: AI-generated targeted manager email
+    exchange-rate/route.ts                  # GET: proxy to exchangerate.host; monthly server + localStorage cache
+    partners/
+      route.ts                              # GET/POST partners (any auth; POST requires admin or sales_manager)
+      [id]/
+        route.ts                            # GET/PATCH/DELETE a partner
+        metrics/route.ts                    # GET/POST partner metrics
     invite/route.ts                         # POST: send invite email (admin only)
+    products/
+      import/route.ts                       # POST: CSV import for products (any auth)
   dashboard/
     layout.tsx                              # Auth guard + nav shell (displays full_name or email)
     page.tsx                                # Overview dashboard (server)
@@ -121,16 +134,26 @@ app/
     accounts/
       page.tsx                              # Accounts list + CRUD (client)
       [id]/page.tsx                         # Account detail — tabs: Deals/HIDs/Contacts/Contracts/Notes (client)
+    products/
+      page.tsx                              # Products list, inline edit, add, delete (client)
+      import/page.tsx                       # CSV import UI for products (client)
+    partners/
+      page.tsx                              # Account Health Index (AHI) list (client) — uses PartnersClient
+      [id]/page.tsx                         # AHI detail page (client)
+    financial-worksheet/
+      page.tsx                              # Organic recurring revenue model with live currency conversion (client)
     admin/
       layout.tsx                            # Admin role guard (server) — non-admins → /dashboard/accounts
       users/page.tsx + users-client.tsx     # User management
-      stages/page.tsx                       # Deal stages CRUD
+      stages/page.tsx                       # Deal stages CRUD (also embedded in health-scoring Settings page)
       health-scoring/
-        page.tsx                            # "Settings" nav item — renders both clients below
+        page.tsx                            # "Settings" nav item — renders health scoring, inspection, stages, DC/cluster
         health-scoring-client.tsx           # Health score weights, keywords, thresholds
       inspection/
         page.tsx                            # Standalone route (not in nav, accessible by URL)
         inspection-client.tsx               # Inspection check config — also embedded in health-scoring/page.tsx
+      partner-health/
+        page.tsx                            # Partner Health admin config (client)
   login/page.tsx
 components/
   nav-links.tsx          # Top nav with active highlighting, admin section
@@ -166,11 +189,16 @@ middleware.ts
 | `/dashboard/deals/all` | Server → Client | All deals including closed. `isAllDeals: true`. |
 | `/dashboard/deals/import` | Client | Drag-and-drop CSV upload with preview |
 | `/dashboard/accounts` | Client | Accounts list, filter/sort, full CRUD |
-| `/dashboard/products` | Client | Products list, CSV import, add, delete |
+| `/dashboard/products` | Client | Products list, CSV import, add, inline edit, delete |
+| `/dashboard/products/import` | Client | Drag-and-drop CSV import for products |
 | `/dashboard/accounts/[id]` | Client | Tabbed detail: Deals, HIDs, Contacts, Contracts, Notes |
+| `/dashboard/partners` | Client | Account Health Index (AHI) list |
+| `/dashboard/partners/[id]` | Client | AHI detail page |
+| `/dashboard/financial-worksheet` | Client | Organic recurring revenue model — ARPU, MRR, ACV, TCV with live currency conversion |
 | `/dashboard/admin/users` | Server guard → Client | User list, invite, edit role/name/email/password/slack_id |
-| `/dashboard/admin/stages` | Client | Stage CRUD, sort order, flags |
-| `/dashboard/admin/health-scoring` | Client | **"Settings"** — health score config (weights/keywords/thresholds) + inspection config (severity/enabled) on one page |
+| `/dashboard/admin/stages` | Client | Stage CRUD (also embedded in Settings page) |
+| `/dashboard/admin/health-scoring` | Client | **"Settings"** — health score config + inspection config + deal stages + DC/cluster mappings |
+| `/dashboard/admin/partner-health` | Client | Partner Health config — category weights, thresholds, stale days |
 | `/auth/callback` | Route handler | PKCE exchange after invite link |
 
 ---
@@ -187,6 +215,16 @@ middleware.ts
 | `/api/admin/health-score-config/recalculate` | POST | Admin | Recalculate all deal scores |
 | `/api/admin/inspection-config` | GET | Admin | Return merged inspection config (DB overrides + DEFAULT_CHECKS) |
 | `/api/admin/inspection-config` | PUT | Admin | Upsert inspection config (severity, enabled flags) |
+| `/api/admin/dc-cluster-mappings` | GET | Admin | List DC Location → Cluster ID mappings |
+| `/api/admin/dc-cluster-mappings` | POST | Admin | Create new mapping |
+| `/api/admin/dc-cluster-mappings` | PATCH | Admin | Update or toggle-active a mapping |
+| `/api/admin/partner-health-config` | GET/PUT | Admin | Read/write partner health config |
+| `/api/admin/partner-health-config/recalculate` | POST | Admin | Recalculate all partner health scores |
+| `/api/exchange-rate` | GET | Any auth | Proxy to exchangerate.host; monthly in-process + localStorage cache |
+| `/api/partners` | GET | Any auth | List partners for dropdowns |
+| `/api/partners` | POST | admin/sales_manager | Create a partner |
+| `/api/partners/[id]` | GET/PATCH/DELETE | Any auth | Read/update/delete a partner |
+| `/api/partners/[id]/metrics` | GET/POST | Any auth | Read/write partner metrics |
 | `/api/deals/import` | POST | Any auth | CSV import (multipart/form-data) |
 | `/api/products/import` | POST | Any auth | CSV import for products (multipart/form-data) |
 | `/api/deals/[id]/summarize` | GET | Any auth | Return stored AI summary |
@@ -223,6 +261,7 @@ Mirrors `auth.users`. Auto-created by `handle_new_user()` trigger.
 ### `contacts`
 - `account_id` FK → accounts, `first_name`, `last_name`, `email`, `phone`, `title`
 - `is_primary` boolean
+- Multiple roles per contact stored in a separate `contact_roles` join table (migration `20260316000001`)
 
 ### `hid_records`
 - `account_id` FK → accounts, `hid_number` (unique), `domain_name`, `dc_location`, `cluster_id`, `start_date`
@@ -241,7 +280,7 @@ Mirrors `auth.users`. Auto-created by `handle_new_user()` trigger.
 ### `deals`
 - `account_id` FK → accounts, `stage_id` FK → deal_stages
 - `deal_owner_id` FK → profiles, `solutions_engineer_id` FK → profiles
-- `deal_name`, `deal_description`, `currency` (default `'CAD'`), `close_date`
+- `deal_name`, `deal_description`, `currency` (default `'CAD'`), `close_date`, `region`, `deal_type`
 - `amount` numeric — monthly contract amount (user input)
 - `contract_term_months` int
 - `value_amount` numeric — **ACV** (auto-computed via `calcACV`)
@@ -270,6 +309,17 @@ Single row. `weights` jsonb, `keywords` jsonb (`positive[]`, `negative[]`), `sta
 Single row, same pattern as `health_score_config`.
 - `checks` jsonb — array of `{ id, label, severity, enabled }` overriding DEFAULT_CHECKS
 - Seeded with 15 default check definitions on migration `20260309000001`
+
+### `dc_cluster_mappings`
+Admin-managed lookup table for HID record dependent dropdowns.
+- `dc_location` text (uppercase), `cluster_id` text (lowercase), `is_active` boolean
+- Unique on `(dc_location, cluster_id)`. Managed via Settings page and `GET/POST/PATCH /api/admin/dc-cluster-mappings`.
+
+### `partners` (Account Health Index)
+- `partner_name`, `partner_type`, `tier`, `status`, `region`, `country`, `website`, `description`
+- `account_id` FK → accounts, `account_manager_id` FK → profiles
+- Related tables: `partner_metrics`, `partner_health_snapshots`, `partner_health_config`, `partner_ai_summaries`
+- Scored via `get_partners_page` RPC; health config tunable via `/dashboard/admin/partner-health`
 
 ---
 
@@ -579,13 +629,18 @@ Top nav rendered by `components/nav-links.tsx`:
 **Base items (all authenticated users):**
 - Overview → `/dashboard` (exact match)
 - Accounts → `/dashboard/accounts`
+- Products → `/dashboard/products`
+- AHI → `/dashboard/partners`
 - Deals → `/dashboard/deals` (exact match)
 - All Deals → `/dashboard/deals/all` (exact match)
+- Worksheet → `/dashboard/financial-worksheet` (exact match)
 
 **Admin items (when `isAdmin`):**
-- Stages → `/dashboard/admin/stages`
 - Users → `/dashboard/admin/users`
-- Settings → `/dashboard/admin/health-scoring` (hosts both health scoring config and inspection config)
+- Settings → `/dashboard/admin/health-scoring` (hosts health score config, inspection config, deal stages, DC/cluster mappings)
+- Partner Health → `/dashboard/admin/partner-health`
+
+Note: Stages are no longer a standalone nav item — Stage CRUD is embedded in the Settings page. The `/dashboard/admin/stages` route still exists as a standalone page.
 
 Header displays user's `full_name` from profiles; falls back to email if `full_name` is not set.
 
@@ -618,9 +673,9 @@ All modal headers use a consistent pattern across the app:
 
 ## Database Migrations
 
-28 applied migrations in `supabase/migrations/`, named `YYYYMMDD######_description.sql`. Applied in filename order via `supabase db push`. Never edit an already-applied migration — add a new one instead.
+48 applied migrations in `supabase/migrations/`, named `YYYYMMDD######_description.sql`. Applied in filename order via `supabase db push`. Never edit an already-applied migration — add a new one instead.
 
-Latest migration: `20260309000001_add_deal_inspection.sql`
+Latest migration: `20260318000003_deduplicate_notes.sql`
 
 After any schema change affecting RPCs or table structure, regenerate types:
 ```bash
@@ -631,25 +686,27 @@ supabase gen types typescript --linked 2>/dev/null > lib/supabase/database.types
 
 ## Known Issues / Technical Debt
 
-1. **`OPENROUTER_IMAGE_MODEL` env var** — defined in `.env.local.example` but unused anywhere. Dead config.
+1. **`user_id` on `deal_stages`** — stages are global config but have a `user_id` column with no real ownership semantics. Confusing but harmless.
 
-2. **`user_id` on `deal_stages`** — stages are global config but have a `user_id` column with no real ownership semantics. Confusing but harmless.
+2. **`fetchDeals` in DealsClient** — post-mutation data refresh calls `get_deals_page` from the browser client (SECURITY INVOKER). If RLS on `deals` is tightened to restrict cross-user reads, this will break for sales reps viewing other owners' deals.
 
-3. **`fetchDeals` in DealsClient** — post-mutation data refresh calls `get_deals_page` from the browser client (SECURITY INVOKER). If RLS on `deals` is tightened to restrict cross-user reads, this will break for sales reps viewing other owners' deals.
+3. **`database.types.ts` drift** — not auto-generated on build; must be manually regenerated after schema changes.
 
-4. **`database.types.ts` drift** — not auto-generated on build; must be manually regenerated after schema changes.
+4. **Health score on import** — CSV-imported deals may have zero health scores immediately because the trigger fires before `value_amount` or `close_date` are fully set. Run admin "Recalculate All" after import.
 
-5. **Health score on import** — CSV-imported deals may have zero health scores immediately because the trigger fires before `value_amount` or `close_date` are fully set. Run admin "Recalculate All" after import.
+5. **Currency is display-only on deals** — `deals.currency` is stored and displayed but ACV/TCV math assumes CAD. The Financial Worksheet handles live multi-currency conversion independently.
 
-6. **Currency is display-only** — `deals.currency` is stored and displayed but all ACV/TCV math assumes CAD. No multi-currency conversion logic.
+6. **No pagination** — deals and accounts are fetched in full. Will become a performance issue at scale.
 
-7. **No pagination** — deals and accounts are fetched in full. Will become a performance issue at scale.
+7. **Inspection stale threshold hardcoded** — `STALE_INSPECTION_HOURS = 2` in `compose-email/route.ts` is not configurable via admin UI.
 
-8. **Inspection stale threshold hardcoded** — `STALE_INSPECTION_HOURS = 2` in `compose-email/route.ts` is not configurable via admin UI.
+8. **Inspection LLM fallback inflates urgency** — if `callInspectionLLM` fails (API key missing, network error), all 9 qualitative checks are marked `missing`, which drives an overly urgent email.
 
-9. **Inspection LLM fallback inflates urgency** — if `callInspectionLLM` fails (API key missing, network error), all 9 qualitative checks are marked `missing`, which drives an overly urgent email.
+9. **`/dashboard/admin/inspection` not in nav** — `inspection-client.tsx` is embedded in the Settings page, but the `/inspection` URL still works as a standalone route. This could be confusing.
 
-10. **`/dashboard/admin/inspection` not in nav** — `inspection-client.tsx` is embedded in the Settings page, but the `/inspection` URL still works as a standalone route. This could be confusing.
+10. **Financial Worksheet is stateless** — no save/load for worksheet inputs. Each session starts fresh. Data is not persisted to Supabase.
+
+11. **`EXCHANGERATE_API_KEY` hardcoded fallback** — `exchange-rate/route.ts` has a hardcoded API key as a fallback if the env var is unset. Should be removed before open-sourcing.
 
 ---
 

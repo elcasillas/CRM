@@ -2,7 +2,7 @@
 
 ## Overview
 
-An internal CRM web application for a software company's sales and service teams. Built as a Next.js 15 App Router application with TypeScript, deployed on Vercel. The frontend uses React server components for data-fetching pages and client components for interactive UIs. Supabase provides the Postgres database, row-level security enforcement, and email/password authentication. Business logic (deal health scoring, ACV/TCV calculations) runs in both PostgreSQL functions and TypeScript utilities. AI-generated deal summaries are produced via the OpenRouter API using Anthropic's Claude model. There is no separate backend server — all server-side logic runs in Next.js route handlers and server components on Vercel's serverless infrastructure.
+An internal CRM web application for a software company's sales and service teams. Built as a Next.js 15 App Router application with TypeScript, deployed on Vercel. The frontend uses React server components for data-fetching pages and client components for interactive UIs. Supabase provides the Postgres database, row-level security enforcement, and email/password authentication. Business logic (deal health scoring, ACV/TCV calculations, deal inspection) runs in both PostgreSQL functions and TypeScript utilities. AI-generated deal summaries and 15-point deal inspection reports are produced via the OpenRouter API using Anthropic's Claude model. A Financial Worksheet provides a live multi-currency recurring revenue model using the exchangerate.host API. An Account Health Index (AHI) module tracks partner/account health scores and snapshots. There is no separate backend server — all server-side logic runs in Next.js route handlers and server components on Vercel's serverless infrastructure.
 
 ---
 
@@ -48,8 +48,18 @@ TypeScript config targets `ES2017`, strict mode enabled, `moduleResolution: bund
 **API routes** (`app/api/`):
 - `/api/admin/users` — user management (admin only)
 - `/api/admin/health-score-config` — health score config read/write + recalculate trigger
+- `/api/admin/inspection-config` — inspection check severity/enabled config (admin only)
+- `/api/admin/dc-cluster-mappings` — DC Location → Cluster ID mappings CRUD (admin only)
+- `/api/admin/partner-health-config` — partner health config read/write + recalculate (admin only)
 - `/api/deals/import` — CSV import with server-side parsing
 - `/api/deals/[id]/summarize` — AI deal summary generation and retrieval
+- `/api/deals/[id]/inspect` — 15-point deal inspection run and retrieval
+- `/api/deals/[id]/compose-email` — AI-generated targeted manager email
+- `/api/exchange-rate` — proxy to exchangerate.host; monthly in-process cache
+- `/api/partners` — partner list and creation
+- `/api/partners/[id]` — partner read/update/delete
+- `/api/partners/[id]/metrics` — partner metrics read/write
+- `/api/products/import` — products CSV import
 - `/api/invite` — Supabase invite email dispatch
 - `/auth/callback` — PKCE code exchange for invite links
 
@@ -67,18 +77,19 @@ TypeScript config targets `ES2017`, strict mode enabled, `moduleResolution: bund
 | Supabase | Cloud (linked project) | Hosts Postgres, Auth, Storage, realtime |
 | Row Level Security (RLS) | — | Enforced on every table via Postgres policies |
 
-**Schema managed via:** `supabase/migrations/` — ordered SQL files, applied with `supabase db push`. ~18 migrations to date.
+**Schema managed via:** `supabase/migrations/` — ordered SQL files, applied with `supabase db push`. 48 migrations to date.
 
-**Key tables:** `profiles`, `accounts`, `contacts`, `hid_records`, `contracts`, `deal_stages`, `deals`, `notes`, `deal_stage_history`, `deal_summary_cache`, `health_score_config`.
+**Key tables:** `profiles`, `accounts`, `contacts`, `contact_roles`, `hid_records`, `contracts`, `deal_stages`, `deals`, `notes`, `deal_stage_history`, `deal_summary_cache`, `health_score_config`, `inspection_config`, `products`, `dc_cluster_mappings`, `partners`, `partner_metrics`, `partner_health_snapshots`, `partner_health_config`, `partner_ai_summaries`.
 
 **Key Postgres functions:**
-- `get_deals_page()` — main deals query RPC (joins 5 tables + lateral aggregation)
+- `get_deals_page()` — main deals query RPC (joins 5 tables + lateral aggregation; includes `region`, `deal_type`)
 - `recompute_deal_health_score(deal_id)` — 6-component health score computation
 - `recompute_all_deal_health_scores()` — bulk recalculation
+- `get_partners_page()` — AHI list query RPC
 - `handle_new_user()` — trigger: creates `profiles` row on auth user creation
 - `is_admin()`, `can_view_account()` — RLS helper functions
 
-**Caching:** `deal_summary_cache` table caches AI-generated deal summaries keyed on SHA-256 hash of canonical note content + model tag. No in-memory or Redis cache.
+**Caching:** `deal_summary_cache` table caches AI-generated deal summaries keyed on SHA-256 hash of canonical note content + model tag. Exchange rates are cached monthly: in-process memory in the route handler (reset on cold start) and `localStorage` in the browser (`fw_fx_cache` key). No Redis cache.
 
 **File storage:** None. CSV files are parsed in memory within the import route handler and discarded — no file persistence.
 
@@ -99,7 +110,7 @@ TypeScript config targets `ES2017`, strict mode enabled, `moduleResolution: bund
 1. Push to `master` → Vercel auto-deploys frontend + API routes
 2. DB migrations applied independently: `supabase db push` (does not run on Vercel deploy)
 
-**Environment config:** `.env.local` for local dev. Production env vars set in Vercel project dashboard. Six variables total — see `.env.local.example`.
+**Environment config:** `.env.local` for local dev. Production env vars set in Vercel project dashboard. See `.env.local.example` for the full list (Supabase keys, OpenRouter, Slack team ID, exchangerate.host API key).
 
 **Build constraints:** `node_modules` are Windows-native. `npm run build` and `npm run lint` must be run from a Windows terminal, not WSL. `supabase` CLI commands work from WSL.
 
@@ -114,12 +125,15 @@ TypeScript config targets `ES2017`, strict mode enabled, `moduleResolution: bund
 | Service | Purpose | Auth Method |
 |---|---|---|
 | Supabase Auth | Email/password authentication, invite emails, PKCE flow | Built into Supabase SDK |
-| OpenRouter | AI deal summary generation | `Authorization: Bearer` header (`OPENROUTER_API_KEY`) |
-| Anthropic Claude (via OpenRouter) | LLM for structured deal summaries | Accessed through OpenRouter; model: `anthropic/claude-haiku-4-5` |
+| OpenRouter | AI deal summaries, 15-point inspection, manager email generation | `Authorization: Bearer` header (`OPENROUTER_API_KEY`) |
+| Anthropic Claude (via OpenRouter) | LLM for summaries, inspection checks, email drafts | Accessed through OpenRouter; model: `anthropic/claude-haiku-4-5` (override via `OPENROUTER_MODEL`) |
+| exchangerate.host | CAD conversion rates for Financial Worksheet | `EXCHANGERATE_API_KEY`; proxied via `/api/exchange-rate` (never exposed to browser) |
 | Slack | Deep-link to user profiles (`slack://user?team=...`) | No API calls; `NEXT_PUBLIC_SLACK_TEAM_ID` env var only |
 | Vercel | Build, deploy, CDN | GitHub integration + `vercel` CLI |
 
-**OpenRouter integration detail:** `POST https://openrouter.ai/api/v1/chat/completions`. Model configurable via `OPENROUTER_MODEL` env var. Response cached in `deal_summary_cache` table; cache busted by changing the `MODEL_TAG` constant in the summarize route.
+**OpenRouter integration detail:** `POST https://openrouter.ai/api/v1/chat/completions`. Model configurable via `OPENROUTER_MODEL` env var. Summary responses cached in `deal_summary_cache` table; cache busted by changing the `MODEL_TAG` constant in the summarize route. Claude models via OpenRouter do not support `response_format: { type: 'json_object' }` — JSON is extracted from markdown-fenced responses using an `extractJSON()` helper.
+
+**exchangerate.host integration detail:** `GET http://api.exchangerate.host/live` — USD-based quotes. Rate to CAD is derived as `USDCAD / USDx`. Monthly cache: in-process variable in the route handler (resets on Vercel cold start) + `localStorage` in the browser (`fw_fx_cache`). Falls back to stale localStorage cache if the API is unreachable.
 
 **No analytics, no error tracking** (no Sentry, Datadog, PostHog, etc.) currently integrated.
 

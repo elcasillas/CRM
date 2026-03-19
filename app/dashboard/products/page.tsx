@@ -8,21 +8,29 @@ import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
 
 const supabase = createClient()
 
+const PRODUCT_CATEGORIES = [
+  'Website DIY', 'Website DIFM', 'Email ISP', 'Email Business',
+  'Domain', 'Email Marketing', 'Fax Online', 'Logo DIFM',
+  'Marketing Online', 'SSL', 'Support', 'Pro Serve', 'Other',
+] as const
+
 type Product = {
-  id:           string
-  product_name: string
-  unit_price:   number
-  product_code: string | null
-  created_at:   string
+  id:               string
+  product_name:     string
+  unit_price:       number
+  product_code:     string | null
+  product_category: string | null
+  created_at:       string
 }
 
 type FormData = {
-  product_name: string
-  unit_price:   string
-  product_code: string
+  product_name:     string
+  unit_price:       string
+  product_code:     string
+  product_category: string
 }
 
-const EMPTY_FORM: FormData = { product_name: '', unit_price: '0.00', product_code: '' }
+const EMPTY_FORM: FormData = { product_name: '', unit_price: '0.00', product_code: '', product_category: '' }
 
 const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
 
@@ -62,6 +70,7 @@ export default function ProductsPage() {
   const [loading,       setLoading]       = useState(true)
   const [isAdmin,       setIsAdmin]       = useState(false)
   const [search,        setSearch]        = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
   const [sortCol,       setSortCol]       = useState('product_name')
   const [sortDir,       setSortDir]       = useState<'asc' | 'desc'>('asc')
   const [modal,         setModal]         = useState(false)
@@ -108,17 +117,17 @@ export default function ProductsPage() {
   const displayed = useMemo(() => {
     const q = search.toLowerCase()
     const filtered = products.filter(p =>
-      !q ||
-      p.product_name.toLowerCase().includes(q) ||
-      (p.product_code ?? '').toLowerCase().includes(q)
+      (!q || p.product_name.toLowerCase().includes(q) || (p.product_code ?? '').toLowerCase().includes(q)) &&
+      (!categoryFilter || p.product_category === categoryFilter)
     )
     return [...filtered].sort((a, b) => {
       let va: string | number = '', vb: string | number = ''
       switch (sortCol) {
-        case 'product_name': va = a.product_name; vb = b.product_name; break
-        case 'product_code': va = a.product_code ?? ''; vb = b.product_code ?? ''; break
-        case 'unit_price':   va = a.unit_price;   vb = b.unit_price;   break
-        case 'created_at':   va = a.created_at;   vb = b.created_at;   break
+        case 'product_name':     va = a.product_name;             vb = b.product_name;             break
+        case 'product_code':     va = a.product_code ?? '';       vb = b.product_code ?? '';       break
+        case 'product_category': va = a.product_category ?? '';   vb = b.product_category ?? '';   break
+        case 'unit_price':       va = a.unit_price;               vb = b.unit_price;               break
+        case 'created_at':       va = a.created_at;               vb = b.created_at;               break
       }
       const r = typeof va === 'string' ? va.localeCompare(vb as string) : (va as number) - (vb as number)
       return sortDir === 'asc' ? r : -r
@@ -136,7 +145,7 @@ export default function ProductsPage() {
   }
 
   function openEdit(p: Product) {
-    const formValues: FormData = { product_name: p.product_name, unit_price: p.unit_price.toFixed(2), product_code: p.product_code ?? '' }
+    const formValues: FormData = { product_name: p.product_name, unit_price: p.unit_price.toFixed(2), product_code: p.product_code ?? '', product_category: p.product_category ?? '' }
     setEditingId(p.id)
     setForm(formValues)
     productInitialRef.current = formValues
@@ -172,9 +181,10 @@ export default function ProductsPage() {
     }
     setSaving(true); setFormError(null)
     const payload = {
-      product_name: name,
-      unit_price:   price,
-      product_code: form.product_code.trim() || null,
+      product_name:     name,
+      unit_price:       price,
+      product_code:     form.product_code.trim() || null,
+      product_category: form.product_category || null,
     }
     const { error } = editingId
       ? await supabase.from('products').update(payload).eq('id', editingId)
@@ -245,8 +255,8 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Search + count */}
-      <div className="flex items-center gap-3 mb-4">
+      {/* Search + filter */}
+      <div className="flex items-center gap-3 mb-4 flex-wrap">
         <input
           type="text"
           placeholder="Search products…"
@@ -254,13 +264,20 @@ export default function ProductsPage() {
           onChange={e => setSearch(e.target.value)}
           className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 w-64"
         />
-        {search && (
-          <button onClick={() => setSearch('')} className="text-sm text-gray-400 hover:text-gray-600">Clear</button>
+        <select
+          value={categoryFilter}
+          onChange={e => setCategoryFilter(e.target.value)}
+          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100"
+        >
+          <option value="">All Categories</option>
+          {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        {(search || categoryFilter) && (
+          <button onClick={() => { setSearch(''); setCategoryFilter('') }} className="text-sm text-gray-400 hover:text-gray-600">Clear</button>
         )}
-        {search && (
+        {(search || categoryFilter) ? (
           <span className="text-sm text-gray-400">{displayed.length} of {products.length}</span>
-        )}
-        {!search && (
+        ) : (
           <span className="text-sm text-gray-400">{products.length} product{products.length !== 1 ? 's' : ''}</span>
         )}
       </div>
@@ -275,10 +292,11 @@ export default function ProductsPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
-                <Th col="product_name" label="Product Name" />
-                <Th col="product_code" label="Product Code" />
-                <Th col="unit_price"   label="Unit Price (CAD)" />
-                <Th col="created_at"   label="Added" />
+                <Th col="product_name"     label="Product Name" />
+                <Th col="product_code"     label="Product Code" />
+                <Th col="product_category" label="Category" />
+                <Th col="unit_price"       label="Unit Price (CAD)" />
+                <Th col="created_at"       label="Added" />
                 <th className="px-4 py-3"></th>
               </tr>
             </thead>
@@ -291,6 +309,7 @@ export default function ProductsPage() {
                     </button>
                   </td>
                   <td className="px-4 py-3.5 text-gray-500">{p.product_code ?? <span className="text-gray-300">—</span>}</td>
+                  <td className="px-4 py-3.5 text-gray-500">{p.product_category ?? <span className="text-gray-300">—</span>}</td>
                   <td className="px-4 py-3.5 text-gray-700 font-medium">{fmtPrice(p.unit_price)}</td>
                   <td className="px-4 py-3.5 text-gray-400 text-xs">{fmtDate(p.created_at)}</td>
                   <td className="px-4 py-3.5">
@@ -368,6 +387,17 @@ export default function ProductsPage() {
                   className={INPUT}
                   readOnly={editingId !== null && !isAdmin}
                 />
+              </Field>
+              <Field label="Product Category">
+                <select
+                  value={form.product_category}
+                  onChange={e => setForm(prev => ({ ...prev, product_category: e.target.value }))}
+                  disabled={editingId !== null && !isAdmin}
+                  className={INPUT}
+                >
+                  <option value="">— None —</option>
+                  {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
               </Field>
               {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
             </div>

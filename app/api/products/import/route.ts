@@ -44,6 +44,14 @@ function parseCSVText(text: string): string[][] {
   return rows
 }
 
+// ── Allowed product categories ────────────────────────────────────────────────
+
+const PRODUCT_CATEGORIES = new Set([
+  'Website DIY', 'Website DIFM', 'Email ISP', 'Email Business',
+  'Domain', 'Email Marketing', 'Fax Online', 'Logo DIFM',
+  'Marketing Online', 'SSL', 'Support', 'Pro Serve', 'Other',
+])
+
 // ── POST /api/products/import ─────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
@@ -82,6 +90,7 @@ export async function POST(req: NextRequest) {
   const iName  = idx('Product Name')
   const iPrice = idx('Unit Price')
   const iCode  = idx('Product Code')
+  const iCat   = idx('Product Category')
 
   if (iName === -1) return NextResponse.json({ error: 'Missing required column: Product Name' }, { status: 400 })
 
@@ -114,8 +123,10 @@ export async function POST(req: NextRequest) {
       ? (parseFloat((row[iPrice] ?? '').replace(/[$,\s]/g, '')) || 0)
       : 0
     const product_code = iCode >= 0 ? ((row[iCode] ?? '').trim() || null) : null
+    const rawCat       = iCat  >= 0 ? (row[iCat] ?? '').trim() : ''
+    const product_category = PRODUCT_CATEGORIES.has(rawCat) ? rawCat : null
 
-    const { error } = await admin.from('products').insert({ product_name, unit_price, product_code })
+    const { error } = await admin.from('products').insert({ product_name, unit_price, product_code, product_category })
     if (error) { skipped++; continue }
 
     existingNames.add(normalizedName)
