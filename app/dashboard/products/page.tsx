@@ -132,7 +132,7 @@ export default function ProductsPage() {
       const r = typeof va === 'string' ? va.localeCompare(vb as string) : (va as number) - (vb as number)
       return sortDir === 'asc' ? r : -r
     })
-  }, [products, search, sortCol, sortDir])
+  }, [products, search, categoryFilter, sortCol, sortDir])
 
   // ── Add / Edit Product ──────────────────────────────────────────────────────
 
