@@ -9,9 +9,9 @@ import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
 const supabase = createClient()
 
 const PRODUCT_CATEGORIES = [
-  'Website DIY', 'Website DIFM', 'Email ISP', 'Email Business',
-  'Domain', 'Email Marketing', 'Fax Online', 'Logo DIFM',
-  'Marketing Online', 'SSL', 'Support', 'Pro Serve', 'Other',
+  'Domain', 'Email Business', 'Email ISP', 'Email Marketing',
+  'Fax Online', 'Logo DIFM', 'Marketing Online', 'Other',
+  'Pro Serve', 'SSL', 'Support', 'Website DIFM', 'Website DIY',
 ] as const
 
 type Product = {
@@ -362,6 +362,27 @@ export default function ProductsPage() {
                   readOnly={editingId !== null && !isAdmin}
                 />
               </Field>
+              <Field label="Category">
+                <select
+                  value={form.product_category}
+                  onChange={e => setForm(prev => ({ ...prev, product_category: e.target.value }))}
+                  disabled={editingId !== null && !isAdmin}
+                  className={INPUT}
+                >
+                  <option value="">— None —</option>
+                  {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </Field>
+              <Field label="Product Code">
+                <input
+                  type="text"
+                  value={form.product_code}
+                  onChange={set('product_code')}
+                  placeholder="e.g. ISPEMAIL (optional)"
+                  className={INPUT}
+                  readOnly={editingId !== null && !isAdmin}
+                />
+              </Field>
               <Field label="Unit Price (CAD)">
                 <div className="relative">
                   <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none">$</span>
@@ -377,27 +398,6 @@ export default function ProductsPage() {
                     readOnly={editingId !== null && !isAdmin}
                   />
                 </div>
-              </Field>
-              <Field label="Product Code">
-                <input
-                  type="text"
-                  value={form.product_code}
-                  onChange={set('product_code')}
-                  placeholder="e.g. ISPEMAIL (optional)"
-                  className={INPUT}
-                  readOnly={editingId !== null && !isAdmin}
-                />
-              </Field>
-              <Field label="Product Category">
-                <select
-                  value={form.product_category}
-                  onChange={e => setForm(prev => ({ ...prev, product_category: e.target.value }))}
-                  disabled={editingId !== null && !isAdmin}
-                  className={INPUT}
-                >
-                  <option value="">— None —</option>
-                  {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
               </Field>
               {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
             </div>
