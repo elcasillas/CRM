@@ -180,8 +180,6 @@ function makeDefaultProducts(): ProductRow[] {
   return [
     { id: newId(), category: '', name: '', unitPrice: '0.00', spread: '100.00' },
     { id: newId(), category: '', name: '', unitPrice: '0.00', spread: '0.00'   },
-    { id: newId(), category: '', name: '', unitPrice: '0.00', spread: '0.00'   },
-    { id: newId(), category: '', name: '', unitPrice: '0.00', spread: '0.00'   },
   ]
 }
 
