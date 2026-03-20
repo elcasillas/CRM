@@ -23,7 +23,7 @@ type ProductRow = {
   spread:    string   // C col — entered as %, e.g. "25" = 25%; total must = 100%
 }
 
-type DbProduct = { product_name: string; product_category: string | null }
+type DbProduct = { product_name: string; product_category: string | null; unit_price: number }
 
 type ExchangeRateResult =
   | { status: 'idle' }
@@ -213,7 +213,7 @@ export default function FinancialWorksheetPage() {
   useEffect(() => {
     supabase
       .from('products')
-      .select('product_name, product_category')
+      .select('product_name, product_category, unit_price')
       .order('product_name')
       .then(({ data }) => setDbProducts(data ?? []))
   }, [])
@@ -326,11 +326,21 @@ export default function FinancialWorksheetPage() {
     setProducts(prev => prev.map(p => {
       if (p.id !== id) return p
       if (field === 'category') {
-        // Clear name if it no longer belongs to the new category
+        // Clear name (and unit price) if it no longer belongs to the new category
         const validNames = new Set(
           dbProducts.filter(dp => dp.product_category === value).map(dp => dp.product_name)
         )
-        return { ...p, category: value, name: validNames.has(p.name) ? p.name : '' }
+        const keepName = validNames.has(p.name) ? p.name : ''
+        const unitPrice = keepName
+          ? (dbProducts.find(dp => dp.product_name === keepName)?.unit_price ?? 0).toFixed(2)
+          : '0.00'
+        return { ...p, category: value, name: keepName, unitPrice }
+      }
+      if (field === 'name') {
+        // Auto-populate unit price from the products table
+        const match = dbProducts.find(dp => dp.product_name === value)
+        const unitPrice = value && match ? match.unit_price.toFixed(2) : '0.00'
+        return { ...p, name: value, unitPrice }
       }
       return { ...p, [field]: value }
     }))
@@ -384,11 +394,9 @@ export default function FinancialWorksheetPage() {
         <p className="text-xs text-brand-500 mt-0.5">Adjust fields in the products table and assumptions based on your deal.</p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {/* ── LEFT: Products table ── */}
-        <div className="space-y-3">
-          <div className={`bg-white border rounded-xl shadow-sm overflow-hidden ${spreadValid ? 'border-gray-200' : 'border-red-200'}`}>
+      {/* ── Products or Plans (full width) ── */}
+      <div className="space-y-3">
+        <div className={`bg-white border rounded-xl shadow-sm overflow-x-auto ${spreadValid ? 'border-gray-200' : 'border-red-200'}`}>
 
             {/* Table header row */}
             <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
@@ -560,9 +568,10 @@ export default function FinancialWorksheetPage() {
               <p className="text-xs text-green-700 font-medium">Spread total is 100% — allocation is valid.</p>
             </div>
           )}
-        </div>
+      </div>
 
-        {/* ── RIGHT: Assumptions + Forecast ── */}
+      {/* ── Assumptions + Forecast (2-col below) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-4">
 
           {/* Assumptions */}
@@ -627,6 +636,11 @@ export default function FinancialWorksheetPage() {
             </div>
           </div>
 
+        </div>
+
+        {/* Right column: Revenue Forecast + Exchange Rate */}
+        <div className="space-y-4">
+
           {/* Revenue Forecast */}
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
             <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
@@ -669,6 +683,7 @@ export default function FinancialWorksheetPage() {
           />
         </div>
       </div>
+
     </div>
   )
 }
