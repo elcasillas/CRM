@@ -49,12 +49,13 @@ function formatRelative(ts, referenceDate) {
 // ── Deal calculations (mirrors lib/dealCalc.ts) ───────────────────────────────
 
 /**
- * Strip currency symbols, commas, and whitespace, then parse to a
- * non-negative float. Returns 0 for empty, invalid, or negative input.
+ * Strip currency symbols, commas, whitespace, and alphabetic currency-code
+ * prefixes (e.g. "CAD ", "USD "), then parse to a non-negative float.
+ * Returns 0 for empty, invalid, or negative input.
  */
 function parseAmount(s) {
   if (s == null) return 0
-  const n = parseFloat(String(s).replace(/[$,\s]/g, ''))
+  const n = parseFloat(String(s).replace(/[^0-9.\-]/g, ''))
   return isFinite(n) && n > 0 ? n : 0
 }
 
