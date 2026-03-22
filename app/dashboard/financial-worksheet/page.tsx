@@ -305,6 +305,19 @@ export default function FinancialWorksheetPage() {
     setOtProducts(prev => prev.filter(p => p.id !== id))
   }
 
+  // ── Clear / Reset ──────────────────────────────────────────────────────────
+
+  function clearRecurring() {
+    setProducts(makeDefaultProducts())
+    setUnits('0')
+    setChurnPct('0')
+    setContractTerm('36')
+  }
+
+  function clearOneTime() {
+    setOtProducts(makeDefaultOTProducts())
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
@@ -361,12 +374,21 @@ export default function FinancialWorksheetPage() {
 
               <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
                 <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Products or Plans</h2>
-                <button
-                  onClick={addRow}
-                  className="text-xs font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors"
-                >
-                  <span className="text-base leading-none">+</span> Add Row
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={clearRecurring}
+                    className="text-xs font-medium text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    Clear
+                  </button>
+                  <span className="text-gray-200 select-none">|</span>
+                  <button
+                    onClick={addRow}
+                    className="text-xs font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors"
+                  >
+                    <span className="text-base leading-none">+</span> Add Row
+                  </button>
+                </div>
               </div>
 
               <table className="w-full text-sm">
@@ -605,12 +627,21 @@ export default function FinancialWorksheetPage() {
 
               <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
                 <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Products or Plans</h2>
-                <button
-                  onClick={addOTRow}
-                  className="text-xs font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors"
-                >
-                  <span className="text-base leading-none">+</span> Add Row
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={clearOneTime}
+                    className="text-xs font-medium text-gray-400 hover:text-red-500 transition-colors"
+                  >
+                    Clear
+                  </button>
+                  <span className="text-gray-200 select-none">|</span>
+                  <button
+                    onClick={addOTRow}
+                    className="text-xs font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors"
+                  >
+                    <span className="text-base leading-none">+</span> Add Row
+                  </button>
+                </div>
               </div>
 
               <table className="w-full text-sm">
