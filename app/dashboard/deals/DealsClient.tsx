@@ -609,7 +609,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200 bg-gray-50">
-                  <Th col="owner" label="Deal Owner" /><Th col="deal" label="Deal Name" /><Th col="stage" label="Stage" />
+                  <Th col="deal" label="Deal Name" /><Th col="owner" label="Deal Owner" /><Th col="stage" label="Stage" />
                   <Th col="acv" label="ACV (CAD)" /><Th col="close" label="Close Date" /><Th col="modified" label="Modified Date" />
                   <Th col="days" label="Days Since" /><Th col="health" label="Health" />
                   <th className="px-4 py-3"></th>
@@ -618,7 +618,6 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
               <tbody className="divide-y divide-gray-100">
                 {sorted.map(deal => (
                   <tr key={deal.id} className="hover:bg-brand-50 transition-colors">
-                    <td className="px-4 py-3.5 text-gray-500">{deal.deal_owner?.full_name ?? '—'}</td>
                     <td className="px-4 py-3.5 font-medium text-gray-900 max-w-[220px]">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <button onClick={() => router.push(`/dashboard/deals/${deal.id}?back=${encodeURIComponent(isAllDeals ? '/dashboard/deals/all' : '/dashboard/deals')}`)} title={deal.deal_name} className="truncate text-left hover:text-brand-600 transition-colors">{deal.deal_name}</button>
@@ -634,6 +633,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                         )}
                       </div>
                     </td>
+                    <td className="px-4 py-3.5 text-gray-500">{deal.deal_owner?.full_name ?? '—'}</td>
                     <td className="px-4 py-3.5">
                       <select value={deal.stage_id} onChange={e => changeStage(deal, e.target.value)} className={`text-xs font-medium px-2 py-1 rounded-md border-0 focus:outline-none focus:ring-2 focus:ring-brand-200 cursor-pointer ${stageBadgeClass(deal.deal_stages)}`}>
                         {stages.map(s => <option key={s.id} value={s.id}>{s.stage_name}</option>)}
