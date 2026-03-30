@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { DealWithRelations, DealStage, Account } from '@/lib/types'
@@ -113,5 +114,9 @@ export default async function DealsPage() {
     currentUserRole: currentUserProfile?.role ?? '',
   }
 
-  return <DealsClient initialData={initialData} />
+  return (
+    <Suspense>
+      <DealsClient initialData={initialData} />
+    </Suspense>
+  )
 }

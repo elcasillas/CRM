@@ -1,8 +1,8 @@
 'use client'
 
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { DealStage, DealWithRelations, NoteWithAuthor } from '@/lib/types'
 import type { DealFormData, DealsInitialData, DealPageRow } from './types'
@@ -103,9 +103,17 @@ type UIState = {
   confirmDelete: string | null
 }
 
-const INITIAL_FILTERS: FiltersState = {
-  view: 'table', search: '', filterStage: '', filterOwner: '',
-  filterStale: false, filterOverdue: false, sortCol: '', sortDir: 'asc',
+function filtersFromSearchParams(params: URLSearchParams | ReturnType<typeof useSearchParams>): FiltersState {
+  return {
+    view:          params.get('view') === 'kanban' ? 'kanban' : 'table',
+    search:        params.get('q') ?? '',
+    filterStage:   params.get('stage') ?? '',
+    filterOwner:   params.get('owner') ?? '',
+    filterStale:   params.get('stale') === '1',
+    filterOverdue: params.get('overdue') === '1',
+    sortCol:       params.get('col') ?? '',
+    sortDir:       params.get('dir') === 'desc' ? 'desc' : 'asc',
+  }
 }
 
 const INITIAL_UI: UIState = {
@@ -121,7 +129,8 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
   )
 
   // ── UI state ─────────────────────────────────────────────────────────────────
-  const [filters, setFiltersState] = useState<FiltersState>(INITIAL_FILTERS)
+  const searchParams = useSearchParams()
+  const [filters, setFiltersState] = useState<FiltersState>(() => filtersFromSearchParams(searchParams))
   const [ui, setUIState]           = useState<UIState>(INITIAL_UI)
 
   // Destructure for readable access throughout the component
@@ -151,6 +160,21 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
   }
 
   const router = useRouter()
+
+  // ── Sync filter state → URL query params (replace, not push) ─────────────────
+  useEffect(() => {
+    const p = new URLSearchParams()
+    if (filters.search)        p.set('q',       filters.search)
+    if (filters.filterStage)   p.set('stage',   filters.filterStage)
+    if (filters.filterOwner)   p.set('owner',   filters.filterOwner)
+    if (filters.filterStale)   p.set('stale',   '1')
+    if (filters.filterOverdue) p.set('overdue', '1')
+    if (filters.sortCol)       p.set('col',     filters.sortCol)
+    if (filters.sortDir !== 'asc') p.set('dir', filters.sortDir)
+    if (filters.view !== 'table')  p.set('view', filters.view)
+    const qs = p.toString()
+    router.replace(qs ? `?${qs}` : window.location.pathname, { scroll: false })
+  }, [filters, router])
 
   // ── Add Deal dirty tracking ──────────────────────────────────────────────────
   const addDealInitialRef = useRef<DealFormData | null>(null)
@@ -297,8 +321,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
       setUI('formError', error.message)
     } else {
       forceCloseModal()
-      const backPath = encodeURIComponent(isAllDeals ? '/dashboard/deals/all' : '/dashboard/deals')
-      router.push(`/dashboard/deals/${inserted.id}?back=${backPath}`)
+      router.push(`/dashboard/deals/${inserted.id}?back=${encodeURIComponent(window.location.pathname + window.location.search)}`)
     }
     setUI('saving', false)
   }
@@ -620,7 +643,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                   <tr key={deal.id} className="hover:bg-brand-50 transition-colors">
                     <td className="px-4 py-3.5 font-medium text-gray-900 max-w-[220px]">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <button onClick={() => router.push(`/dashboard/deals/${deal.id}?back=${encodeURIComponent(isAllDeals ? '/dashboard/deals/all' : '/dashboard/deals')}`)} title={deal.deal_name} className="truncate text-left hover:text-brand-600 transition-colors">{deal.deal_name}</button>
+                        <button onClick={() => router.push(`/dashboard/deals/${deal.id}?back=${encodeURIComponent(window.location.pathname + window.location.search)}`)} title={deal.deal_name} className="truncate text-left hover:text-brand-600 transition-colors">{deal.deal_name}</button>
 
                         {(() => {
                           if (!deal.created_at) return false
@@ -724,7 +747,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                           {isAdmin && confirmDelete === deal.id ? (
                             <><span className="text-xs text-gray-400">Delete?</span><button onClick={() => handleDelete(deal.id)} className="text-xs text-red-600 hover:text-red-700 font-medium">Confirm</button><button onClick={() => setUI('confirmDelete', null)} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button></>
                           ) : (
-                            <><button onClick={() => router.push(`/dashboard/deals/${deal.id}?back=${encodeURIComponent(isAllDeals ? '/dashboard/deals/all' : '/dashboard/deals')}`)} className="text-xs text-gray-500 hover:text-gray-700">View</button>{isAdmin && <button onClick={() => setUI('confirmDelete', deal.id)} className="text-xs text-gray-500 hover:text-red-600">Delete</button>}</>
+                            <><button onClick={() => router.push(`/dashboard/deals/${deal.id}?back=${encodeURIComponent(window.location.pathname + window.location.search)}`)} className="text-xs text-gray-500 hover:text-gray-700">View</button>{isAdmin && <button onClick={() => setUI('confirmDelete', deal.id)} className="text-xs text-gray-500 hover:text-red-600">Delete</button>}</>
                           )}
                         </div>
                       </div>

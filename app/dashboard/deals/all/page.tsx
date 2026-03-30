@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { DealWithRelations, DealStage, Account } from '@/lib/types'
@@ -111,5 +112,9 @@ export default async function AllDealsPage() {
     isAllDeals:      true,
   }
 
-  return <DealsClient initialData={initialData} />
+  return (
+    <Suspense>
+      <DealsClient initialData={initialData} />
+    </Suspense>
+  )
 }
