@@ -187,8 +187,8 @@ export async function POST(req: Request) {
       }
 
       partnerId = newPartner.id
-      if (partnerCode) partnerByCode.set(partnerCode.toLowerCase(), partnerId)
-      partnerByName.set(normalise(partnerName), partnerId)
+      if (partnerCode) partnerByCode.set(partnerCode.toLowerCase(), partnerId!)
+      partnerByName.set(normalise(partnerName), partnerId!)
       importedCount++
     } else {
       // Upsert partner metadata from CSV
