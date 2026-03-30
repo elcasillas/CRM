@@ -200,6 +200,8 @@ export async function POST(req: Request) {
       updatedCount++
     }
 
+    if (!partnerId) { skippedCount++; continue }
+
     processedPartnerIds.add(partnerId)
 
     // Build metric rows for this partner-month
