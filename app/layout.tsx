@@ -2,8 +2,11 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'CRM',
+  title: 'Hostopia | CRM',
   description: 'AI-powered Customer Relationship Management',
+  icons: {
+    icon: '/favicon.ico',
+  },
 }
 
 export default function RootLayout({
