@@ -25,6 +25,15 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
+function ViewField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">{label}</p>
+      <div className="text-sm text-gray-900">{children}</div>
+    </div>
+  )
+}
+
 function fmtCurrency(v: number | null | undefined): string {
   if (v == null || isNaN(Number(v))) return '—'
   const n = Number(v)
@@ -124,6 +133,7 @@ export default function DealDetailPage() {
   const [userId,         setUserId]         = useState('')
 
   // Edit form
+  const [isEditing, setIsEditing] = useState(false)
   const [form,      setFormState] = useState<FormData | null>(null)
   const [saving,    setSaving]    = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -225,8 +235,15 @@ export default function DealDetailPage() {
 
   const canViewAI = isAdmin || isSalesManager
 
-  const isDirty = formIsDirty(form, initialFormRef.current)
+  const isDirty = isEditing && formIsDirty(form, initialFormRef.current)
   useBeforeUnload(isDirty)
+
+  function cancelEditing() {
+    // Reset form to the last-saved deal values
+    setFormState(initialFormRef.current)
+    setIsEditing(false)
+    setSaveError(null)
+  }
 
   // ── Deal Details Modal ───────────────────────────────────────────────────────
 
@@ -317,6 +334,7 @@ export default function DealDetailPage() {
       }
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
+      setIsEditing(false)
       await fetchDeal()
     }
     setSaving(false)
@@ -415,8 +433,29 @@ export default function DealDetailPage() {
       </div>
 
       {/* Deal Fields */}
-      <div className="space-y-4">
-          <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 space-y-4">
+      <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6">
+
+        {/* Card header */}
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-sm font-semibold text-gray-700">Deal Information</h2>
+          {!isEditing && (
+            <button
+              onClick={() => setIsEditing(true)}
+              title="Edit deal"
+              className="text-gray-400 hover:text-brand-600 transition-colors p-1 rounded-md hover:bg-brand-50"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                <path d="M5.433 13.917l1.262-3.155A4 4 0 017.58 9.42l6.92-6.918a2.121 2.121 0 013 3l-6.92 6.918c-.383.383-.84.685-1.343.886l-3.154 1.262a.5.5 0 01-.65-.65z" />
+                <path d="M3.5 5.75c0-.69.56-1.25 1.25-1.25H10A.75.75 0 0010 3H4.75A2.75 2.75 0 002 5.75v9.5A2.75 2.75 0 004.75 18h9.5A2.75 2.75 0 0017 15.25V10a.75.75 0 00-1.5 0v5.25c0 .69-.56 1.25-1.25 1.25h-9.5c-.69 0-1.25-.56-1.25-1.25v-9.5z" />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {isEditing ? (
+
+          /* ── Edit mode ─────────────────────────────────────────────────────── */
+          <div className="space-y-4">
             <Field label="Deal Name">
               <input type="text" value={form.deal_name} onChange={e => setFormState(f => f && ({ ...f, deal_name: e.target.value }))} className={INPUT} />
             </Field>
@@ -461,7 +500,7 @@ export default function DealDetailPage() {
             </Field>
 
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Amount">
+              <Field label="Amount (monthly)">
                 <div className="relative">
                   <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none">$</span>
                   <input type="text" value={form.amount} onChange={e => setFormState(f => f && ({ ...f, amount: e.target.value }))} placeholder="0" className={`${INPUT} pl-6`} />
@@ -520,19 +559,111 @@ export default function DealDetailPage() {
               <textarea value={form.deal_description} onChange={e => setFormState(f => f && ({ ...f, deal_description: e.target.value }))} rows={3} placeholder="Optional description…" className={`${INPUT} resize-none`} />
             </Field>
 
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
               <button
                 onClick={saveDeal}
                 disabled={saving || !form.deal_name.trim() || !form.stage_id}
                 className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
               >
-                {saving ? 'Saving…' : 'Save Changes'}
+                {saving ? 'Saving…' : 'Save'}
               </button>
-              {saved && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
+              <button
+                onClick={cancelEditing}
+                disabled={saving}
+                className="text-sm text-gray-500 hover:text-gray-700 font-medium px-4 py-2 rounded-lg border border-gray-300 hover:border-gray-400 transition-colors"
+              >
+                Cancel
+              </button>
+              {saved    && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
               {saveError && <span className="text-sm text-red-600">{saveError}</span>}
             </div>
           </div>
-        </div>
+
+        ) : (
+
+          /* ── View mode ─────────────────────────────────────────────────────── */
+          <div className="space-y-4">
+            <ViewField label="Deal Name">
+              <span className="font-medium text-gray-900">{deal.deal_name}</span>
+            </ViewField>
+
+            <ViewField label="Account">
+              {deal.accounts ? (
+                <div className="flex items-center gap-2">
+                  <span>{deal.accounts.account_name}</span>
+                  {deal.account_id && (
+                    <Link href={`/dashboard/accounts/${deal.account_id}`} target="_blank" rel="noopener noreferrer" title="Open account" className="text-gray-400 hover:text-brand-600 transition-colors">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0112.75 17h-8.5A2.25 2.25 0 012 14.75v-8.5A2.25 2.25 0 014.25 4h5a.75.75 0 010 1.5h-5z" clipRule="evenodd" /><path fillRule="evenodd" d="M6.194 12.753a.75.75 0 001.06.053L16.5 4.44v2.81a.75.75 0 001.5 0v-4.5a.75.75 0 00-.75-.75h-4.5a.75.75 0 000 1.5h2.553l-9.056 8.194a.75.75 0 00-.053 1.06z" clipRule="evenodd" /></svg>
+                    </Link>
+                  )}
+                </div>
+              ) : <span className="text-gray-400">—</span>}
+            </ViewField>
+
+            <div className="grid grid-cols-2 gap-4">
+              <ViewField label="Stage">
+                {deal.deal_stages
+                  ? <span className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-md ${stageBadgeClass(deal.deal_stages)}`}>{deal.deal_stages.stage_name}</span>
+                  : <span className="text-gray-400">—</span>}
+              </ViewField>
+              <ViewField label="Deal Owner">
+                <span>{deal.deal_owner?.full_name ?? <span className="text-gray-400">—</span>}</span>
+              </ViewField>
+            </div>
+
+            <ViewField label="Solutions Engineer">
+              <span>{deal.solutions_engineer?.full_name ?? <span className="text-gray-400">—</span>}</span>
+            </ViewField>
+
+            <div className="grid grid-cols-2 gap-4">
+              <ViewField label="Amount (monthly)">
+                <span className="font-medium">
+                  {deal.amount != null
+                    ? `$${Number(deal.amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+                    : <span className="text-gray-400">—</span>}
+                </span>
+              </ViewField>
+              <ViewField label="Currency">
+                <span>{deal.currency || <span className="text-gray-400">—</span>}</span>
+              </ViewField>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <ViewField label="Contract Term">
+                <span>{deal.contract_term_months != null ? `${deal.contract_term_months} months` : <span className="text-gray-400">—</span>}</span>
+              </ViewField>
+              <ViewField label="Close Date">
+                <span>{fmtDate(deal.close_date)}</span>
+              </ViewField>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <ViewField label="ACV">
+                <span className="font-medium">{fmtCurrency(deal.value_amount)}</span>
+              </ViewField>
+              <ViewField label="Total Contract Value">
+                <span className="font-medium">{fmtCurrency(deal.total_contract_value)}</span>
+              </ViewField>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <ViewField label="Region">
+                <span>{deal.region ?? <span className="text-gray-400">—</span>}</span>
+              </ViewField>
+              <ViewField label="Type of Deal">
+                <span>{deal.deal_type ?? <span className="text-gray-400">—</span>}</span>
+              </ViewField>
+            </div>
+
+            {deal.deal_description && (
+              <ViewField label="Description">
+                <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{deal.deal_description}</p>
+              </ViewField>
+            )}
+          </div>
+
+        )}
+      </div>
 
       {/* Notes */}
       <div className="mt-6 bg-white border border-gray-200 rounded-xl shadow-sm p-6">
