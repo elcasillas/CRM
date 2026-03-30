@@ -11,7 +11,7 @@ export type UserRole =
   | 'service_manager'
   | 'read_only'
 
-export type NoteEntityType = 'account' | 'deal' | 'contact' | 'contract' | 'hid' | 'partner'
+export type NoteEntityType = 'account' | 'deal' | 'contact' | 'contract' | 'hid'
 
 // ── Table row types (generated aliases) ──────────────────────────────────────
 // Replace manual interface declarations — regenerate with `npm run gen-types`.

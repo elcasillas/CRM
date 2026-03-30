@@ -9,7 +9,6 @@ const BASE_ITEMS: NavItem[] = [
   { href: '/dashboard',              label: 'Overview',  exact: true },
   { href: '/dashboard/accounts',     label: 'Accounts' },
   { href: '/dashboard/products',     label: 'Products' },
-  { href: '/dashboard/partners',     label: 'AHI' },
   { href: '/dashboard/deals',                 label: 'Deals',      exact: true },
   { href: '/dashboard/deals/all',             label: 'All Deals',  exact: true },
   { href: '/dashboard/financial-worksheet',   label: 'Worksheet',  exact: true },
@@ -18,7 +17,6 @@ const BASE_ITEMS: NavItem[] = [
 const ADMIN_ITEMS: NavItem[] = [
   { href: '/dashboard/admin/users',           label: 'Users' },
   { href: '/dashboard/admin/health-scoring',  label: 'Settings' },
-  { href: '/dashboard/admin/partner-health',  label: 'Partner Health' },
 ]
 
 const ACTIVE  = 'text-sm text-brand-700 bg-brand-50 font-medium px-3 py-1.5 rounded-lg'
