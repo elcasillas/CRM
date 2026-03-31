@@ -529,37 +529,6 @@ export default function DealDetailPage() {
               </Field>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Currency">
-                <select value={form.currency} onChange={e => setFormState(f => f && ({ ...f, currency: e.target.value }))} className={INPUT}>
-                  <option value="USD">USD</option>
-                  <option value="CAD">CAD</option>
-                  <option value="EUR">EUR</option>
-                  <option value="GBP">GBP</option>
-                  <option value="MXN">MXN</option>
-                </select>
-              </Field>
-              <Field label="Term (months)">
-                <input type="number" min="1" step="1" value={form.contract_term_months} onChange={e => setFormState(f => f && ({ ...f, contract_term_months: e.target.value }))} placeholder="" className={INPUT} />
-              </Field>
-            </div>
-
-            <Field label="MRR Amount">
-              <div className="relative">
-                <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none">$</span>
-                <input type="text" value={form.amount} onChange={e => setFormState(f => f && ({ ...f, amount: e.target.value }))} placeholder="0" className={`${INPUT} pl-6`} />
-              </div>
-            </Field>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Annual Contract Value (auto)">
-                <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount ? (fmtCurrency(calcACV(form.amount, form.contract_term_months))) : '—'}</p>
-              </Field>
-              <Field label="Total Contract Value (auto)">
-                <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount && form.contract_term_months ? (fmtCurrency(calcTCV(form.amount, form.contract_term_months))) : '—'}</p>
-              </Field>
-            </div>
-
             <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
               <button
                 onClick={saveDeal}
@@ -636,34 +605,76 @@ export default function DealDetailPage() {
               </ViewField>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <ViewField label="Currency">
-                <span>{deal.currency || <span className="text-gray-400">—</span>}</span>
-              </ViewField>
-              <ViewField label="Term">
-                <span>{deal.contract_term_months != null ? `${deal.contract_term_months} months` : <span className="text-gray-400">—</span>}</span>
-              </ViewField>
-            </div>
-
-            <ViewField label="MRR Amount">
-              <span className="font-medium">
-                {deal.amount != null
-                  ? `$${Number(deal.amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
-                  : <span className="text-gray-400">—</span>}
-              </span>
-            </ViewField>
-
-            <div className="grid grid-cols-2 gap-4">
-              <ViewField label="Annual Contract Value">
-                <span className="font-medium">{fmtCurrency(deal.value_amount)}</span>
-              </ViewField>
-              <ViewField label="Total Contract Value">
-                <span className="font-medium">{fmtCurrency(deal.total_contract_value)}</span>
-              </ViewField>
-            </div>
           </div>
 
         )}
+        </div>
+      </div>
+
+      {/* Revenue */}
+      <div className="mt-6 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="flex items-center px-6 py-4 bg-brand-700 rounded-t-xl">
+          <h2 className="font-semibold text-white">Revenue</h2>
+        </div>
+        <div className="px-6 py-5">
+          {isEditing ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Currency">
+                  <select value={form.currency} onChange={e => setFormState(f => f && ({ ...f, currency: e.target.value }))} className={INPUT}>
+                    <option value="USD">USD</option>
+                    <option value="CAD">CAD</option>
+                    <option value="EUR">EUR</option>
+                    <option value="GBP">GBP</option>
+                    <option value="MXN">MXN</option>
+                  </select>
+                </Field>
+                <Field label="Term (months)">
+                  <input type="number" min="1" step="1" value={form.contract_term_months} onChange={e => setFormState(f => f && ({ ...f, contract_term_months: e.target.value }))} placeholder="" className={INPUT} />
+                </Field>
+              </div>
+              <Field label="MRR Amount">
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none">$</span>
+                  <input type="text" value={form.amount} onChange={e => setFormState(f => f && ({ ...f, amount: e.target.value }))} placeholder="0" className={`${INPUT} pl-6`} />
+                </div>
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Annual Contract Value (auto)">
+                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount ? (fmtCurrency(calcACV(form.amount, form.contract_term_months))) : '—'}</p>
+                </Field>
+                <Field label="Total Contract Value (auto)">
+                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount && form.contract_term_months ? (fmtCurrency(calcTCV(form.amount, form.contract_term_months))) : '—'}</p>
+                </Field>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <ViewField label="Currency">
+                  <span>{deal.currency || <span className="text-gray-400">—</span>}</span>
+                </ViewField>
+                <ViewField label="Term">
+                  <span>{deal.contract_term_months != null ? `${deal.contract_term_months} months` : <span className="text-gray-400">—</span>}</span>
+                </ViewField>
+              </div>
+              <ViewField label="MRR Amount">
+                <span className="font-medium">
+                  {deal.amount != null
+                    ? `$${Number(deal.amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+                    : <span className="text-gray-400">—</span>}
+                </span>
+              </ViewField>
+              <div className="grid grid-cols-2 gap-4">
+                <ViewField label="Annual Contract Value">
+                  <span className="font-medium">{fmtCurrency(deal.value_amount)}</span>
+                </ViewField>
+                <ViewField label="Total Contract Value">
+                  <span className="font-medium">{fmtCurrency(deal.total_contract_value)}</span>
+                </ViewField>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
