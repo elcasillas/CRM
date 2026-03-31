@@ -456,10 +456,6 @@ export default function DealDetailPage() {
 
           /* ── Edit mode ─────────────────────────────────────────────────────── */
           <div className="space-y-4">
-            <Field label="Deal Name">
-              <input type="text" value={form.deal_name} onChange={e => setFormState(f => f && ({ ...f, deal_name: e.target.value }))} className={INPUT} />
-            </Field>
-
             <Field label="Account">
               <div className="flex items-center gap-2">
                 <select value={form.account_id} onChange={e => setFormState(f => f && ({ ...f, account_id: e.target.value }))} className={`${INPUT} flex-1`}>
@@ -474,11 +470,39 @@ export default function DealDetailPage() {
               </div>
             </Field>
 
+            <Field label="Deal Name">
+              <input type="text" value={form.deal_name} onChange={e => setFormState(f => f && ({ ...f, deal_name: e.target.value }))} className={INPUT} />
+            </Field>
+
+            <Field label="Description">
+              <textarea value={form.deal_description} onChange={e => setFormState(f => f && ({ ...f, deal_description: e.target.value }))} rows={3} placeholder="Optional description…" className={`${INPUT} resize-none`} />
+            </Field>
+
             <div className="grid grid-cols-2 gap-4">
+              <Field label="Region">
+                <select value={form.region} onChange={e => setFormState(f => f && ({ ...f, region: e.target.value }))} className={INPUT}>
+                  <option value="">— none —</option>
+                  <option value="North America">North America</option>
+                  <option value="Europe/Asia/Pacific/Africa">Europe/Asia/Pacific/Africa</option>
+                  <option value="Latin America/Caribbean">Latin America/Caribbean</option>
+                </select>
+              </Field>
               <Field label="Stage">
                 <select value={form.stage_id} onChange={e => setFormState(f => f && ({ ...f, stage_id: e.target.value }))} className={INPUT}>
                   <option value="">— select —</option>
                   {stages.map(s => <option key={s.id} value={s.id}>{s.stage_name}</option>)}
+                </select>
+              </Field>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Type of Deal">
+                <select value={form.deal_type} onChange={e => setFormState(f => f && ({ ...f, deal_type: e.target.value }))} className={INPUT}>
+                  <option value="">— none —</option>
+                  <option value="Migration">Migration</option>
+                  <option value="Organic One-Time">Organic One-Time</option>
+                  <option value="Organic Recurring">Organic Recurring</option>
+                  <option value="Pro Services">Pro Services</option>
                 </select>
               </Field>
               <Field label="Deal Owner">
@@ -500,12 +524,6 @@ export default function DealDetailPage() {
             </Field>
 
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Amount (monthly)">
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none">$</span>
-                  <input type="text" value={form.amount} onChange={e => setFormState(f => f && ({ ...f, amount: e.target.value }))} placeholder="0" className={`${INPUT} pl-6`} />
-                </div>
-              </Field>
               <Field label="Currency">
                 <select value={form.currency} onChange={e => setFormState(f => f && ({ ...f, currency: e.target.value }))} className={INPUT}>
                   <option value="USD">USD</option>
@@ -515,14 +533,20 @@ export default function DealDetailPage() {
                   <option value="MXN">MXN</option>
                 </select>
               </Field>
+              <Field label="Term (months)">
+                <input type="number" min="1" step="1" value={form.contract_term_months} onChange={e => setFormState(f => f && ({ ...f, contract_term_months: e.target.value }))} placeholder="" className={INPUT} />
+              </Field>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <Field label="Contract Term (months)">
-                <input type="number" min="1" step="1" value={form.contract_term_months} onChange={e => setFormState(f => f && ({ ...f, contract_term_months: e.target.value }))} placeholder="" className={INPUT} />
-              </Field>
               <Field label="Close Date">
                 <input type="date" value={form.close_date} onChange={e => setFormState(f => f && ({ ...f, close_date: e.target.value }))} className={INPUT} />
+              </Field>
+              <Field label="Amount (Monthly)">
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none">$</span>
+                  <input type="text" value={form.amount} onChange={e => setFormState(f => f && ({ ...f, amount: e.target.value }))} placeholder="0" className={`${INPUT} pl-6`} />
+                </div>
               </Field>
             </div>
 
@@ -534,30 +558,6 @@ export default function DealDetailPage() {
                 <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount && form.contract_term_months ? (fmtCurrency(calcTCV(form.amount, form.contract_term_months))) : '—'}</p>
               </Field>
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Region">
-                <select value={form.region} onChange={e => setFormState(f => f && ({ ...f, region: e.target.value }))} className={INPUT}>
-                  <option value="">— none —</option>
-                  <option value="North America">North America</option>
-                  <option value="Europe/Asia/Pacific/Africa">Europe/Asia/Pacific/Africa</option>
-                  <option value="Latin America/Caribbean">Latin America/Caribbean</option>
-                </select>
-              </Field>
-              <Field label="Type of Deal">
-                <select value={form.deal_type} onChange={e => setFormState(f => f && ({ ...f, deal_type: e.target.value }))} className={INPUT}>
-                  <option value="">— none —</option>
-                  <option value="Migration">Migration</option>
-                  <option value="Organic One-Time">Organic One-Time</option>
-                  <option value="Organic Recurring">Organic Recurring</option>
-                  <option value="Pro Services">Pro Services</option>
-                </select>
-              </Field>
-            </div>
-
-            <Field label="Description">
-              <textarea value={form.deal_description} onChange={e => setFormState(f => f && ({ ...f, deal_description: e.target.value }))} rows={3} placeholder="Optional description…" className={`${INPUT} resize-none`} />
-            </Field>
 
             <div className="flex items-center gap-3 pt-2 border-t border-gray-100">
               <button
@@ -583,10 +583,6 @@ export default function DealDetailPage() {
 
           /* ── View mode ─────────────────────────────────────────────────────── */
           <div className="space-y-4">
-            <ViewField label="Deal Name">
-              <span className="font-medium text-gray-900">{deal.deal_name}</span>
-            </ViewField>
-
             <ViewField label="Account">
               {deal.accounts ? (
                 <div className="flex items-center gap-2">
@@ -600,11 +596,30 @@ export default function DealDetailPage() {
               ) : <span className="text-gray-400">—</span>}
             </ViewField>
 
+            <ViewField label="Deal Name">
+              <span className="font-medium text-gray-900">{deal.deal_name}</span>
+            </ViewField>
+
+            {deal.deal_description && (
+              <ViewField label="Description">
+                <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{deal.deal_description}</p>
+              </ViewField>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
+              <ViewField label="Region">
+                <span>{deal.region ?? <span className="text-gray-400">—</span>}</span>
+              </ViewField>
               <ViewField label="Stage">
                 {deal.deal_stages
                   ? <span className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-md ${stageBadgeClass(deal.deal_stages)}`}>{deal.deal_stages.stage_name}</span>
                   : <span className="text-gray-400">—</span>}
+              </ViewField>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <ViewField label="Type of Deal">
+                <span>{deal.deal_type ?? <span className="text-gray-400">—</span>}</span>
               </ViewField>
               <ViewField label="Deal Owner">
                 <span>{deal.deal_owner?.full_name ?? <span className="text-gray-400">—</span>}</span>
@@ -616,24 +631,24 @@ export default function DealDetailPage() {
             </ViewField>
 
             <div className="grid grid-cols-2 gap-4">
-              <ViewField label="Amount (monthly)">
+              <ViewField label="Currency">
+                <span>{deal.currency || <span className="text-gray-400">—</span>}</span>
+              </ViewField>
+              <ViewField label="Term">
+                <span>{deal.contract_term_months != null ? `${deal.contract_term_months} months` : <span className="text-gray-400">—</span>}</span>
+              </ViewField>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <ViewField label="Close Date">
+                <span>{fmtDate(deal.close_date)}</span>
+              </ViewField>
+              <ViewField label="Amount (Monthly)">
                 <span className="font-medium">
                   {deal.amount != null
                     ? `$${Number(deal.amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
                     : <span className="text-gray-400">—</span>}
                 </span>
-              </ViewField>
-              <ViewField label="Currency">
-                <span>{deal.currency || <span className="text-gray-400">—</span>}</span>
-              </ViewField>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <ViewField label="Contract Term">
-                <span>{deal.contract_term_months != null ? `${deal.contract_term_months} months` : <span className="text-gray-400">—</span>}</span>
-              </ViewField>
-              <ViewField label="Close Date">
-                <span>{fmtDate(deal.close_date)}</span>
               </ViewField>
             </div>
 
@@ -645,21 +660,6 @@ export default function DealDetailPage() {
                 <span className="font-medium">{fmtCurrency(deal.total_contract_value)}</span>
               </ViewField>
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <ViewField label="Region">
-                <span>{deal.region ?? <span className="text-gray-400">—</span>}</span>
-              </ViewField>
-              <ViewField label="Type of Deal">
-                <span>{deal.deal_type ?? <span className="text-gray-400">—</span>}</span>
-              </ViewField>
-            </div>
-
-            {deal.deal_description && (
-              <ViewField label="Description">
-                <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{deal.deal_description}</p>
-              </ViewField>
-            )}
           </div>
 
         )}
