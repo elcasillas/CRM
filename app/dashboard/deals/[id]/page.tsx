@@ -437,7 +437,7 @@ export default function DealDetailPage() {
       <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
 
         {/* Card header — matches Account Modal style */}
-        <div className="flex items-center justify-between px-6 py-3 bg-brand-700 rounded-t-xl">
+        <div className="flex items-center justify-between px-6 py-3 bg-[#00ADB1] rounded-t-xl">
           <h2 className="font-semibold text-white">Deal Information</h2>
           {!isEditing && (
             <button
@@ -613,7 +613,7 @@ export default function DealDetailPage() {
 
       {/* Revenue */}
       <div className="mt-6 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="flex items-center px-6 py-3 bg-brand-700 rounded-t-xl">
+        <div className="flex items-center px-6 py-3 bg-[#00ADB1] rounded-t-xl">
           <h2 className="font-semibold text-white">Revenue</h2>
         </div>
         <div className="px-6 py-5">
