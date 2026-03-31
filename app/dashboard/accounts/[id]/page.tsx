@@ -173,6 +173,7 @@ export default function AccountDetailPage() {
 
   // account edit
   const [accountModal,    setAccountModal]    = useState(false)
+  const [accountViewMode, setAccountViewMode] = useState<'view' | 'edit'>('view')
   const [accountForm,     setAccountForm]     = useState<AccountForm>({ account_name: '', account_website: '', address_line1: '', address_line2: '', city: '', region: '', postal: '', country: '', status: 'active', account_owner_id: '', service_manager_id: '' })
   const [accountSaving,   setAccountSaving]   = useState(false)
   const [accountFormError, setAccountFormError] = useState<string | null>(null)
@@ -298,10 +299,26 @@ export default function AccountDetailPage() {
     setAccountForm(af)
     setAccountFormError(null)
     setAccountModal(true)
+    setAccountViewMode('view')
     modalInitialRef.current = JSON.stringify(af)
   }
 
-  function closeAccountModal() { guardedClose(JSON.stringify(accountForm), () => { setAccountModal(false); setAccountFormError(null) }) }
+  function closeAccountModal() {
+    if (accountViewMode === 'edit') {
+      guardedClose(JSON.stringify(accountForm), () => { setAccountModal(false); setAccountFormError(null); setAccountViewMode('view') })
+    } else {
+      setAccountModal(false)
+      setAccountFormError(null)
+    }
+  }
+
+  function cancelAccountEdit() {
+    guardedClose(JSON.stringify(accountForm), () => {
+      if (modalInitialRef.current) setAccountForm(JSON.parse(modalInitialRef.current) as AccountForm)
+      setAccountViewMode('view')
+      setAccountFormError(null)
+    })
+  }
 
   async function saveAccount() {
     if (!accountForm.account_name.trim()) { setAccountFormError('Account name is required'); return }
@@ -320,10 +337,12 @@ export default function AccountDetailPage() {
       service_manager_id: accountForm.service_manager_id      || null,
     }
     const { error } = await supabase.from('accounts').update(payload).eq('id', id)
-    if (error) { setAccountFormError(error.message) } else {
+    if (error) {
+      setAccountFormError(error.message)
+    } else {
       await fetchAccount()
       modalInitialRef.current = JSON.stringify(accountForm)
-      closeAccountModal()
+      setAccountViewMode('view')
     }
     setAccountSaving(false)
   }
@@ -877,58 +896,147 @@ export default function AccountDetailPage() {
 
       {/* Account edit modal */}
       {accountModal && (
-        <Modal
-          title="Edit Account"
-          maxWidth="max-w-2xl"
-          onClose={closeAccountModal} onSave={saveAccount}
-          saving={accountSaving} disabled={!accountForm.account_name.trim()} error={accountFormError}
-        >
-          <Field label="Account name *">
-            <input type="text" value={accountForm.account_name} onChange={e => setAccountForm(f => ({ ...f, account_name: e.target.value }))} className={INPUT} autoFocus />
-          </Field>
-          <Field label="Website">
-            <input type="url" value={accountForm.account_website} onChange={e => setAccountForm(f => ({ ...f, account_website: e.target.value }))} placeholder="https://" className={INPUT} />
-          </Field>
-          <Field label="Address line 1">
-            <input type="text" value={accountForm.address_line1} onChange={e => setAccountForm(f => ({ ...f, address_line1: e.target.value }))} className={INPUT} />
-          </Field>
-          <Field label="Address line 2">
-            <input type="text" value={accountForm.address_line2} onChange={e => setAccountForm(f => ({ ...f, address_line2: e.target.value }))} className={INPUT} />
-          </Field>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="City"><input type="text" value={accountForm.city} onChange={e => setAccountForm(f => ({ ...f, city: e.target.value }))} className={INPUT} /></Field>
-            <Field label="Region / State"><input type="text" value={accountForm.region} onChange={e => setAccountForm(f => ({ ...f, region: e.target.value }))} className={INPUT} /></Field>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-2xl">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
+              <h3 className="font-semibold text-white truncate">
+                {accountViewMode === 'view' ? account?.account_name : 'Edit Account'}
+              </h3>
+              <div className="flex items-center gap-3 ml-4 shrink-0">
+                {accountViewMode === 'view' && (
+                  <button
+                    onClick={() => setAccountViewMode('edit')}
+                    title="Edit account"
+                    className="text-white/70 hover:text-white transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                      <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+                    </svg>
+                  </button>
+                )}
+                <button onClick={closeAccountModal} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
+              </div>
+            </div>
+
+            {/* Body — read-only view */}
+            {accountViewMode === 'view' && account && (
+              <div className="px-6 py-5 max-h-[65vh] overflow-y-auto">
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                  <div>
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Status</p>
+                    <p className="mt-0.5">
+                      <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${STATUS_CLASSES[account.status] ?? 'bg-gray-100 text-gray-600'}`}>
+                        {account.status.charAt(0).toUpperCase() + account.status.slice(1)}
+                      </span>
+                    </p>
+                  </div>
+                  {account.account_website && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Website</p>
+                      <p className="text-sm mt-0.5">
+                        <a href={account.account_website} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:text-brand-700 break-all">
+                          {account.account_website.replace(/^https?:\/\//, '')}
+                        </a>
+                      </p>
+                    </div>
+                  )}
+                  {account.account_owner?.full_name && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Account Owner</p>
+                      <p className="text-sm text-gray-900 mt-0.5">{account.account_owner.full_name}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Service Manager</p>
+                    <p className="text-sm text-gray-900 mt-0.5">{account.service_manager?.full_name ?? '—'}</p>
+                  </div>
+                  {(account.address_line1 || account.city || account.country) && (
+                    <div className="col-span-2">
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Address</p>
+                      <div className="text-sm text-gray-900 mt-0.5 space-y-0.5">
+                        {account.address_line1 && <p>{account.address_line1}</p>}
+                        {account.address_line2 && <p>{account.address_line2}</p>}
+                        {(account.city || account.region || account.postal) && (
+                          <p>{[account.city, account.region, account.postal].filter(Boolean).join(', ')}</p>
+                        )}
+                        {account.country && <p>{account.country}</p>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Body — edit form */}
+            {accountViewMode === 'edit' && (
+              <div className="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto">
+                <Field label="Account name *">
+                  <input type="text" value={accountForm.account_name} onChange={e => setAccountForm(f => ({ ...f, account_name: e.target.value }))} className={INPUT} autoFocus />
+                </Field>
+                <Field label="Website">
+                  <input type="url" value={accountForm.account_website} onChange={e => setAccountForm(f => ({ ...f, account_website: e.target.value }))} placeholder="https://" className={INPUT} />
+                </Field>
+                <Field label="Address line 1">
+                  <input type="text" value={accountForm.address_line1} onChange={e => setAccountForm(f => ({ ...f, address_line1: e.target.value }))} className={INPUT} />
+                </Field>
+                <Field label="Address line 2">
+                  <input type="text" value={accountForm.address_line2} onChange={e => setAccountForm(f => ({ ...f, address_line2: e.target.value }))} className={INPUT} />
+                </Field>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="City"><input type="text" value={accountForm.city} onChange={e => setAccountForm(f => ({ ...f, city: e.target.value }))} className={INPUT} /></Field>
+                  <Field label="Region / State"><input type="text" value={accountForm.region} onChange={e => setAccountForm(f => ({ ...f, region: e.target.value }))} className={INPUT} /></Field>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <Field label="Postal code"><input type="text" value={accountForm.postal} onChange={e => setAccountForm(f => ({ ...f, postal: e.target.value }))} className={INPUT} /></Field>
+                  <Field label="Country"><input type="text" value={accountForm.country} onChange={e => setAccountForm(f => ({ ...f, country: e.target.value }))} className={INPUT} /></Field>
+                </div>
+                <Field label="Status">
+                  <select value={accountForm.status} onChange={e => setAccountForm(f => ({ ...f, status: e.target.value }))} className={INPUT}>
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="churned">Churned</option>
+                  </select>
+                </Field>
+                {isAdmin && (
+                  <Field label="Account owner">
+                    <select value={accountForm.account_owner_id} onChange={e => setAccountForm(f => ({ ...f, account_owner_id: e.target.value }))} className={INPUT}>
+                      <option value="">— none —</option>
+                      {profiles.filter(p => p.role === 'sales' || p.role === 'sales_manager' || p.role === 'admin').map(p => (
+                        <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
+                      ))}
+                    </select>
+                  </Field>
+                )}
+                <Field label="Service manager">
+                  <select value={accountForm.service_manager_id} onChange={e => setAccountForm(f => ({ ...f, service_manager_id: e.target.value }))} className={INPUT}>
+                    <option value="">— none —</option>
+                    {profiles.map(p => (
+                      <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
+                    ))}
+                  </select>
+                </Field>
+                {accountFormError && <p className="text-red-600 text-sm font-medium">{accountFormError}</p>}
+              </div>
+            )}
+
+            {/* Footer — only in edit mode */}
+            {accountViewMode === 'edit' && (
+              <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                <button onClick={cancelAccountEdit} className="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
+                <button
+                  onClick={saveAccount}
+                  disabled={accountSaving || !accountForm.account_name.trim()}
+                  className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                >
+                  {accountSaving ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            )}
+
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Postal code"><input type="text" value={accountForm.postal} onChange={e => setAccountForm(f => ({ ...f, postal: e.target.value }))} className={INPUT} /></Field>
-            <Field label="Country"><input type="text" value={accountForm.country} onChange={e => setAccountForm(f => ({ ...f, country: e.target.value }))} className={INPUT} /></Field>
-          </div>
-          <Field label="Status">
-            <select value={accountForm.status} onChange={e => setAccountForm(f => ({ ...f, status: e.target.value }))} className={INPUT}>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="churned">Churned</option>
-            </select>
-          </Field>
-          {isAdmin && (
-            <Field label="Account owner">
-              <select value={accountForm.account_owner_id} onChange={e => setAccountForm(f => ({ ...f, account_owner_id: e.target.value }))} className={INPUT}>
-                <option value="">— none —</option>
-                {profiles.filter(p => p.role === 'sales' || p.role === 'sales_manager' || p.role === 'admin').map(p => (
-                  <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
-                ))}
-              </select>
-            </Field>
-          )}
-          <Field label="Service manager">
-            <select value={accountForm.service_manager_id} onChange={e => setAccountForm(f => ({ ...f, service_manager_id: e.target.value }))} className={INPUT}>
-              <option value="">— none —</option>
-              {profiles.map(p => (
-                <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
-              ))}
-            </select>
-          </Field>
-        </Modal>
+        </div>
       )}
 
       {/* Contact modal */}
