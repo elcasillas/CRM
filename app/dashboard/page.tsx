@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { DealStage, DealWithRelations } from '@/lib/types'
 import { StatCard }          from '@/components/dashboard/stat-card'
 import { DealsByStage }      from '@/components/dashboard/deals-by-stage'
+import { FunnelChart }       from '@/components/dashboard/funnel-chart'
 import { ContractsRenewing } from '@/components/dashboard/contracts-renewing'
 import { RecentActivity }    from '@/components/dashboard/recent-activity'
 import type { DealStageRow } from '@/components/dashboard/deals-by-stage'
@@ -125,9 +126,10 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* Deals by stage — full-width */}
-      <div className="mb-6">
-        <DealsByStage rows={stageRows} />
+      {/* Deals by stage + Pipeline funnel */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <DealsByStage rows={stageRows.filter(r => !r.is_won && !r.is_lost)} />
+        <FunnelChart rows={stageRows} />
       </div>
 
       {/* Contracts renewing + Recent activity */}
