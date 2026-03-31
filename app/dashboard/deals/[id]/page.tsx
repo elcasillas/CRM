@@ -510,22 +510,23 @@ export default function DealDetailPage() {
               </Field>
             </div>
 
-            <Field label="Deal Owner">
-              {canEditOwner ? (
-                <select value={form.deal_owner_id} onChange={e => setFormState(f => f && ({ ...f, deal_owner_id: e.target.value }))} className={INPUT}>
-                  {profiles.filter(p => p.role === 'sales').map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Deal Owner">
+                {canEditOwner ? (
+                  <select value={form.deal_owner_id} onChange={e => setFormState(f => f && ({ ...f, deal_owner_id: e.target.value }))} className={INPUT}>
+                    {profiles.filter(p => p.role === 'sales').map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
+                  </select>
+                ) : (
+                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{profiles.find(p => p.id === form.deal_owner_id)?.full_name ?? '—'}</p>
+                )}
+              </Field>
+              <Field label="Solutions Engineer">
+                <select value={form.solutions_engineer_id} onChange={e => setFormState(f => f && ({ ...f, solutions_engineer_id: e.target.value }))} className={INPUT}>
+                  <option value="">— none —</option>
+                  {profiles.filter(p => p.role === 'solutions_engineer').map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
                 </select>
-              ) : (
-                <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{profiles.find(p => p.id === form.deal_owner_id)?.full_name ?? '—'}</p>
-              )}
-            </Field>
-
-            <Field label="Solutions Engineer">
-              <select value={form.solutions_engineer_id} onChange={e => setFormState(f => f && ({ ...f, solutions_engineer_id: e.target.value }))} className={INPUT}>
-                <option value="">— none —</option>
-                {profiles.filter(p => p.role === 'solutions_engineer').map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
-              </select>
-            </Field>
+              </Field>
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <Field label="Currency">
@@ -625,13 +626,14 @@ export default function DealDetailPage() {
               </ViewField>
             </div>
 
-            <ViewField label="Deal Owner">
-              <span>{deal.deal_owner?.full_name ?? <span className="text-gray-400">—</span>}</span>
-            </ViewField>
-
-            <ViewField label="Solutions Engineer">
-              <span>{deal.solutions_engineer?.full_name ?? <span className="text-gray-400">—</span>}</span>
-            </ViewField>
+            <div className="grid grid-cols-2 gap-4">
+              <ViewField label="Deal Owner">
+                <span>{deal.deal_owner?.full_name ?? <span className="text-gray-400">—</span>}</span>
+              </ViewField>
+              <ViewField label="Solutions Engineer">
+                <span>{deal.solutions_engineer?.full_name ?? <span className="text-gray-400">—</span>}</span>
+              </ViewField>
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <ViewField label="Currency">
