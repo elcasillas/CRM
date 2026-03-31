@@ -224,7 +224,7 @@ export default function HealthScoringClient() {
         <button
           onClick={handleRecalculate}
           disabled={recalculating}
-          className="bg-white hover:bg-gray-50 disabled:opacity-50 text-gray-700 text-sm font-medium px-5 py-2 rounded-lg border border-gray-300 transition-colors"
+          className="bg-[#E6F7F8] hover:bg-[#D2F0F2] disabled:opacity-50 text-[#00ADB1] text-sm font-medium px-5 py-2 rounded-lg border border-[#00ADB1] transition-colors"
         >
           {recalculating ? 'Recalculating…' : 'Recalculate All Deals'}
         </button>

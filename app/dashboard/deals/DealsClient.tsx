@@ -552,7 +552,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
             <button onClick={() => setFilter('view', 'table')} className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${view === 'table' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Table</button>
             <button onClick={() => setFilter('view', 'kanban')} className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${view === 'kanban' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Kanban</button>
           </div>
-          <Link href="/dashboard/deals/import" className="text-sm text-gray-500 hover:text-gray-700 font-medium border border-gray-300 px-3 py-2 rounded-lg transition-colors">Import CSV</Link>
+          <Link href="/dashboard/deals/import" className="text-sm text-[#00ADB1] hover:text-[#00989C] font-medium border border-[#00ADB1] bg-[#E6F7F8] hover:bg-[#D2F0F2] px-3 py-2 rounded-lg transition-colors">Import CSV</Link>
           <button onClick={() => openAdd()} className="bg-[#00ADB1] hover:bg-[#00989C] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">+ New deal</button>
         </div>
       </div>

@@ -151,7 +151,7 @@ export default function PartnersClient({
         <div className="flex items-center gap-3">
           <a
             href="/api/partners/import/template"
-            className="text-sm text-gray-500 hover:text-gray-700 font-medium border border-gray-300 px-3 py-2 rounded-lg transition-colors"
+            className="text-sm text-[#00ADB1] hover:text-[#00989C] font-medium border border-[#00ADB1] bg-[#E6F7F8] hover:bg-[#D2F0F2] px-3 py-2 rounded-lg transition-colors"
           >
             Download Template
           </a>
