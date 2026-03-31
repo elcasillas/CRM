@@ -4,13 +4,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { parseAmount, calcACV, calcTCV } from '@/lib/dealCalc'
 import type { DealStage, NoteWithAuthor } from '@/lib/types'
 import type { InspectionResult } from '@/lib/deal-inspect'
 import { DealDetailsModal } from '../DealDetailsModal'
 import { useBeforeUnload, formIsDirty } from '@/hooks/useUnsavedChanges'
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
 import { DealStageBadge } from '@/components/dashboard/deal-stage-badge'
+import { DealWorksheet } from '@/components/deals/DealWorksheet'
+import type { WorksheetData, WorksheetCalcs } from '@/components/deals/DealWorksheet'
 
 const supabase = createClient()
 const SLACK_TEAM_ID = process.env.NEXT_PUBLIC_SLACK_TEAM_ID ?? ''
@@ -78,6 +79,7 @@ type DealData = {
   close_date: string | null
   region: string | null
   deal_type: string | null
+  worksheet_data: unknown
   last_activity_at: string | null
   created_at: string
   updated_at: string | null
@@ -98,9 +100,6 @@ type FormData = {
   stage_id: string
   deal_owner_id: string
   solutions_engineer_id: string
-  amount: string
-  contract_term_months: string
-  currency: string
   close_date: string
   region: string
   deal_type: string
@@ -144,6 +143,10 @@ export default function DealDetailPage() {
   // Unsaved changes tracking
   const initialFormRef = useRef<FormData | null>(null)
   const pendingNavRef  = useRef<string | null>(null)
+
+  // Worksheet state (managed inside DealWorksheet; refs hold latest values for save)
+  const worksheetDataRef  = useRef<WorksheetData | null>(null)
+  const worksheetCalcsRef = useRef<WorksheetCalcs | null>(null)
   const [showNavWarning, setShowNavWarning] = useState(false)
   const [navWarnSaving, setNavWarnSaving]   = useState(false)
 
@@ -173,13 +176,13 @@ export default function DealDetailPage() {
       stage_id:              data.stage_id,
       deal_owner_id:         data.deal_owner_id,
       solutions_engineer_id: data.solutions_engineer_id ?? '',
-      amount:                data.amount != null ? new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(Number(data.amount)) : '',
-      contract_term_months:  data.contract_term_months != null ? String(data.contract_term_months) : '',
-      currency:              data.currency,
       close_date:            data.close_date ?? '',
       region:                (data as unknown as DealData).region ?? '',
       deal_type:             (data as unknown as DealData).deal_type ?? '',
     }
+    // Reset worksheet refs — DealWorksheet will repopulate them on mount when editing starts
+    worksheetDataRef.current  = null
+    worksheetCalcsRef.current = null
     setFormState(newForm)
     initialFormRef.current = newForm
   }, [id])
@@ -295,9 +298,9 @@ export default function DealDetailPage() {
     if (!form || !deal) return false
     setSaving(true); setSaveError(null); setSaved(false)
     const { data: { user: u } } = await supabase.auth.getUser()
-    const amountNum = parseAmount(form.amount)
-    const termNum   = Math.max(0, Math.floor(parseFloat(form.contract_term_months) || 0))
     const prevStageId = deal.stage_id
+    const wCalcs = worksheetCalcsRef.current
+    const wData  = worksheetDataRef.current
     const payload = {
       deal_name:             form.deal_name.trim(),
       deal_description:      form.deal_description.trim() || null,
@@ -305,11 +308,13 @@ export default function DealDetailPage() {
       stage_id:              form.stage_id,
       deal_owner_id:         form.deal_owner_id,
       solutions_engineer_id: form.solutions_engineer_id || null,
-      amount:                amountNum > 0 ? amountNum : null,
-      contract_term_months:  termNum   > 0 ? termNum   : null,
-      value_amount:          amountNum > 0 ? calcACV(form.amount, form.contract_term_months) : null,
-      total_contract_value:  amountNum > 0 && termNum > 0 ? amountNum * termNum : null,
-      currency:              form.currency || 'USD',
+      // Revenue fields derived from worksheet calculations
+      amount:                wCalcs && wCalcs.mrr > 0               ? wCalcs.mrr               : null,
+      contract_term_months:  wCalcs && wCalcs.contractTermMonths > 0 ? wCalcs.contractTermMonths : null,
+      value_amount:          wCalcs && wCalcs.acv > 0               ? wCalcs.acv               : null,
+      total_contract_value:  wCalcs && wCalcs.tcv > 0               ? wCalcs.tcv               : null,
+      currency:              wCalcs                                  ? wCalcs.currency          : (deal.currency || 'USD'),
+      worksheet_data:        wData ?? null,
       close_date:            form.close_date || null,
       region:                form.region || null,
       deal_type:             form.deal_type || null,
@@ -607,66 +612,43 @@ export default function DealDetailPage() {
         <div className="flex items-center px-6 py-3 bg-[#00ADB1] rounded-t-xl">
           <h2 className="font-semibold text-white">Revenue</h2>
         </div>
-        <div className="px-6 py-5">
-          {isEditing ? (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Currency">
-                  <select value={form.currency} onChange={e => setFormState(f => f && ({ ...f, currency: e.target.value }))} className={INPUT}>
-                    <option value="USD">USD</option>
-                    <option value="CAD">CAD</option>
-                    <option value="EUR">EUR</option>
-                    <option value="GBP">GBP</option>
-                    <option value="MXN">MXN</option>
-                  </select>
-                </Field>
-                <Field label="Term (months)">
-                  <input type="number" min="1" step="1" value={form.contract_term_months} onChange={e => setFormState(f => f && ({ ...f, contract_term_months: e.target.value }))} placeholder="" className={INPUT} />
-                </Field>
-              </div>
-              <Field label="MRR Amount">
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none">$</span>
-                  <input type="text" value={form.amount} onChange={e => setFormState(f => f && ({ ...f, amount: e.target.value }))} placeholder="0" className={`${INPUT} pl-6`} />
-                </div>
-              </Field>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Annual Contract Value (auto)">
-                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount ? (fmtCurrency(calcACV(form.amount, form.contract_term_months))) : '—'}</p>
-                </Field>
-                <Field label="Total Contract Value (auto)">
-                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount && form.contract_term_months ? (fmtCurrency(calcTCV(form.amount, form.contract_term_months))) : '—'}</p>
-                </Field>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <ViewField label="Currency">
-                  <span>{deal.currency || <span className="text-gray-400">—</span>}</span>
-                </ViewField>
-                <ViewField label="Term">
-                  <span>{deal.contract_term_months != null ? `${deal.contract_term_months} months` : <span className="text-gray-400">—</span>}</span>
-                </ViewField>
-              </div>
-              <ViewField label="MRR Amount">
-                <span className="font-medium">
-                  {deal.amount != null
-                    ? `$${Number(deal.amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
-                    : <span className="text-gray-400">—</span>}
-                </span>
+        {isEditing ? (
+          <div className="px-5 py-5 overflow-x-auto">
+            <DealWorksheet
+              initialData={deal.worksheet_data as unknown as WorksheetData | null}
+              onChange={(data, calcs) => {
+                worksheetDataRef.current  = data
+                worksheetCalcsRef.current = calcs
+              }}
+            />
+          </div>
+        ) : (
+          <div className="px-6 py-5 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <ViewField label="Currency">
+                <span>{deal.currency || <span className="text-gray-400">—</span>}</span>
               </ViewField>
-              <div className="grid grid-cols-2 gap-4">
-                <ViewField label="Annual Contract Value">
-                  <span className="font-medium">{fmtCurrency(deal.value_amount)}</span>
-                </ViewField>
-                <ViewField label="Total Contract Value">
-                  <span className="font-medium">{fmtCurrency(deal.total_contract_value)}</span>
-                </ViewField>
-              </div>
+              <ViewField label="Term">
+                <span>{deal.contract_term_months != null ? `${deal.contract_term_months} months` : <span className="text-gray-400">—</span>}</span>
+              </ViewField>
             </div>
-          )}
-        </div>
+            <ViewField label="MRR Amount">
+              <span className="font-medium">
+                {deal.amount != null
+                  ? `$${Number(deal.amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+                  : <span className="text-gray-400">—</span>}
+              </span>
+            </ViewField>
+            <div className="grid grid-cols-2 gap-4">
+              <ViewField label="Annual Contract Value">
+                <span className="font-medium">{fmtCurrency(deal.value_amount)}</span>
+              </ViewField>
+              <ViewField label="Total Contract Value">
+                <span className="font-medium">{fmtCurrency(deal.total_contract_value)}</span>
+              </ViewField>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Notes */}
