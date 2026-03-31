@@ -21,13 +21,13 @@ function daysLabel(n: number): string {
 function urgencyText(days: number): string {
   if (days <= 30) return 'text-red-600'
   if (days <= 60) return 'text-amber-600'
-  return 'text-brand-600'
+  return 'text-[#00ADB1]'
 }
 
 function urgencyBorder(days: number): string {
   if (days <= 30) return 'border-l-red-400'
   if (days <= 60) return 'border-l-amber-400'
-  return 'border-l-brand-400'
+  return 'border-l-[#00ADB1]'
 }
 
 export function ContractsRenewing({ rows }: { rows: ContractRow[] }) {
@@ -38,7 +38,7 @@ export function ContractsRenewing({ rows }: { rows: ContractRow[] }) {
   const buckets = [
     { label: `${in30} ≤30d`, active: in30 > 0, cls: 'bg-red-50 text-red-600'    },
     { label: `${in60} ≤60d`, active: in60 > 0, cls: 'bg-amber-50 text-amber-600' },
-    { label: `${in90} ≤90d`, active: in90 > 0, cls: 'bg-brand-50 text-brand-600'  },
+    { label: `${in90} ≤90d`, active: in90 > 0, cls: 'bg-[#E6F7F8] text-[#00ADB1]'  },
   ]
 
   return (

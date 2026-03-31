@@ -122,7 +122,7 @@ export function DealDetailsModal({
       <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
 
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 bg-[#00ADB1] rounded-t-xl shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <h3 className="font-semibold text-white truncate">{deal.deal_name}</h3>
             {deal.deal_stages && (
@@ -184,12 +184,12 @@ export function DealDetailsModal({
                   <p className="text-sm font-semibold text-gray-700">AI Summary</p>
                   {summaryGeneratedAt && <span className="text-xs text-gray-400">· {relativeTime(summaryGeneratedAt)}</span>}
                 </div>
-                <button onClick={onRegenerateSummary} disabled={loadingSummary} className="text-xs text-brand-600 hover:text-brand-700 disabled:opacity-50 font-medium">
+                <button onClick={onRegenerateSummary} disabled={loadingSummary} className="text-xs text-[#00ADB1] hover:text-[#00989C] disabled:opacity-50 font-medium">
                   {loadingSummary ? 'Summarizing…' : summary ? 'Refresh' : 'Summarize'}
                 </button>
               </div>
               {summary ? (
-                <div className="bg-brand-50 rounded-lg p-4">
+                <div className="bg-[#E6F7F8] rounded-lg p-4">
                   {summary.split('\n\n').filter(Boolean).map((block, i) => {
                     if (block.startsWith('## ')) {
                       const nl = block.indexOf('\n')
@@ -217,7 +217,7 @@ export function DealDetailsModal({
                   )}
                   {inspection?.runAt && <span className="text-xs text-gray-400">{relativeTime(inspection.runAt)}</span>}
                 </div>
-                <button onClick={onRunInspection} disabled={inspectionLoading || emailStatus !== 'idle'} className="text-xs text-brand-600 hover:text-brand-700 disabled:opacity-50 font-medium">
+                <button onClick={onRunInspection} disabled={inspectionLoading || emailStatus !== 'idle'} className="text-xs text-[#00ADB1] hover:text-[#00989C] disabled:opacity-50 font-medium">
                   {inspectionLoading ? 'Inspecting…' : inspection ? 'Refresh' : 'Run Inspection'}
                 </button>
               </div>
@@ -249,7 +249,7 @@ export function DealDetailsModal({
             <div className="border-t border-gray-100 pt-4">
               <p className="text-sm font-semibold text-gray-700 mb-3">Actions</p>
               <div className="flex flex-wrap gap-2">
-                <button onClick={onEmailOwner} disabled={emailStatus !== 'idle'} className="inline-flex items-center gap-2 text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-60 px-4 py-2 rounded-lg transition-colors">
+                <button onClick={onEmailOwner} disabled={emailStatus !== 'idle'} className="inline-flex items-center gap-2 text-sm font-medium text-white bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-60 px-4 py-2 rounded-lg transition-colors">
                   {emailStatus !== 'idle'
                     ? { checking: 'Checking…', summarizing: 'Summarizing…', inspecting: 'Inspecting…', emailing: 'Generating…' }[emailStatus]
                     : <><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z" /><path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" /></svg> Email Owner</>

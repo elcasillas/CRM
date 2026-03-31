@@ -18,7 +18,7 @@ type SearchResult = {
 }
 
 const TYPE_META: Record<ResultType, { label: string; color: string }> = {
-  account: { label: 'Accounts',    color: 'text-brand-600' },
+  account: { label: 'Accounts',    color: 'text-[#00ADB1]' },
   deal:    { label: 'Deals',       color: 'text-amber-600' },
   hid:     { label: 'HID Records', color: 'text-purple-600' },
   contact: { label: 'Contacts',    color: 'text-green-600' },
@@ -183,7 +183,7 @@ export function GlobalSearch() {
           onChange={handleChange}
           onFocus={() => { if (query.length >= 2) setOpen(true) }}
           onKeyDown={handleKeyDown}
-          className="w-52 bg-gray-50 border border-gray-200 rounded-lg pl-8 pr-7 py-1.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-400 focus:ring-1 focus:ring-brand-100 focus:bg-white focus:w-72 transition-all duration-150"
+          className="w-52 bg-gray-50 border border-gray-200 rounded-lg pl-8 pr-7 py-1.5 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 focus:bg-white focus:w-72 transition-all duration-150"
         />
         {query && (
           <button
@@ -221,7 +221,7 @@ export function GlobalSearch() {
                           key={item.id}
                           href={item.href}
                           onClick={clear}
-                          className={`flex flex-col px-4 py-2.5 border-b border-gray-50 last:border-b-0 transition-colors ${active ? 'bg-brand-50' : 'hover:bg-brand-50'}`}
+                          className={`flex flex-col px-4 py-2.5 border-b border-gray-50 last:border-b-0 transition-colors ${active ? 'bg-[#E6F7F8]' : 'hover:bg-[#E6F7F8]'}`}
                         >
                           <span className="text-sm text-gray-900 font-medium truncate">{item.label}</span>
                           {item.sublabel && (

@@ -171,7 +171,7 @@ export default function ImportDealsPage() {
           <p className="text-green-600 text-sm mt-1">Health scores are being computed in the background.</p>
           <button
             onClick={() => router.push('/dashboard/deals')}
-            className="mt-4 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="mt-4 bg-[#00ADB1] hover:bg-[#00989C] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             Go to Deals
           </button>
@@ -203,7 +203,7 @@ export default function ImportDealsPage() {
                 <select
                   value={accountId}
                   onChange={e => setAccountId(e.target.value)}
-                  className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm"
+                  className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 text-sm"
                 >
                   <option value="">— {allHaveAccount ? 'none (account names read from CSV)' : 'select account'} —</option>
                   {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
@@ -253,7 +253,7 @@ export default function ImportDealsPage() {
                 <button
                   onClick={handleImport}
                   disabled={importing || (!allHaveAccount && !accountId)}
-                  className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+                  className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
                 >
                   {importing ? 'Importing…' : `Import ${preview.length} deal${preview.length !== 1 ? 's' : ''}`}
                 </button>

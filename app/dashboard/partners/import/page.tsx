@@ -117,7 +117,7 @@ export default function ImportPartnersPage() {
         <h2 className="text-xl font-semibold text-gray-900">Import Partner Health Data</h2>
         <a
           href="/api/partners/import/template"
-          className="ml-auto text-sm text-brand-600 hover:text-brand-700 font-medium border border-brand-200 px-3 py-1.5 rounded-lg transition-colors"
+          className="ml-auto text-sm text-[#00ADB1] hover:text-[#00989C] font-medium border border-[#33C3C7] px-3 py-1.5 rounded-lg transition-colors"
         >
           Download Template
         </a>
@@ -142,7 +142,7 @@ export default function ImportPartnersPage() {
           <p className="text-green-600 text-sm mt-2">Health scores are being recalculated in the background.</p>
           <button
             onClick={() => router.push('/dashboard/partners')}
-            className="mt-4 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="mt-4 bg-[#00ADB1] hover:bg-[#00989C] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             View Partner Health Dashboard
           </button>
@@ -205,7 +205,7 @@ export default function ImportPartnersPage() {
                 <button
                   onClick={handleImport}
                   disabled={importing}
-                  className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+                  className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
                 >
                   {importing ? 'Importing…' : `Import ${preview.length} row${preview.length !== 1 ? 's' : ''}`}
                 </button>

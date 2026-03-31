@@ -8,7 +8,7 @@ import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
 
 const supabase = createClient()
 
-const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
+const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 text-sm'
 
 type FormData = {
   stage_name:      string
@@ -161,7 +161,7 @@ export function StagesClient() {
         </div>
         <button
           onClick={openAdd}
-          className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
+          className="bg-[#00ADB1] hover:bg-[#00989C] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
         >
           + New stage
         </button>
@@ -205,7 +205,7 @@ export function StagesClient() {
                       </button>
                     </div>
                   </td>
-                  <td className="px-4 py-3.5 font-medium"><button onClick={() => openEdit(stage)} className="text-gray-900 hover:text-brand-600 text-left transition-colors">{stage.stage_name}</button></td>
+                  <td className="px-4 py-3.5 font-medium"><button onClick={() => openEdit(stage)} className="text-gray-900 hover:text-[#00ADB1] text-left transition-colors">{stage.stage_name}</button></td>
                   <td className="px-4 py-3.5 text-gray-500 text-sm">{stage.win_probability != null ? `${stage.win_probability}%` : '—'}</td>
                   <td className="px-4 py-3.5">
                     <div className="flex items-center gap-1.5 flex-wrap">
@@ -236,7 +236,7 @@ export function StagesClient() {
       {modal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-sm">
-            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
+            <div className="flex items-center justify-between px-6 py-4 bg-[#00ADB1] rounded-t-xl">
               <h3 className="font-semibold text-white">{modal === 'add' ? 'New Stage' : 'Edit Stage'}</h3>
               <button onClick={closeModal} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
             </div>
@@ -269,7 +269,7 @@ export function StagesClient() {
                       type="checkbox"
                       checked={form[flag]}
                       onChange={setFlag(flag)}
-                      className="rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                      className="rounded border-gray-300 text-[#00ADB1] focus:ring-[#00ADB1]"
                     />
                     <span className="text-sm text-gray-700 capitalize">{flag.replace('is_', '')}</span>
                   </label>
@@ -283,7 +283,7 @@ export function StagesClient() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>

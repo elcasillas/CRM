@@ -22,7 +22,7 @@ const ROLE_CLASSES: Record<UserRole, string> = {
 type AuthUser   = { id: string; email: string; created_at: string }
 type MergedUser = Profile & { email: string | null }
 
-const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
+const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 text-sm'
 
 export function AdminUsersClient() {
   const [users, setUsers]     = useState<MergedUser[]>([])
@@ -192,7 +192,7 @@ export function AdminUsersClient() {
             setAddError(null)
             setAddModal(true)
           }}
-          className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          className="bg-[#00ADB1] hover:bg-[#00989C] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
           + Add user
         </button>
@@ -213,7 +213,7 @@ export function AdminUsersClient() {
           <button
             onClick={sendInvite}
             disabled={inviting || !inviteEmail.trim()}
-            className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
+            className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors whitespace-nowrap"
           >
             {inviting ? 'Sending…' : 'Send invite'}
           </button>
@@ -244,9 +244,9 @@ export function AdminUsersClient() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {users.map(u => (
-                <tr key={u.id} className="hover:bg-brand-50 transition-colors">
+                <tr key={u.id} className="hover:bg-[#E6F7F8] transition-colors">
                   <td className="px-6 py-3.5 font-medium">
-                    <button onClick={() => openEdit(u)} className="text-gray-900 hover:text-brand-600 text-left transition-colors">
+                    <button onClick={() => openEdit(u)} className="text-gray-900 hover:text-[#00ADB1] text-left transition-colors">
                       {u.full_name ?? <span className="text-gray-400 font-normal italic">No name</span>}
                     </button>
                   </td>
@@ -258,7 +258,7 @@ export function AdminUsersClient() {
                       value={u.role}
                       disabled={updating === u.id}
                       onChange={e => updateRole(u.id, e.target.value as UserRole)}
-                      className={`text-xs font-medium px-2 py-1 rounded-md border-0 focus:outline-none focus:ring-2 focus:ring-brand-200 cursor-pointer disabled:opacity-60 ${ROLE_CLASSES[u.role as UserRole] ?? 'bg-gray-100 text-gray-600'}`}
+                      className={`text-xs font-medium px-2 py-1 rounded-md border-0 focus:outline-none focus:ring-2 focus:ring-[#00ADB1]/30 cursor-pointer disabled:opacity-60 ${ROLE_CLASSES[u.role as UserRole] ?? 'bg-gray-100 text-gray-600'}`}
                     >
                       {ROLES.map(r => (
                         <option key={r} value={r}>{r.replace('_', ' ')}</option>
@@ -295,7 +295,7 @@ export function AdminUsersClient() {
       {editingUser && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
+            <div className="flex items-center justify-between px-6 py-4 bg-[#00ADB1] rounded-t-xl">
               <h3 className="font-semibold text-white">Edit User</h3>
               <button onClick={() => { if (isEditFormDirty) { setShowEditWarning(true) } else { setEditingUser(null) } }} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
             </div>
@@ -363,7 +363,7 @@ export function AdminUsersClient() {
               <button
                 onClick={handleEditUser}
                 disabled={editSaving || !editForm.email.trim()}
-                className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
               >
                 {editSaving ? 'Saving…' : 'Save changes'}
               </button>
@@ -384,7 +384,7 @@ export function AdminUsersClient() {
       {addModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
+            <div className="flex items-center justify-between px-6 py-4 bg-[#00ADB1] rounded-t-xl">
               <h3 className="font-semibold text-white">Add User</h3>
               <button onClick={() => { if (isAddFormDirty) { setShowAddWarning(true) } else { setAddModal(false) } }} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
             </div>
@@ -439,7 +439,7 @@ export function AdminUsersClient() {
               <button
                 onClick={handleAddUser}
                 disabled={addSaving || !addForm.email.trim() || !addForm.password.trim()}
-                className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
               >
                 {addSaving ? 'Creating…' : 'Create user'}
               </button>

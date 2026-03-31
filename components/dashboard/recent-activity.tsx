@@ -30,7 +30,7 @@ export function RecentActivity({ deals }: { deals: DealWithRelations[] }) {
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-900">Recent Deal Activity</h2>
-        <Link href="/dashboard/deals" className="text-xs text-brand-600 hover:text-brand-700">View all →</Link>
+        <Link href="/dashboard/deals" className="text-xs text-[#00ADB1] hover:text-[#00989C]">View all →</Link>
       </div>
 
       {deals.length === 0 ? (

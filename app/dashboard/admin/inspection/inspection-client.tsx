@@ -104,7 +104,7 @@ export default function InspectionConfigClient() {
               {/* Enable toggle */}
               <button
                 onClick={() => updateCheck(check.id, 'enabled', !check.enabled)}
-                className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none ${check.enabled ? 'bg-brand-500' : 'bg-gray-200'}`}
+                className={`relative inline-flex h-5 w-9 shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none ${check.enabled ? 'bg-[#E6F7F8]0' : 'bg-gray-200'}`}
                 role="switch"
                 aria-checked={check.enabled}
               >
@@ -120,7 +120,7 @@ export default function InspectionConfigClient() {
         <button
           onClick={handleSave}
           disabled={saving}
-          className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+          className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
         >
           {saving ? 'Saving…' : 'Save Settings'}
         </button>
@@ -141,7 +141,7 @@ export default function InspectionConfigClient() {
             }} className="text-sm text-amber-700 hover:text-amber-900 font-medium">
               Discard
             </button>
-            <button onClick={handleSave} disabled={saving} className="text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors">
+            <button onClick={handleSave} disabled={saving} className="text-sm font-medium text-white bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors">
               {saving ? 'Saving…' : 'Save Changes'}
             </button>
           </div>

@@ -32,7 +32,7 @@ type FormData = {
 
 const EMPTY_FORM: FormData = { product_name: '', unit_price: '0.00', product_code: '', product_category: '' }
 
-const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
+const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 text-sm'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -248,7 +248,7 @@ export default function ProductsPage() {
           </Link>
           <button
             onClick={openAdd}
-            className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="bg-[#00ADB1] hover:bg-[#00989C] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             + New Product
           </button>
@@ -262,12 +262,12 @@ export default function ProductsPage() {
           placeholder="Search products…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 w-64"
+          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 w-64"
         />
         <select
           value={categoryFilter}
           onChange={e => setCategoryFilter(e.target.value)}
-          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100"
+          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20"
         >
           <option value="">All Categories</option>
           {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -302,9 +302,9 @@ export default function ProductsPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {displayed.map(p => (
-                <tr key={p.id} className="hover:bg-brand-50 transition-colors">
+                <tr key={p.id} className="hover:bg-[#E6F7F8] transition-colors">
                   <td className="px-4 py-3.5 max-w-xs truncate">
-                    <button onClick={() => openEdit(p)} className="font-medium text-brand-600 hover:text-brand-800 hover:underline text-left truncate max-w-full">
+                    <button onClick={() => openEdit(p)} className="font-medium text-[#00ADB1] hover:text-[#00989C] hover:underline text-left truncate max-w-full">
                       {p.product_name}
                     </button>
                   </td>
@@ -346,7 +346,7 @@ export default function ProductsPage() {
       {modal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
+            <div className="flex items-center justify-between px-6 py-4 bg-[#00ADB1] rounded-t-xl">
               <h3 className="font-semibold text-white">{editingId ? 'Edit Product' : 'New Product'}</h3>
               <button onClick={closeModal} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
             </div>
@@ -409,7 +409,7 @@ export default function ProductsPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving || !form.product_name.trim()}
-                  className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                  className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
                 >
                   {saving ? 'Saving…' : editingId ? 'Save Changes' : 'Save'}
                 </button>

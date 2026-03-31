@@ -11,12 +11,12 @@ export function StatCard({ label, value, sub, href }: StatCardProps) {
   const body = (
     <>
       <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-2">{label}</p>
-      <p className="text-3xl font-bold text-gray-900 group-hover:text-brand-600 transition-colors">{value}</p>
+      <p className="text-3xl font-bold text-gray-900 group-hover:text-[#00ADB1] transition-colors">{value}</p>
       {sub && <p className="text-xs text-gray-400 mt-1.5">{sub}</p>}
     </>
   )
   return href ? (
-    <Link href={href} className="group bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:border-brand-300 transition-colors block">
+    <Link href={href} className="group bg-white border border-gray-200 rounded-xl p-5 shadow-sm hover:border-[#33C3C7] transition-colors block">
       {body}
     </Link>
   ) : (

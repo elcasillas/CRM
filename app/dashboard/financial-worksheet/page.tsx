@@ -143,11 +143,11 @@ function makeDefaultOTProducts(): ProductRowOT[] {
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const INPUT        = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
+const INPUT        = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 text-sm'
 const INPUT_RIGHT  = `${INPUT} text-right`
-const INPUT_SPREAD     = 'w-full bg-white border border-gray-300 rounded-lg pl-3 pr-7 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm text-right'
+const INPUT_SPREAD     = 'w-full bg-white border border-gray-300 rounded-lg pl-3 pr-7 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 text-sm text-right'
 const INPUT_SPREAD_ERR = 'w-full bg-white border border-red-300 rounded-lg pl-3 pr-7 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 text-sm text-right'
-const INPUT_SUFFIX2    = 'w-full bg-white border border-gray-300 rounded-lg pl-3 pr-9 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm text-right'
+const INPUT_SUFFIX2    = 'w-full bg-white border border-gray-300 rounded-lg pl-3 pr-9 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 text-sm text-right'
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -336,7 +336,7 @@ export default function FinancialWorksheetPage() {
           <select
             value={currency}
             onChange={e => setCurrency(e.target.value as Currency)}
-            className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100"
+            className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20"
           >
             {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
@@ -355,7 +355,7 @@ export default function FinancialWorksheetPage() {
               onClick={() => setDealType(tab.id)}
               className={`px-5 py-3 text-xs font-semibold uppercase tracking-wide border-b-2 transition-colors whitespace-nowrap
                 ${dealType === tab.id
-                  ? 'border-brand-700 text-brand-700'
+                  ? 'border-[#00ADB1] text-[#00ADB1]'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
             >
@@ -384,7 +384,7 @@ export default function FinancialWorksheetPage() {
                   <span className="text-gray-200 select-none">|</span>
                   <button
                     onClick={addRow}
-                    className="text-xs font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors"
+                    className="text-xs font-medium text-[#00ADB1] hover:text-[#00989C] flex items-center gap-1 transition-colors"
                   >
                     <span className="text-base leading-none">+</span> Add Row
                   </button>
@@ -637,7 +637,7 @@ export default function FinancialWorksheetPage() {
                   <span className="text-gray-200 select-none">|</span>
                   <button
                     onClick={addOTRow}
-                    className="text-xs font-medium text-brand-600 hover:text-brand-700 flex items-center gap-1 transition-colors"
+                    className="text-xs font-medium text-[#00ADB1] hover:text-[#00989C] flex items-center gap-1 transition-colors"
                   >
                     <span className="text-base leading-none">+</span> Add Row
                   </button>
@@ -895,7 +895,7 @@ function ExchangeRateCard({ currency, result, onRefresh }: {
           <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
           <p className="text-sm font-medium text-gray-700">Exchange Rate</p>
         </div>
-        <button onClick={onRefresh} className="text-xs text-gray-400 hover:text-brand-600 transition-colors" title="Refresh rate">
+        <button onClick={onRefresh} className="text-xs text-gray-400 hover:text-[#00ADB1] transition-colors" title="Refresh rate">
           ↻ Refresh
         </button>
       </div>

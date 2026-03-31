@@ -20,7 +20,7 @@ const EMPTY_FORM: DealFormData = {
   region: '', deal_type: '',
 }
 
-const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
+const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 text-sm'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -553,14 +553,14 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
             <button onClick={() => setFilter('view', 'kanban')} className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${view === 'kanban' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Kanban</button>
           </div>
           <Link href="/dashboard/deals/import" className="text-sm text-gray-500 hover:text-gray-700 font-medium border border-gray-300 px-3 py-2 rounded-lg transition-colors">Import CSV</Link>
-          <button onClick={() => openAdd()} className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">+ New deal</button>
+          <button onClick={() => openAdd()} className="bg-[#00ADB1] hover:bg-[#00989C] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">+ New deal</button>
         </div>
       </div>
 
       {/* Filter bar */}
       <div className="flex items-center gap-3 mb-4">
-        <input type="text" placeholder="Search deals…" value={search} onChange={e => setFilter('search', e.target.value)} className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 w-64" />
-        <select value={filterStage} onChange={e => setFilter('filterStage', e.target.value)} className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100">
+        <input type="text" placeholder="Search deals…" value={search} onChange={e => setFilter('search', e.target.value)} className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 w-64" />
+        <select value={filterStage} onChange={e => setFilter('filterStage', e.target.value)} className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20">
           <option value="">All stages</option>
           {stages.map(s => <option key={s.id} value={s.id}>{s.stage_name}</option>)}
         </select>
@@ -601,7 +601,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
           {ownerSummaries.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-4">
               {ownerSummaries.map(o => (
-                <button key={o.id} onClick={() => setFilter('filterOwner', filterOwner === o.id ? '' : o.id)} className={`text-left bg-white border rounded-xl p-4 shadow-sm transition-colors ${filterOwner === o.id ? 'border-l-4 border-brand-400 bg-brand-50' : 'border-gray-200 hover:border-gray-300'}`}>
+                <button key={o.id} onClick={() => setFilter('filterOwner', filterOwner === o.id ? '' : o.id)} className={`text-left bg-white border rounded-xl p-4 shadow-sm transition-colors ${filterOwner === o.id ? 'border-l-4 border-[#00ADB1] bg-[#E6F7F8]' : 'border-gray-200 hover:border-gray-300'}`}>
                   <p className="font-medium text-gray-900 text-sm mb-2 truncate">{o.name}</p>
                   <div className="grid grid-cols-4 gap-1 text-center">
                     <div><p className="text-base font-bold text-gray-900">{o.count}</p><p className="text-xs text-gray-400">Deals</p></div>
@@ -640,10 +640,10 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {sorted.map(deal => (
-                  <tr key={deal.id} className="hover:bg-brand-50 transition-colors">
+                  <tr key={deal.id} className="hover:bg-[#E6F7F8] transition-colors">
                     <td className="px-4 py-3.5 font-medium text-gray-900 max-w-[220px]">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <button onClick={() => router.push(`/dashboard/deals/${deal.id}?back=${encodeURIComponent(window.location.pathname + window.location.search)}`)} title={deal.deal_name} className="truncate text-left hover:text-brand-600 transition-colors">{deal.deal_name}</button>
+                        <button onClick={() => router.push(`/dashboard/deals/${deal.id}?back=${encodeURIComponent(window.location.pathname + window.location.search)}`)} title={deal.deal_name} className="truncate text-left hover:text-[#00ADB1] transition-colors">{deal.deal_name}</button>
 
                         {(() => {
                           if (!deal.created_at) return false
@@ -652,13 +652,13 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                           const daysAgo = (Date.now() - ms) / 86400000
                           return daysAgo >= 0 && daysAgo < newDealDaysThreshold
                         })() && (
-                          <span className="shrink-0 inline-flex px-1.5 py-0 rounded text-xs font-medium bg-brand-50 text-brand-600 ring-1 ring-brand-200">New</span>
+                          <span className="shrink-0 inline-flex px-1.5 py-0 rounded text-xs font-medium bg-[#E6F7F8] text-[#00ADB1] ring-1 ring-[#00ADB1]/30">New</span>
                         )}
                       </div>
                     </td>
                     <td className="px-4 py-3.5 text-gray-500">{deal.deal_owner?.full_name ?? '—'}</td>
                     <td className="px-4 py-3.5">
-                      <select value={deal.stage_id} onChange={e => changeStage(deal, e.target.value)} className={`text-xs font-medium px-2 py-1 rounded-md border-0 focus:outline-none focus:ring-2 focus:ring-brand-200 cursor-pointer ${stageBadgeClass(deal.deal_stages)}`}>
+                      <select value={deal.stage_id} onChange={e => changeStage(deal, e.target.value)} className={`text-xs font-medium px-2 py-1 rounded-md border-0 focus:outline-none focus:ring-2 focus:ring-[#00ADB1]/30 cursor-pointer ${stageBadgeClass(deal.deal_stages)}`}>
                         {stages.map(s => <option key={s.id} value={s.id}>{s.stage_name}</option>)}
                       </select>
                     </td>
@@ -731,7 +731,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                           {deal.health_score != null && <span className={`flex-shrink-0 text-xs font-semibold px-1.5 py-0.5 rounded ${healthBadgeClass(deal.health_score)}`}>{deal.health_score}</span>}
                         </div>
                         {deal.accounts && <p className="text-xs text-gray-500 mt-1">{deal.accounts.account_name}</p>}
-                        {deal.solutions_engineer?.full_name && <p className="text-xs text-brand-500 mt-0.5">SE: {deal.solutions_engineer.full_name}</p>}
+                        {deal.solutions_engineer?.full_name && <p className="text-xs text-[#00ADB1] mt-0.5">SE: {deal.solutions_engineer.full_name}</p>}
                         {(deal.value_amount != null || deal.close_date) && (
                           <div className="flex items-center gap-3 mt-2">
                             {deal.value_amount != null && <span className="text-xs text-gray-700 font-medium">{formatCurrency(deal.value_amount)}</span>}
@@ -739,7 +739,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                           </div>
                         )}
                         <div className="mt-2">
-                          <select value={deal.stage_id} onChange={e => changeStage(deal, e.target.value)} className="w-full text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-brand-200">
+                          <select value={deal.stage_id} onChange={e => changeStage(deal, e.target.value)} className="w-full text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#00ADB1]/30">
                             {stages.map(s => <option key={s.id} value={s.id}>{s.stage_name}</option>)}
                           </select>
                         </div>
@@ -787,7 +787,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
       {modal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-2xl">
-            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
+            <div className="flex items-center justify-between px-6 py-4 bg-[#00ADB1] rounded-t-xl">
               <h3 className="font-semibold text-white">New Deal</h3>
               <button onClick={closeModal} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
             </div>
@@ -807,7 +807,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                         target="_blank"
                         rel="noopener noreferrer"
                         title="Open account"
-                        className="shrink-0 text-gray-400 hover:text-brand-600 transition-colors"
+                        className="shrink-0 text-gray-400 hover:text-[#00ADB1] transition-colors"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0112.75 17h-8.5A2.25 2.25 0 012 14.75v-8.5A2.25 2.25 0 014.25 4h5a.75.75 0 010 1.5h-5z" clipRule="evenodd" /><path fillRule="evenodd" d="M6.194 12.753a.75.75 0 001.06.053L16.5 4.44v2.81a.75.75 0 001.5 0v-4.5a.75.75 0 00-.75-.75h-4.5a.75.75 0 000 1.5h2.553l-9.056 8.194a.75.75 0 00-.053 1.06z" clipRule="evenodd" /></svg>
                       </Link>
@@ -870,7 +870,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
             </div>
             <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
               <button onClick={closeModal} className="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
-              <button onClick={handleSave} disabled={saving || !form.deal_name.trim() || !form.stage_id} className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+              <button onClick={handleSave} disabled={saving || !form.deal_name.trim() || !form.stage_id} className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
                 {saving ? 'Saving…' : 'Save'}
               </button>
             </div>

@@ -15,7 +15,7 @@ type Mapping = {
 type FormData = { dc_location: string; cluster_id: string }
 const EMPTY_FORM: FormData = { dc_location: '', cluster_id: '' }
 
-const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
+const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 text-sm'
 
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
@@ -140,7 +140,7 @@ export default function DcClusterClient() {
         </div>
         <button
           onClick={openAdd}
-          className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
+          className="bg-[#00ADB1] hover:bg-[#00989C] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shrink-0"
         >
           + Add Mapping
         </button>
@@ -176,7 +176,7 @@ export default function DcClusterClient() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {mappings.map(m => (
-                <tr key={m.id} className={`transition-colors ${m.is_active ? 'hover:bg-brand-50' : 'bg-gray-50/60 opacity-60 hover:opacity-80'}`}>
+                <tr key={m.id} className={`transition-colors ${m.is_active ? 'hover:bg-[#E6F7F8]' : 'bg-gray-50/60 opacity-60 hover:opacity-80'}`}>
                   <td className="px-5 py-3 font-medium text-gray-900">{m.dc_location}</td>
                   <td className="px-5 py-3 text-gray-700">{m.cluster_id}</td>
                   <td className="px-5 py-3">
@@ -189,7 +189,7 @@ export default function DcClusterClient() {
                     <div className="flex items-center gap-3 justify-end">
                       <button
                         onClick={() => openEdit(m)}
-                        className="text-xs text-gray-500 hover:text-brand-600 font-medium transition-colors"
+                        className="text-xs text-gray-500 hover:text-[#00ADB1] font-medium transition-colors"
                       >
                         Edit
                       </button>
@@ -213,7 +213,7 @@ export default function DcClusterClient() {
       {modal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-sm">
-            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
+            <div className="flex items-center justify-between px-6 py-4 bg-[#00ADB1] rounded-t-xl">
               <h3 className="font-semibold text-white">{modal === 'add' ? 'New Mapping' : 'Edit Mapping'}</h3>
               <button onClick={guardedClose} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
             </div>
@@ -251,7 +251,7 @@ export default function DcClusterClient() {
               <button
                 onClick={handleSave}
                 disabled={saving || !form.dc_location.trim() || !form.cluster_id.trim()}
-                className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
               >
                 {saving ? 'Saving…' : modal === 'add' ? 'Add Mapping' : 'Save Changes'}
               </button>

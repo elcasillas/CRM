@@ -14,7 +14,7 @@ import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
 const supabase = createClient()
 const SLACK_TEAM_ID = process.env.NEXT_PUBLIC_SLACK_TEAM_ID ?? ''
 
-const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
+const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 text-sm'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -383,7 +383,7 @@ export default function DealDetailPage() {
     return (
       <div className="max-w-6xl mx-auto px-6 py-12">
         <p className="text-gray-500">Deal not found.</p>
-        <Link href="/dashboard/deals" className="text-brand-600 hover:text-brand-700 text-sm mt-2 inline-block">← Back to Deals</Link>
+        <Link href="/dashboard/deals" className="text-[#00ADB1] hover:text-[#00989C] text-sm mt-2 inline-block">← Back to Deals</Link>
       </div>
     )
   }
@@ -414,7 +414,7 @@ export default function DealDetailPage() {
               {deal.health_score}
             </span>
           )}
-          <button onClick={openDetailsModal} title="View deal details" className="shrink-0 text-gray-400 hover:text-brand-600 transition-colors">
+          <button onClick={openDetailsModal} title="View deal details" className="shrink-0 text-gray-400 hover:text-[#00ADB1] transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor"><path d="M10 12a2 2 0 100-4 2 2 0 000 4z"/><path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"/></svg>
           </button>
         </div>
@@ -464,7 +464,7 @@ export default function DealDetailPage() {
                   {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
                 </select>
                 {form.account_id && (
-                  <Link href={`/dashboard/accounts/${form.account_id}`} target="_blank" rel="noopener noreferrer" title="Open account" className="shrink-0 text-gray-400 hover:text-brand-600 transition-colors">
+                  <Link href={`/dashboard/accounts/${form.account_id}`} target="_blank" rel="noopener noreferrer" title="Open account" className="shrink-0 text-gray-400 hover:text-[#00ADB1] transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0112.75 17h-8.5A2.25 2.25 0 012 14.75v-8.5A2.25 2.25 0 014.25 4h5a.75.75 0 010 1.5h-5z" clipRule="evenodd" /><path fillRule="evenodd" d="M6.194 12.753a.75.75 0 001.06.053L16.5 4.44v2.81a.75.75 0 001.5 0v-4.5a.75.75 0 00-.75-.75h-4.5a.75.75 0 000 1.5h2.553l-9.056 8.194a.75.75 0 00-.053 1.06z" clipRule="evenodd" /></svg>
                   </Link>
                 )}
@@ -533,7 +533,7 @@ export default function DealDetailPage() {
               <button
                 onClick={saveDeal}
                 disabled={saving || !form.deal_name.trim() || !form.stage_id}
-                className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
               >
                 {saving ? 'Saving…' : 'Save'}
               </button>
@@ -558,7 +558,7 @@ export default function DealDetailPage() {
                 <div className="flex items-center gap-2">
                   <span>{deal.accounts.account_name}</span>
                   {deal.account_id && (
-                    <Link href={`/dashboard/accounts/${deal.account_id}`} target="_blank" rel="noopener noreferrer" title="Open account" className="text-gray-400 hover:text-brand-600 transition-colors">
+                    <Link href={`/dashboard/accounts/${deal.account_id}`} target="_blank" rel="noopener noreferrer" title="Open account" className="text-gray-400 hover:text-[#00ADB1] transition-colors">
                       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0112.75 17h-8.5A2.25 2.25 0 012 14.75v-8.5A2.25 2.25 0 014.25 4h5a.75.75 0 010 1.5h-5z" clipRule="evenodd" /><path fillRule="evenodd" d="M6.194 12.753a.75.75 0 001.06.053L16.5 4.44v2.81a.75.75 0 001.5 0v-4.5a.75.75 0 00-.75-.75h-4.5a.75.75 0 000 1.5h2.553l-9.056 8.194a.75.75 0 00-.053 1.06z" clipRule="evenodd" /></svg>
                     </Link>
                   )}
@@ -693,7 +693,7 @@ export default function DealDetailPage() {
             <button
               onClick={addNote}
               disabled={loggingNote || !noteText.trim()}
-              className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+              className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
             >
               {loggingNote ? 'Saving…' : 'Add Note'}
             </button>

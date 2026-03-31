@@ -15,7 +15,7 @@ const supabase = createClient()
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
-const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
+const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 text-sm'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -77,7 +77,7 @@ const ROLE_LABEL: Record<string, string> = {
 }
 
 const ROLE_COLOR: Record<string, string> = {
-  primary:   'bg-brand-50 text-brand-600 ring-1 ring-brand-200',
+  primary:   'bg-[#E6F7F8] text-[#00ADB1] ring-1 ring-[#00ADB1]/30',
   billing:   'bg-green-50 text-green-700 ring-1 ring-green-200',
   marketing: 'bg-purple-50 text-purple-700 ring-1 ring-purple-200',
   support:   'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
@@ -101,7 +101,7 @@ function Modal({ title, onClose, onSave, saving, disabled, error, children, maxW
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className={`bg-white border border-gray-200 rounded-xl shadow-xl w-full ${maxWidth}`}>
-        <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
+        <div className="flex items-center justify-between px-6 py-4 bg-[#00ADB1] rounded-t-xl">
           <h3 className="font-semibold text-white">{title}</h3>
           <button onClick={onClose} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
         </div>
@@ -114,7 +114,7 @@ function Modal({ title, onClose, onSave, saving, disabled, error, children, maxW
           <button
             onClick={onSave}
             disabled={saving || disabled}
-            className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             {saving ? 'Saving…' : 'Save'}
           </button>
@@ -521,7 +521,7 @@ export default function AccountDetailPage() {
   if (notFound || !account) return (
     <div className="max-w-5xl mx-auto px-6 py-8">
       <p className="text-gray-500 text-sm mb-3">Account not found.</p>
-      <Link href="/dashboard/accounts" className="text-sm text-brand-600 hover:text-brand-700">← Accounts</Link>
+      <Link href="/dashboard/accounts" className="text-sm text-[#00ADB1] hover:text-[#00989C]">← Accounts</Link>
     </div>
   )
 
@@ -551,14 +551,14 @@ export default function AccountDetailPage() {
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <button onClick={openEditAccount} className="text-2xl font-semibold text-gray-900 hover:text-brand-600 transition-colors text-left">{account.account_name}</button>
+              <button onClick={openEditAccount} className="text-2xl font-semibold text-gray-900 hover:text-[#00ADB1] transition-colors text-left">{account.account_name}</button>
               <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${STATUS_CLASSES[account.status] ?? 'bg-gray-100 text-gray-600'}`}>
                 {account.status.charAt(0).toUpperCase() + account.status.slice(1)}
               </span>
             </div>
             <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-gray-500 mt-2">
               {account.account_website && (
-                <a href={account.account_website} target="_blank" rel="noopener noreferrer" className="hover:text-brand-600">
+                <a href={account.account_website} target="_blank" rel="noopener noreferrer" className="hover:text-[#00ADB1]">
                   {account.account_website.replace(/^https?:\/\//, '')}
                 </a>
               )}
@@ -594,7 +594,7 @@ export default function AccountDetailPage() {
                 <button
                   onClick={saveDescription}
                   disabled={descSaving}
-                  className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
+                  className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors"
                 >
                   {descSaving ? 'Saving…' : 'Save'}
                 </button>
@@ -624,7 +624,7 @@ export default function AccountDetailPage() {
             onClick={() => setTab(t.key)}
             className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
               tab === t.key
-                ? 'border-brand-600 text-brand-600'
+                ? 'border-[#00ADB1] text-[#00ADB1]'
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
@@ -641,7 +641,7 @@ export default function AccountDetailPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-semibold text-gray-900">Contacts</h3>
-            <button onClick={openAddContact} className="bg-brand-500 hover:bg-brand-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">+ Add contact</button>
+            <button onClick={openAddContact} className="bg-[#00ADB1] hover:bg-[#00989C] text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">+ Add contact</button>
           </div>
           {contacts.length === 0 ? (
             <p className="text-gray-500 text-sm">No contacts yet.</p>
@@ -660,9 +660,9 @@ export default function AccountDetailPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {contacts.map(c => (
-                    <tr key={c.id} className="hover:bg-brand-50">
+                    <tr key={c.id} className="hover:bg-[#E6F7F8]">
                       <td className="px-5 py-3 font-medium">
-                        <button onClick={() => openEditContact(c)} className="text-gray-900 hover:text-brand-600 text-left transition-colors">{contactName(c)}</button>
+                        <button onClick={() => openEditContact(c)} className="text-gray-900 hover:text-[#00ADB1] text-left transition-colors">{contactName(c)}</button>
                       </td>
                       <td className="px-5 py-3">
                         <div className="flex flex-wrap gap-1">
@@ -697,7 +697,7 @@ export default function AccountDetailPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-semibold text-gray-900">HID Records</h3>
-            <button onClick={openAddHid} className="bg-brand-500 hover:bg-brand-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">+ Add HID</button>
+            <button onClick={openAddHid} className="bg-[#00ADB1] hover:bg-[#00989C] text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">+ Add HID</button>
           </div>
           {hids.length === 0 ? (
             <p className="text-gray-500 text-sm">No HID records yet.</p>
@@ -716,8 +716,8 @@ export default function AccountDetailPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {hids.map(h => (
-                    <tr key={h.id} className="hover:bg-brand-50">
-                      <td className="px-5 py-3 font-medium"><button onClick={() => openEditHid(h)} className="text-gray-900 hover:text-brand-600 text-left transition-colors">{h.hid_number}</button></td>
+                    <tr key={h.id} className="hover:bg-[#E6F7F8]">
+                      <td className="px-5 py-3 font-medium"><button onClick={() => openEditHid(h)} className="text-gray-900 hover:text-[#00ADB1] text-left transition-colors">{h.hid_number}</button></td>
                       <td className="px-5 py-3 text-gray-500">{h.dc_location ?? '—'}</td>
                       <td className="px-5 py-3 text-gray-500">{h.cluster_id ?? '—'}</td>
                       <td className="px-5 py-3 text-gray-500">{h.domain_name ?? '—'}</td>
@@ -741,7 +741,7 @@ export default function AccountDetailPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-semibold text-gray-900">Contracts</h3>
-            <button onClick={openAddContract} className="bg-brand-500 hover:bg-brand-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">+ Add contract</button>
+            <button onClick={openAddContract} className="bg-[#00ADB1] hover:bg-[#00989C] text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">+ Add contract</button>
           </div>
           {contracts.length === 0 ? (
             <p className="text-gray-500 text-sm">No contracts yet.</p>
@@ -761,15 +761,15 @@ export default function AccountDetailPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {contracts.map(c => (
-                    <tr key={c.id} className="hover:bg-brand-50">
+                    <tr key={c.id} className="hover:bg-[#E6F7F8]">
                       <td className="px-5 py-3 font-medium">
-                        <button onClick={() => openEditContract(c)} className="text-gray-900 hover:text-brand-600 text-left transition-colors">{c.entity_name ?? '—'}</button>
+                        <button onClick={() => openEditContract(c)} className="text-gray-900 hover:text-[#00ADB1] text-left transition-colors">{c.entity_name ?? '—'}</button>
                       </td>
                       <td className="px-5 py-3 text-gray-500">{fmtDate(c.effective_date)}</td>
                       <td className="px-5 py-3 text-gray-500">{fmtDate(c.renewal_date)}</td>
                       <td className="px-5 py-3 text-gray-500">{c.renewal_term_months != null ? `${c.renewal_term_months} mo` : '—'}</td>
                       <td className="px-5 py-3">
-                        <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${c.auto_renew ? 'bg-brand-50 text-brand-600' : 'bg-gray-100 text-gray-500'}`}>
+                        <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${c.auto_renew ? 'bg-[#E6F7F8] text-[#00ADB1]' : 'bg-gray-100 text-gray-500'}`}>
                           {c.auto_renew ? 'Yes' : 'No'}
                         </span>
                       </td>
@@ -797,7 +797,7 @@ export default function AccountDetailPage() {
         <section>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-semibold text-gray-900">Deals</h3>
-            <button onClick={openAddDeal} className="bg-brand-500 hover:bg-brand-600 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">+ Add deal</button>
+            <button onClick={openAddDeal} className="bg-[#00ADB1] hover:bg-[#00989C] text-white text-xs font-medium px-3 py-1.5 rounded-lg transition-colors">+ Add deal</button>
           </div>
           {deals.length === 0 ? (
             <p className="text-gray-500 text-sm">No deals yet.</p>
@@ -818,8 +818,8 @@ export default function AccountDetailPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {deals.map(d => (
-                    <tr key={d.id} className="hover:bg-brand-50">
-                      <td className="px-5 py-3 font-medium"><button onClick={() => router.push(`/dashboard/deals/${d.id}?back=${encodeURIComponent(`/dashboard/accounts/${id}?tab=deals`)}`)} className="text-gray-900 hover:text-brand-600 text-left transition-colors">{d.deal_name}</button></td>
+                    <tr key={d.id} className="hover:bg-[#E6F7F8]">
+                      <td className="px-5 py-3 font-medium"><button onClick={() => router.push(`/dashboard/deals/${d.id}?back=${encodeURIComponent(`/dashboard/accounts/${id}?tab=deals`)}`)} className="text-gray-900 hover:text-[#00ADB1] text-left transition-colors">{d.deal_name}</button></td>
                       <td className="px-5 py-3">
                         {d.deal_stages && (
                           <span className={`inline-flex px-2 py-0.5 rounded-md text-xs font-medium ${stageBadgeClass(d.deal_stages)}`}>
@@ -863,7 +863,7 @@ export default function AccountDetailPage() {
               <button
                 onClick={addNote}
                 disabled={loggingNote || !noteText.trim()}
-                className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
               >
                 {loggingNote ? 'Saving…' : 'Add note'}
               </button>
@@ -900,7 +900,7 @@ export default function AccountDetailPage() {
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-2xl">
 
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
+            <div className="flex items-center justify-between px-6 py-4 bg-[#00ADB1] rounded-t-xl">
               <h3 className="font-semibold text-white truncate">
                 {accountViewMode === 'view' ? account?.account_name : 'Edit Account'}
               </h3>
@@ -936,7 +936,7 @@ export default function AccountDetailPage() {
                     <div>
                       <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Website</p>
                       <p className="text-sm mt-0.5">
-                        <a href={account.account_website} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:text-brand-700 break-all">
+                        <a href={account.account_website} target="_blank" rel="noopener noreferrer" className="text-[#00ADB1] hover:text-[#00989C] break-all">
                           {account.account_website.replace(/^https?:\/\//, '')}
                         </a>
                       </p>
@@ -1028,7 +1028,7 @@ export default function AccountDetailPage() {
                 <button
                   onClick={saveAccount}
                   disabled={accountSaving || !accountForm.account_name.trim()}
-                  className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                  className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
                 >
                   {accountSaving ? 'Saving…' : 'Save'}
                 </button>
@@ -1066,7 +1066,7 @@ export default function AccountDetailPage() {
                       ...f,
                       roles: e.target.checked ? [...f.roles, role] : f.roles.filter(r => r !== role),
                     }))}
-                    className="w-4 h-4 rounded border-gray-300 text-brand-600"
+                    className="w-4 h-4 rounded border-gray-300 text-[#00ADB1]"
                   />
                   <span className="text-sm text-gray-700">{ROLE_LABEL[role]}</span>
                 </label>
@@ -1160,7 +1160,7 @@ export default function AccountDetailPage() {
             </Field>
           </div>
           <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={contractForm.auto_renew} onChange={e => setContractForm(f => ({ ...f, auto_renew: e.target.checked }))} className="w-4 h-4 rounded border-gray-300 text-brand-600" />
+            <input type="checkbox" checked={contractForm.auto_renew} onChange={e => setContractForm(f => ({ ...f, auto_renew: e.target.checked }))} className="w-4 h-4 rounded border-gray-300 text-[#00ADB1]" />
             <span className="text-sm text-gray-700">Auto renew</span>
           </label>
         </Modal>

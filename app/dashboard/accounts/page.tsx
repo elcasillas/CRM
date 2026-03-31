@@ -34,7 +34,7 @@ const EMPTY_FORM: FormData = {
   city: '', region: '', postal: '', country: '', status: 'active', account_owner_id: '', service_manager_id: '',
 }
 
-const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 text-sm'
+const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 text-sm'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -252,7 +252,7 @@ export default function AccountsPage() {
         <h2 className="text-xl font-semibold text-gray-900">Accounts</h2>
         <button
           onClick={openAdd}
-          className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          className="bg-[#00ADB1] hover:bg-[#00989C] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
           + New account
         </button>
@@ -265,12 +265,12 @@ export default function AccountsPage() {
           placeholder="Search accounts…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 w-64"
+          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 w-64"
         />
         <select
           value={filterStatus}
           onChange={e => setFilterStatus(e.target.value)}
-          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100"
+          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20"
         >
           <option value="">All statuses</option>
           <option value="active">Active</option>
@@ -312,15 +312,15 @@ export default function AccountsPage() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {sorted.map(a => (
-                <tr key={a.id} className="hover:bg-brand-50 transition-colors">
+                <tr key={a.id} className="hover:bg-[#E6F7F8] transition-colors">
                   <td className="px-6 py-3.5">
-                    <Link href={`/dashboard/accounts/${a.id}`} className="font-medium text-gray-900 hover:text-brand-600 transition-colors">
+                    <Link href={`/dashboard/accounts/${a.id}`} className="font-medium text-gray-900 hover:text-[#00ADB1] transition-colors">
                       {a.account_name}
                     </Link>
                   </td>
                   <td className="px-6 py-3.5 text-gray-500">
                     {a.account_website
-                      ? <a href={a.account_website} target="_blank" rel="noopener noreferrer" className="hover:text-brand-600">{a.account_website.replace(/^https?:\/\//, '')}</a>
+                      ? <a href={a.account_website} target="_blank" rel="noopener noreferrer" className="hover:text-[#00ADB1]">{a.account_website.replace(/^https?:\/\//, '')}</a>
                       : '—'}
                   </td>
                   <td className="px-6 py-3.5 text-gray-500">
@@ -347,7 +347,7 @@ export default function AccountsPage() {
                         </>
                       ) : (
                         <>
-                          <button onClick={() => openEdit(a)} title="View / Edit account" className="text-gray-400 hover:text-brand-600 transition-colors">
+                          <button onClick={() => openEdit(a)} title="View / Edit account" className="text-gray-400 hover:text-[#00ADB1] transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
                               <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
                             </svg>
@@ -370,7 +370,7 @@ export default function AccountsPage() {
           <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-lg">
 
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 bg-brand-700 rounded-t-xl">
+            <div className="flex items-center justify-between px-6 py-4 bg-[#00ADB1] rounded-t-xl">
               <h3 className="font-semibold text-white truncate">
                 {modal === 'add' ? 'New Account' : viewMode === 'view' ? editing?.account_name : 'Edit Account'}
               </h3>
@@ -406,7 +406,7 @@ export default function AccountsPage() {
                     <div>
                       <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Website</p>
                       <p className="text-sm mt-0.5">
-                        <a href={editing.account_website} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:text-brand-700 break-all">
+                        <a href={editing.account_website} target="_blank" rel="noopener noreferrer" className="text-[#00ADB1] hover:text-[#00989C] break-all">
                           {editing.account_website.replace(/^https?:\/\//, '')}
                         </a>
                       </p>
@@ -510,7 +510,7 @@ export default function AccountsPage() {
                 <button
                   onClick={handleSave}
                   disabled={saving || !form.account_name.trim()}
-                  className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                  className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
                 >
                   {saving ? 'Saving…' : 'Save'}
                 </button>

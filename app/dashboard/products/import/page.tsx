@@ -133,7 +133,7 @@ export default function ImportProductsPage() {
           {result.skipped  > 0 && <p className="text-green-700 text-sm mt-1">{result.skipped} row{result.skipped !== 1 ? 's' : ''} skipped (invalid or empty)</p>}
           <button
             onClick={() => router.push('/dashboard/products')}
-            className="mt-4 bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="mt-4 bg-[#00ADB1] hover:bg-[#00989C] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             Go to Products
           </button>
@@ -187,7 +187,7 @@ export default function ImportProductsPage() {
                 <button
                   onClick={handleImport}
                   disabled={importing}
-                  className="bg-brand-500 hover:bg-brand-600 disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
+                  className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors"
                 >
                   {importing ? 'Importing…' : `Import ${preview.length} product${preview.length !== 1 ? 's' : ''}`}
                 </button>

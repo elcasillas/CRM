@@ -78,7 +78,7 @@ export function CsvDropzone({
   if      (isUploading)          zoneClass += 'border-gray-200 bg-gray-50 cursor-wait'
   else if (isSuccess)            zoneClass += 'border-green-300 bg-green-50'
   else if (isError)              zoneClass += 'border-red-300 bg-red-50 cursor-pointer'
-  else if (dragOver)             zoneClass += 'border-brand-400 bg-brand-50 cursor-pointer'
+  else if (dragOver)             zoneClass += 'border-[#00ADB1] bg-[#E6F7F8] cursor-pointer'
   else                           zoneClass += 'border-gray-300 hover:border-gray-400 bg-white cursor-pointer'
 
   return (

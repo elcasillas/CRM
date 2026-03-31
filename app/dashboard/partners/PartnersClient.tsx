@@ -157,7 +157,7 @@ export default function PartnersClient({
           </a>
           <Link
             href="/dashboard/partners/import"
-            className="bg-brand-500 hover:bg-brand-600 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            className="bg-[#00ADB1] hover:bg-[#00989C] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             Import CSV
           </Link>
@@ -207,12 +207,12 @@ export default function PartnersClient({
           placeholder="Search partners…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100 w-56"
+          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 w-56"
         />
         <select
           value={filterStatus}
           onChange={e => setFilterStatus(e.target.value)}
-          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100"
+          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20"
         >
           <option value="">All statuses</option>
           {statuses.map(s => <option key={s} value={s}>{s}</option>)}
@@ -220,7 +220,7 @@ export default function PartnersClient({
         <select
           value={filterTier}
           onChange={e => setFilterTier(e.target.value)}
-          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-100"
+          className="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm text-gray-900 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20"
         >
           <option value="">All tiers</option>
           {tiers.map(t => <option key={t} value={t}>{tierLabel(t)}</option>)}
@@ -268,7 +268,7 @@ export default function PartnersClient({
                 const deltaPos  = p.score_delta_3mo != null && p.score_delta_3mo > 0
                 const deltaNeg  = p.score_delta_3mo != null && p.score_delta_3mo < 0
                 return (
-                  <tr key={p.id} className="hover:bg-brand-50 transition-colors">
+                  <tr key={p.id} className="hover:bg-[#E6F7F8] transition-colors">
 
                     {/* Partner name */}
                     <td className="px-4 py-3.5 font-medium text-gray-900">

@@ -11,7 +11,7 @@ export function UnsavedChangesDialog({ onSave, onDiscard, onCancel, saving = fal
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
       <div className="bg-white border border-gray-200 rounded-xl shadow-2xl w-full max-w-sm">
-        <div className="px-6 py-4 bg-brand-700 rounded-t-xl">
+        <div className="px-6 py-4 bg-[#00ADB1] rounded-t-xl">
           <h3 className="font-semibold text-white">Unsaved Changes</h3>
         </div>
         <div className="px-6 py-5">
@@ -26,7 +26,7 @@ export function UnsavedChangesDialog({ onSave, onDiscard, onCancel, saving = fal
           <button onClick={onDiscard} className="text-sm font-medium text-red-600 hover:text-red-700 border border-red-200 px-3 py-1.5 rounded-lg transition-colors hover:bg-red-50">
             Discard Changes
           </button>
-          <button onClick={onSave} disabled={saving} className="text-sm font-medium text-white bg-brand-500 hover:bg-brand-600 disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors">
+          <button onClick={onSave} disabled={saving} className="text-sm font-medium text-white bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 px-3 py-1.5 rounded-lg transition-colors">
             {saving ? 'Saving…' : 'Save Changes'}
           </button>
         </div>

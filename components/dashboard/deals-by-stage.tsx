@@ -23,7 +23,7 @@ export function DealsByStage({ rows }: { rows: DealStageRow[] }) {
     <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
         <h2 className="text-sm font-semibold text-gray-900">Deals by Stage</h2>
-        <Link href="/dashboard/deals" className="text-xs text-brand-600 hover:text-brand-700">View all →</Link>
+        <Link href="/dashboard/deals" className="text-xs text-[#00ADB1] hover:text-[#00989C]">View all →</Link>
       </div>
 
       {!hasAny ? (
@@ -38,7 +38,7 @@ export function DealsByStage({ rows }: { rows: DealStageRow[] }) {
           </div>
           <div className="divide-y divide-gray-50">
             {rows.map(row => {
-              const barClass = row.is_lost ? 'bg-red-300' : row.is_won ? 'bg-green-500' : 'bg-brand-500'
+              const barClass = row.is_lost ? 'bg-red-300' : row.is_won ? 'bg-green-500' : 'bg-[#E6F7F8]0'
               return (
                 <div key={row.id} className="px-5 py-2.5 flex items-center gap-4">
                   <p className="flex-1 text-sm text-gray-700 truncate">{row.stage_name}</p>

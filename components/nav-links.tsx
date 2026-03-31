@@ -20,7 +20,7 @@ const ADMIN_ITEMS: NavItem[] = [
   { href: '/dashboard/admin/health-scoring',  label: 'Settings' },
 ]
 
-const ACTIVE  = 'text-sm text-brand-700 bg-brand-50 font-medium px-3 py-1.5 rounded-lg'
+const ACTIVE  = 'text-sm text-[#00ADB1] bg-[#E6F7F8] font-medium px-3 py-1.5 rounded-lg'
 const INACTIVE = 'text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 px-3 py-1.5 rounded-lg transition-colors'
 
 export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
