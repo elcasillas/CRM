@@ -530,8 +530,8 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
   function Th({ col, label }: { col: string; label: string }) {
     const active = sortCol === col
     return (
-      <th onClick={() => toggleSort(col)} className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700 text-left">
-        {label}<span className={`ml-1 ${active ? 'text-gray-700' : 'text-gray-300'}`}>{active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>
+      <th onClick={() => toggleSort(col)} className="px-4 py-3 text-xs font-medium text-white uppercase tracking-wider cursor-pointer select-none hover:text-white/80 text-left">
+        {label}<span className={`ml-1 ${active ? 'text-white' : 'text-white/40'}`}>{active ? (sortDir === 'asc' ? '↑' : '↓') : '↕'}</span>
       </th>
     )
   }
@@ -631,7 +631,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
           <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 bg-gray-50">
+                <tr className="border-b border-gray-200" style={{ backgroundColor: '#00ADB1' }}>
                   <Th col="deal" label="Deal Name" /><Th col="owner" label="Deal Owner" /><Th col="stage" label="Stage" />
                   <Th col="acv" label="ACV (CAD)" /><Th col="close" label="Close Date" /><Th col="modified" label="Modified Date" />
                   <Th col="days" label="Days Since" /><Th col="health" label="Health" />
