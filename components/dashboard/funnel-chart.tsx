@@ -1,6 +1,8 @@
 import type { DealStageRow } from './deals-by-stage'
+import { stageColor } from '@/lib/deal-stage-colors'
 
 const FUNNEL_STAGE_NAMES = [
+  'Initial Conversation',
   'Solution Qualified',
   'Presenting to EDM',
   'Short Listed',
@@ -8,9 +10,6 @@ const FUNNEL_STAGE_NAMES = [
   'Contract Signed',
   'Implementing',
 ]
-
-// Muted, professional palette — cool blue-gray family stepping down in tone
-const COLORS = ['#5B7FA6', '#6A9A94', '#7E8EB8', '#8A9DB5', '#9BAAB8', '#B0BDCA']
 
 const SEG_H  = 62
 const TOP_W  = 270
@@ -51,7 +50,7 @@ function buildSegments(rows: DealStageRow[], total: number): Segment[] {
       stage_name: row.stage_name,
       count:      row.count,
       pct:        (row.count / total) * 100,
-      color:      COLORS[idx % COLORS.length],
+      color:      stageColor(row.stage_name),
       path:       `M ${CX - w0 / 2} ${y0} L ${CX + w0 / 2} ${y0} L ${CX + w1 / 2} ${y1} L ${CX - w1 / 2} ${y1} Z`,
       midY,
       lineX1:     CX + wMid / 2 + 4,
