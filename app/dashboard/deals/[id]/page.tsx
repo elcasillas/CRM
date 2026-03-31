@@ -10,6 +10,7 @@ import type { InspectionResult } from '@/lib/deal-inspect'
 import { DealDetailsModal } from '../DealDetailsModal'
 import { useBeforeUnload, formIsDirty } from '@/hooks/useUnsavedChanges'
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
+import { DealStageBadge } from '@/components/dashboard/deal-stage-badge'
 
 const supabase = createClient()
 const SLACK_TEAM_ID = process.env.NEXT_PUBLIC_SLACK_TEAM_ID ?? ''
@@ -60,14 +61,6 @@ function healthBadgeClass(score: number | null): string {
   return 'bg-red-100 text-red-600'
 }
 
-function stageBadgeClass(s: Pick<DealStage, 'is_won' | 'is_lost' | 'sort_order'> | null): string {
-  if (!s) return 'bg-gray-100 text-gray-600'
-  if (s.is_lost) return 'bg-red-50 text-red-600 ring-1 ring-red-200'
-  if (s.is_won)  return 'bg-green-50 text-green-700 ring-1 ring-green-200'
-  if (s.sort_order <= 3) return 'bg-gray-100 text-gray-700'
-  if (s.sort_order <= 5) return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
-  return 'bg-orange-50 text-orange-700 ring-1 ring-orange-200'
-}
 
 type DealData = {
   id: string
@@ -405,9 +398,7 @@ export default function DealDetailPage() {
           >← Back</button>
           <h1 className="text-xl font-semibold text-gray-900 truncate">{deal.deal_name}</h1>
           {deal.deal_stages && (
-            <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-md ${stageBadgeClass(deal.deal_stages)}`}>
-              {deal.deal_stages.stage_name}
-            </span>
+            <DealStageBadge stageName={deal.deal_stages.stage_name} className="shrink-0" />
           )}
           {deal.health_score != null && (
             <span className={`shrink-0 inline-flex items-center justify-center w-8 h-6 rounded text-xs font-semibold ${healthBadgeClass(deal.health_score)}`}>
@@ -582,7 +573,7 @@ export default function DealDetailPage() {
               </ViewField>
               <ViewField label="Stage">
                 {deal.deal_stages
-                  ? <span className={`inline-flex items-center text-xs font-medium px-2.5 py-1 rounded-md ${stageBadgeClass(deal.deal_stages)}`}>{deal.deal_stages.stage_name}</span>
+                  ? <DealStageBadge stageName={deal.deal_stages.stage_name} />
                   : <span className="text-gray-400">—</span>}
               </ViewField>
             </div>

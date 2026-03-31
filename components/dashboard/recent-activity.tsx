@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { DealWithRelations } from '@/lib/types'
+import { DealStageBadge } from '@/components/dashboard/deal-stage-badge'
 
 function fmt(v: number): string {
   if (v >= 1_000_000) return `$${(v / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
@@ -14,15 +15,6 @@ function relative(ts: string | null): string {
   if (d === 1) return 'Yesterday'
   if (d < 30)  return `${d}d ago`
   return `${Math.floor(d / 30)}mo ago`
-}
-
-function stageBadge(s: DealWithRelations['deal_stages']): string {
-  if (!s) return 'bg-gray-100 text-gray-600'
-  if (s.is_lost) return 'bg-red-50 text-red-600'
-  if (s.is_won)  return 'bg-green-50 text-green-700'
-  if (s.sort_order <= 3) return 'bg-gray-100 text-gray-700'
-  if (s.sort_order <= 5) return 'bg-amber-50 text-amber-700'
-  return 'bg-orange-50 text-orange-700'
 }
 
 export function RecentActivity({ deals }: { deals: DealWithRelations[] }) {
@@ -53,10 +45,10 @@ export function RecentActivity({ deals }: { deals: DealWithRelations[] }) {
                   )}
                 </div>
               </div>
-              {deal.deal_stages && (
-                <span className={`inline-flex mt-1.5 text-xs font-medium px-1.5 py-0.5 rounded ${stageBadge(deal.deal_stages)}`}>
-                  {deal.deal_stages.stage_name}
-                </span>
+              {deal.deal_stages?.stage_name && (
+                <div className="mt-1.5">
+                  <DealStageBadge stageName={deal.deal_stages.stage_name} />
+                </div>
               )}
             </div>
           ))}

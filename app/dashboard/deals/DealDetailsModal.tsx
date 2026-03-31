@@ -2,6 +2,7 @@
 
 import type { DealStage } from '@/lib/types'
 import type { InspectionResult } from '@/lib/deal-inspect'
+import { DealStageBadge } from '@/components/dashboard/deal-stage-badge'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -39,14 +40,6 @@ function healthBadgeClass(score: number | null): string {
   return 'bg-red-100 text-red-600'
 }
 
-function stageBadgeClass(s: Pick<DealStage, 'is_won' | 'is_lost' | 'sort_order'> | null): string {
-  if (!s) return 'bg-gray-100 text-gray-600'
-  if (s.is_lost) return 'bg-red-50 text-red-600 ring-1 ring-red-200'
-  if (s.is_won)  return 'bg-green-50 text-green-700 ring-1 ring-green-200'
-  if (s.sort_order <= 3) return 'bg-gray-100 text-gray-700'
-  if (s.sort_order <= 5) return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
-  return 'bg-orange-50 text-orange-700 ring-1 ring-orange-200'
-}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -126,7 +119,7 @@ export function DealDetailsModal({
           <div className="flex items-center gap-3 min-w-0">
             <h3 className="font-semibold text-white truncate">{deal.deal_name}</h3>
             {deal.deal_stages && (
-              <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded ${stageBadgeClass(deal.deal_stages)}`}>{deal.deal_stages.stage_name}</span>
+              <DealStageBadge stageName={deal.deal_stages.stage_name} className="shrink-0" />
             )}
             {deal.health_score != null && (
               <span className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded ${healthBadgeClass(deal.health_score)}`}>{deal.health_score}</span>

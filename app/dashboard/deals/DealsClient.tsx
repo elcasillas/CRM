@@ -11,6 +11,8 @@ import { DealDetailsModal } from './DealDetailsModal'
 import { parseAmount, calcACV, calcTCV } from '@/lib/dealCalc'
 import { formIsDirty } from '@/hooks/useUnsavedChanges'
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
+import { DealStageBadge } from '@/components/dashboard/deal-stage-badge'
+import { stageColor, stageTextColor } from '@/lib/deal-stage-colors'
 
 const supabase = createClient()
 
@@ -65,22 +67,6 @@ function healthBadgeClass(score: number | null): string {
   return 'bg-red-100 text-red-600'
 }
 
-function stageBadgeClass(s: Pick<DealStage, 'is_won' | 'is_lost' | 'sort_order'> | null): string {
-  if (!s) return 'bg-gray-100 text-gray-600'
-  if (s.is_lost) return 'bg-red-50 text-red-600 ring-1 ring-red-200'
-  if (s.is_won)  return 'bg-green-50 text-green-700 ring-1 ring-green-200'
-  if (s.sort_order <= 3) return 'bg-gray-100 text-gray-700'
-  if (s.sort_order <= 5) return 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
-  return 'bg-orange-50 text-orange-700 ring-1 ring-orange-200'
-}
-
-function stageHeaderClass(s: DealStage): string {
-  if (s.is_lost) return 'text-red-500'
-  if (s.is_won)  return 'text-green-600'
-  if (s.sort_order <= 3) return 'text-gray-600'
-  if (s.sort_order <= 5) return 'text-amber-600'
-  return 'text-orange-600'
-}
 
 // ── State shape types ─────────────────────────────────────────────────────────
 
@@ -658,7 +644,15 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                     </td>
                     <td className="px-4 py-3.5 text-gray-500">{deal.deal_owner?.full_name ?? '—'}</td>
                     <td className="px-4 py-3.5">
-                      <select value={deal.stage_id} onChange={e => changeStage(deal, e.target.value)} className={`text-xs font-medium px-2 py-1 rounded-md border-0 focus:outline-none focus:ring-2 focus:ring-[#00ADB1]/30 cursor-pointer ${stageBadgeClass(deal.deal_stages)}`}>
+                      <select
+                        value={deal.stage_id}
+                        onChange={e => changeStage(deal, e.target.value)}
+                        className="text-xs font-medium px-2 py-1 rounded-md border-0 focus:outline-none focus:ring-2 focus:ring-[#00ADB1]/30 cursor-pointer"
+                        style={{
+                          backgroundColor: deal.deal_stages ? stageColor(deal.deal_stages.stage_name) : '#e5e7eb',
+                          color:           deal.deal_stages ? stageTextColor(deal.deal_stages.stage_name) : '#4b5563',
+                        }}
+                      >
                         {stages.map(s => <option key={s.id} value={s.id}>{s.stage_name}</option>)}
                       </select>
                     </td>
@@ -718,7 +712,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                 <div key={stage.id} className="flex flex-col w-52 flex-shrink-0">
                   <div className="mb-3 px-1">
                     <div className="flex items-baseline justify-between">
-                      <span className={`text-xs font-semibold uppercase tracking-wide ${stageHeaderClass(stage)}`}>{stage.stage_name}</span>
+                      <span className="text-xs font-semibold uppercase tracking-wide" style={{ color: stageColor(stage.stage_name) }}>{stage.stage_name}</span>
                       <span className="text-xs text-gray-400">{stageDeals.length}</span>
                     </div>
                     {total && <p className="text-xs text-gray-400 mt-0.5">{total}</p>}
