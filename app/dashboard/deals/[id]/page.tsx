@@ -505,16 +505,20 @@ export default function DealDetailPage() {
                   <option value="Pro Services">Pro Services</option>
                 </select>
               </Field>
-              <Field label="Deal Owner">
-                {canEditOwner ? (
-                  <select value={form.deal_owner_id} onChange={e => setFormState(f => f && ({ ...f, deal_owner_id: e.target.value }))} className={INPUT}>
-                    {profiles.filter(p => p.role === 'sales').map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
-                  </select>
-                ) : (
-                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{profiles.find(p => p.id === form.deal_owner_id)?.full_name ?? '—'}</p>
-                )}
+              <Field label="Close Date">
+                <input type="date" value={form.close_date} onChange={e => setFormState(f => f && ({ ...f, close_date: e.target.value }))} className={INPUT} />
               </Field>
             </div>
+
+            <Field label="Deal Owner">
+              {canEditOwner ? (
+                <select value={form.deal_owner_id} onChange={e => setFormState(f => f && ({ ...f, deal_owner_id: e.target.value }))} className={INPUT}>
+                  {profiles.filter(p => p.role === 'sales').map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
+                </select>
+              ) : (
+                <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{profiles.find(p => p.id === form.deal_owner_id)?.full_name ?? '—'}</p>
+              )}
+            </Field>
 
             <Field label="Solutions Engineer">
               <select value={form.solutions_engineer_id} onChange={e => setFormState(f => f && ({ ...f, solutions_engineer_id: e.target.value }))} className={INPUT}>
@@ -538,20 +542,15 @@ export default function DealDetailPage() {
               </Field>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Close Date">
-                <input type="date" value={form.close_date} onChange={e => setFormState(f => f && ({ ...f, close_date: e.target.value }))} className={INPUT} />
-              </Field>
-              <Field label="Amount (Monthly)">
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none">$</span>
-                  <input type="text" value={form.amount} onChange={e => setFormState(f => f && ({ ...f, amount: e.target.value }))} placeholder="0" className={`${INPUT} pl-6`} />
-                </div>
-              </Field>
-            </div>
+            <Field label="MRR Amount">
+              <div className="relative">
+                <span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none">$</span>
+                <input type="text" value={form.amount} onChange={e => setFormState(f => f && ({ ...f, amount: e.target.value }))} placeholder="0" className={`${INPUT} pl-6`} />
+              </div>
+            </Field>
 
             <div className="grid grid-cols-2 gap-4">
-              <Field label="ACV (auto)">
+              <Field label="Annual Contract Value (auto)">
                 <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount ? (fmtCurrency(calcACV(form.amount, form.contract_term_months))) : '—'}</p>
               </Field>
               <Field label="Total Contract Value (auto)">
@@ -621,10 +620,14 @@ export default function DealDetailPage() {
               <ViewField label="Type of Deal">
                 <span>{deal.deal_type ?? <span className="text-gray-400">—</span>}</span>
               </ViewField>
-              <ViewField label="Deal Owner">
-                <span>{deal.deal_owner?.full_name ?? <span className="text-gray-400">—</span>}</span>
+              <ViewField label="Close Date">
+                <span>{fmtDate(deal.close_date)}</span>
               </ViewField>
             </div>
+
+            <ViewField label="Deal Owner">
+              <span>{deal.deal_owner?.full_name ?? <span className="text-gray-400">—</span>}</span>
+            </ViewField>
 
             <ViewField label="Solutions Engineer">
               <span>{deal.solutions_engineer?.full_name ?? <span className="text-gray-400">—</span>}</span>
@@ -639,21 +642,16 @@ export default function DealDetailPage() {
               </ViewField>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <ViewField label="Close Date">
-                <span>{fmtDate(deal.close_date)}</span>
-              </ViewField>
-              <ViewField label="Amount (Monthly)">
-                <span className="font-medium">
-                  {deal.amount != null
-                    ? `$${Number(deal.amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
-                    : <span className="text-gray-400">—</span>}
-                </span>
-              </ViewField>
-            </div>
+            <ViewField label="MRR Amount">
+              <span className="font-medium">
+                {deal.amount != null
+                  ? `$${Number(deal.amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+                  : <span className="text-gray-400">—</span>}
+              </span>
+            </ViewField>
 
             <div className="grid grid-cols-2 gap-4">
-              <ViewField label="ACV">
+              <ViewField label="Annual Contract Value">
                 <span className="font-medium">{fmtCurrency(deal.value_amount)}</span>
               </ViewField>
               <ViewField label="Total Contract Value">
