@@ -9,8 +9,8 @@ const FUNNEL_STAGE_NAMES = [
   'Implementing',
 ]
 
-// Colors modeled after reference image: blue → red → green → purple → cyan → orange
-const COLORS = ['#3b82f6', '#ef4444', '#84cc16', '#a855f7', '#06b6d4', '#f97316']
+// Muted, professional palette — cool blue-gray family stepping down in tone
+const COLORS = ['#5B7FA6', '#6A9A94', '#7E8EB8', '#8A9DB5', '#9BAAB8', '#B0BDCA']
 
 const SEG_H  = 62
 const TOP_W  = 270
@@ -93,10 +93,11 @@ export function FunnelChart({ rows }: { rows: DealStageRow[] }) {
           role="img"
           aria-label="Pipeline funnel chart showing deal counts by stage"
         >
+          <style>{`.funnel-seg { transition: filter 200ms ease; } .funnel-seg:hover { filter: brightness(0.88); }`}</style>
           {segments.map(seg => (
             <g key={seg.id}>
               {/* Funnel segment */}
-              <path d={seg.path} fill={seg.color} />
+              <path d={seg.path} fill={seg.color} className="funnel-seg" />
 
               {/* Connector line from right edge to label */}
               <line
