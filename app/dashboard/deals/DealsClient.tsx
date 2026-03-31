@@ -5,33 +5,14 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { DealStage, DealWithRelations, NoteWithAuthor } from '@/lib/types'
-import type { DealFormData, DealsInitialData, DealPageRow } from './types'
+import type { DealsInitialData, DealPageRow } from './types'
 import type { InspectionResult } from '@/lib/deal-inspect'
 import { DealDetailsModal } from './DealDetailsModal'
-import { parseAmount, calcACV, calcTCV } from '@/lib/dealCalc'
-import { formIsDirty } from '@/hooks/useUnsavedChanges'
-import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
 import { DealStageBadge } from '@/components/dashboard/deal-stage-badge'
 import { stageColor, stageTextColor } from '@/lib/deal-stage-colors'
 
 const supabase = createClient()
 
-const EMPTY_FORM: DealFormData = {
-  deal_name: '', deal_description: '', account_id: '', stage_id: '',
-  deal_owner_id: '', solutions_engineer_id: '', amount: '', contract_term_months: '', currency: 'USD', close_date: '',
-  region: '', deal_type: '',
-}
-
-const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 text-sm'
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
-      {children}
-    </div>
-  )
-}
 
 function formatCurrency(v: number | null): string | null {
   if (v == null || isNaN(Number(v))) return null
@@ -82,10 +63,6 @@ type FiltersState = {
 }
 
 type UIState = {
-  modal:         'add' | null
-  form:          DealFormData
-  saving:        boolean
-  formError:     string | null
   confirmDelete: string | null
 }
 
@@ -102,9 +79,7 @@ function filtersFromSearchParams(params: URLSearchParams | ReturnType<typeof use
   }
 }
 
-const INITIAL_UI: UIState = {
-  modal: null, form: EMPTY_FORM, saving: false, formError: null, confirmDelete: null,
-}
+const INITIAL_UI: UIState = { confirmDelete: null }
 
 export default function DealsClient({ initialData }: { initialData: DealsInitialData }) {
 
@@ -121,7 +96,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
 
   // Destructure for readable access throughout the component
   const { view, search, filterStage, filterOwner, filterStale, filterOverdue, sortCol, sortDir } = filters
-  const { modal, form, saving, formError, confirmDelete } = ui
+  const { confirmDelete } = ui
   const isAllDeals = initialData.isAllDeals ?? false
 
   // ── Props-derived constants ──────────────────────────────────────────────────
@@ -162,11 +137,6 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     router.replace(qs ? `?${qs}` : window.location.pathname, { scroll: false })
   }, [filters, router])
 
-  // ── Add Deal dirty tracking ──────────────────────────────────────────────────
-  const addDealInitialRef = useRef<DealFormData | null>(null)
-  const [showAddDealWarning, setShowAddDealWarning] = useState(false)
-  const isAddDealDirty = modal === 'add' && formIsDirty(form, addDealInitialRef.current)
-
   // ── Feedback modal state ─────────────────────────────────────────────────────
   const [feedbackDeal,              setFeedbackDeal]              = useState<DealWithRelations | null>(null)
   const [feedbackNote,              setFeedbackNote]              = useState<NoteWithAuthor | null>(null)
@@ -176,18 +146,6 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
   const [inspection,                setInspection]                = useState<InspectionResult | null>(null)
   const [inspectionLoading,         setInspectionLoading]         = useState(false)
   const [emailStatus, setEmailStatus] = useState<'idle' | 'checking' | 'summarizing' | 'inspecting' | 'emailing'>('idle')
-
-  // ── Reset / close helpers ────────────────────────────────────────────────────
-  function closeModal() {
-    if (isAddDealDirty) { setShowAddDealWarning(true); return }
-    forceCloseModal()
-  }
-
-  function forceCloseModal() {
-    setUIState(prev => ({ ...prev, modal: null, formError: null, form: EMPTY_FORM }))
-    addDealInitialRef.current = null
-    setShowAddDealWarning(false)
-  }
 
   // ── Data refresh (post-mutation) ─────────────────────────────────────────────
   async function fetchDeals() {
@@ -265,52 +223,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     fetchDeals()
   }
 
-  // ── Deal modal helpers ────────────────────────────────────────────────────────
-  function openAdd(stageId = '') {
-    const initialForm = { ...EMPTY_FORM, stage_id: stageId || (stages[1]?.id ?? '') }
-    setUIState(prev => ({
-      ...prev,
-      form: initialForm,
-      formError: null, modal: 'add',
-    }))
-    addDealInitialRef.current = initialForm
-  }
-
   // ── Deal CRUD ────────────────────────────────────────────────────────────────
-  function set(field: keyof DealFormData) {
-    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) =>
-      setUIState(prev => ({ ...prev, form: { ...prev.form, [field]: e.target.value } }))
-  }
-
-  async function handleSave() {
-    setUIState(prev => ({ ...prev, saving: true, formError: null }))
-    const { data: { user: u } } = await supabase.auth.getUser()
-    const amountNum = parseAmount(form.amount)
-    const termNum   = Math.max(0, Math.floor(parseFloat(form.contract_term_months) || 0))
-    const payload = {
-      deal_name:             form.deal_name.trim(),
-      deal_description:      form.deal_description.trim() || null,
-      account_id:            form.account_id   || null,
-      stage_id:              form.stage_id,
-      amount:                amountNum > 0 ? amountNum : null,
-      contract_term_months:  termNum   > 0 ? termNum   : null,
-      value_amount:          amountNum > 0 ? calcACV(form.amount, form.contract_term_months) : null,
-      total_contract_value:  amountNum > 0 && termNum > 0 ? amountNum * termNum : null,
-      currency:              form.currency || 'USD',
-      close_date:            form.close_date || null,
-      solutions_engineer_id: form.solutions_engineer_id || null,
-      region:                form.region || null,
-      deal_type:             form.deal_type || null,
-    }
-    const { data: inserted, error } = await supabase.from('deals').insert({ ...payload, deal_owner_id: u!.id }).select('id').single()
-    if (error) {
-      setUI('formError', error.message)
-    } else {
-      forceCloseModal()
-      router.push(`/dashboard/deals/${inserted.id}?back=${encodeURIComponent(window.location.pathname + window.location.search)}`)
-    }
-    setUI('saving', false)
-  }
 
   async function handleDelete(id: string) {
     const { error } = await supabase.from('deals').delete().eq('id', id)
@@ -539,7 +452,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
             <button onClick={() => setFilter('view', 'kanban')} className={`text-xs font-medium px-3 py-1.5 rounded-md transition-colors ${view === 'kanban' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Kanban</button>
           </div>
           <Link href="/dashboard/deals/import" className="text-sm text-[#00ADB1] hover:text-[#00989C] font-medium border border-[#00ADB1] bg-[#E6F7F8] hover:bg-[#D2F0F2] px-3 py-2 rounded-lg transition-colors">Import CSV</Link>
-          <button onClick={() => openAdd()} className="bg-[#00ADB1] hover:bg-[#00989C] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">+ New deal</button>
+          <button onClick={() => router.push('/dashboard/deals/new?back=' + encodeURIComponent(window.location.pathname + window.location.search))} className="bg-[#00ADB1] hover:bg-[#00989C] text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">+ New deal</button>
         </div>
       </div>
 
@@ -746,7 +659,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                         </div>
                       </div>
                     ))}
-                    <button onClick={() => openAdd(stage.id)} className="w-full text-xs text-gray-400 hover:text-gray-600 border border-dashed border-gray-300 hover:border-gray-400 rounded-xl py-2 transition-colors bg-white/50">+ Add</button>
+                    <button onClick={() => router.push('/dashboard/deals/new?stage_id=' + stage.id + '&back=' + encodeURIComponent(window.location.pathname + window.location.search))} className="w-full text-xs text-gray-400 hover:text-gray-600 border border-dashed border-gray-300 hover:border-gray-400 rounded-xl py-2 transition-colors bg-white/50">+ Add</button>
                   </div>
                 </div>
               )
@@ -777,108 +690,6 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
         />
       )}
 
-      {/* Add Deal modal */}
-      {modal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-2xl">
-            <div className="flex items-center justify-between px-6 py-4 bg-[#00ADB1] rounded-t-xl">
-              <h3 className="font-semibold text-white">New Deal</h3>
-              <button onClick={closeModal} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
-            </div>
-            <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
-              <Field label="Deal name *"><input type="text" value={form.deal_name} onChange={set('deal_name')} className={INPUT} /></Field>
-              <Field label="Description"><textarea value={form.deal_description} onChange={set('deal_description')} rows={2} placeholder="Optional description…" className={`${INPUT} resize-none`} /></Field>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Account">
-                  <div className="flex items-center gap-2">
-                    <select value={form.account_id} onChange={set('account_id')} className={`${INPUT} flex-1`}>
-                      <option value="">— none —</option>
-                      {accounts.map(a => <option key={a.id} value={a.id}>{a.account_name}</option>)}
-                    </select>
-                    {form.account_id && (
-                      <Link
-                        href={`/dashboard/accounts/${form.account_id}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Open account"
-                        className="shrink-0 text-gray-400 hover:text-[#00ADB1] transition-colors"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0112.75 17h-8.5A2.25 2.25 0 012 14.75v-8.5A2.25 2.25 0 014.25 4h5a.75.75 0 010 1.5h-5z" clipRule="evenodd" /><path fillRule="evenodd" d="M6.194 12.753a.75.75 0 001.06.053L16.5 4.44v2.81a.75.75 0 001.5 0v-4.5a.75.75 0 00-.75-.75h-4.5a.75.75 0 000 1.5h2.553l-9.056 8.194a.75.75 0 00-.053 1.06z" clipRule="evenodd" /></svg>
-                      </Link>
-                    )}
-                  </div>
-                </Field>
-                <Field label="Stage">
-                  <select value={form.stage_id} onChange={set('stage_id')} className={INPUT}>
-                    <option value="">— select —</option>
-                    {stages.map(s => <option key={s.id} value={s.id}>{s.stage_name}</option>)}
-                  </select>
-                </Field>
-              </div>
-              <Field label="Solutions Engineer">
-                <select value={form.solutions_engineer_id} onChange={set('solutions_engineer_id')} className={INPUT}>
-                  <option value="">— none —</option>
-                  {profiles.filter(p => p.role === 'solutions_engineer').map(p => <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>)}
-                </select>
-              </Field>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Amount"><div className="relative"><span className="absolute inset-y-0 left-3 flex items-center text-gray-400 text-sm pointer-events-none">$</span><input type="text" value={form.amount} onChange={set('amount')} placeholder="0" className={`${INPUT} pl-6`} /></div></Field>
-                <Field label="Currency">
-                  <select value={form.currency} onChange={set('currency')} className={INPUT}>
-                    <option value="USD">USD</option><option value="CAD">CAD</option><option value="EUR">EUR</option><option value="GBP">GBP</option><option value="MXN">MXN</option>
-                  </select>
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Contract Term (months)"><input type="number" min="1" step="1" value={form.contract_term_months} onChange={set('contract_term_months')} placeholder="" className={INPUT} /></Field>
-                <Field label="Close date"><input type="date" value={form.close_date} onChange={set('close_date')} className={INPUT} /></Field>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="ACV (auto)">
-                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount ? (formatCurrency(calcACV(form.amount, form.contract_term_months)) ?? '—') : '—'}</p>
-                </Field>
-                <Field label="Total Contract Value (auto)">
-                  <p className={`${INPUT} bg-gray-50 text-gray-600 cursor-default`}>{form.amount && form.contract_term_months ? (formatCurrency(calcTCV(form.amount, form.contract_term_months)) ?? '—') : '—'}</p>
-                </Field>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <Field label="Region">
-                  <select value={form.region} onChange={set('region')} className={INPUT}>
-                    <option value="">— none —</option>
-                    <option value="North America">North America</option>
-                    <option value="Europe/Asia/Pacific/Africa">Europe/Asia/Pacific/Africa</option>
-                    <option value="Latin America/Caribbean">Latin America/Caribbean</option>
-                  </select>
-                </Field>
-                <Field label="Type of Deal">
-                  <select value={form.deal_type} onChange={set('deal_type')} className={INPUT}>
-                    <option value="">— none —</option>
-                    <option value="Migration">Migration</option>
-                    <option value="Organic One-Time">Organic One-Time</option>
-                    <option value="Organic Recurring">Organic Recurring</option>
-                    <option value="Pro Services">Pro Services</option>
-                  </select>
-                </Field>
-              </div>
-              {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
-            </div>
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-              <button onClick={closeModal} className="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
-              <button onClick={handleSave} disabled={saving || !form.deal_name.trim() || !form.stage_id} className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
-                {saving ? 'Saving…' : 'Save'}
-              </button>
-            </div>
-            {showAddDealWarning && (
-              <UnsavedChangesDialog
-                onCancel={() => setShowAddDealWarning(false)}
-                onDiscard={forceCloseModal}
-                onSave={async () => { await handleSave(); setShowAddDealWarning(false) }}
-                saving={saving}
-              />
-            )}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
