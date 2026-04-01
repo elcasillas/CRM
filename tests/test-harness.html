@@ -334,6 +334,38 @@ const SUITES = [
       })
     },
   },
+
+  {
+    id: '10',
+    name: '10 – Inspection Revenue Checks (amount_reasonable / acv_tcv_aligned)',
+    fixture: 'fixtures/10_inspection_revenue.json',
+    golden:  'fixtures/expected/10_inspection_revenue.json',
+    run(fixture) {
+      return [
+        ...fixture.extractDealRevenue.map(c => ({
+          group: 'extractDealRevenue', label: c.label, result: extractDealRevenue(c.deal),
+        })),
+        ...fixture.amountReasonableStatus.map(c => ({
+          group: 'amountReasonableStatus', label: c.label, result: amountReasonableStatus(c.deal),
+        })),
+        ...fixture.acvTcvAlignedStatus.map(c => ({
+          group: 'acvTcvAlignedStatus', label: c.label, result: acvTcvAlignedStatus(c.deal),
+        })),
+      ]
+    },
+    compare(actual, expected) {
+      const flat = [
+        ...expected.extractDealRevenue,
+        ...expected.amountReasonableStatus,
+        ...expected.acvTcvAlignedStatus,
+      ]
+      return actual.map((a, i) => {
+        const e = flat[i]
+        const pass = JSON.stringify(a.result) === JSON.stringify(e?.result)
+        return { label: `[${a.group}] ${a.label}`, pass, actual: JSON.stringify(a.result), expected: JSON.stringify(e?.result) }
+      })
+    },
+  },
 ]
 
 // ── Runner ────────────────────────────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getOrCreateSummary } from './deal-summarize'
+import { extractDealRevenue } from './dealCalc'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -114,10 +115,13 @@ export function evaluateStructuredChecks(
   // 3. amount_reasonable
   if (defMap.has('amount_reasonable')) {
     const def = defMap.get('amount_reasonable')!
-    if (!deal.amount || deal.amount <= 0) {
-      results.push({ id: def.id, label: def.label, status: 'missing', explanation: 'No amount has been entered for this deal.', question: 'What is the monthly contract amount for this deal?', severity: def.severity })
+    const rev = extractDealRevenue(deal)
+    if (!rev.hasRevenue) {
+      results.push({ id: def.id, label: def.label, status: 'missing', explanation: 'No revenue amount has been entered for this deal.', question: 'What is the contract amount for this deal?', severity: def.severity })
+    } else if (rev.isOneTime) {
+      results.push({ id: def.id, label: def.label, status: 'pass', explanation: `One-time deal value is $${Math.round(rev.acv).toLocaleString()} (ACV).`, question: null, severity: def.severity })
     } else {
-      results.push({ id: def.id, label: def.label, status: 'pass', explanation: `Amount is set to $${deal.amount.toLocaleString()}.`, question: null, severity: def.severity })
+      results.push({ id: def.id, label: def.label, status: 'pass', explanation: `MRR is set to $${Math.round(rev.mrr).toLocaleString()}.`, question: null, severity: def.severity })
     }
   }
 
@@ -134,11 +138,26 @@ export function evaluateStructuredChecks(
   // 5. acv_tcv_aligned
   if (defMap.has('acv_tcv_aligned')) {
     const def = defMap.get('acv_tcv_aligned')!
-    if (!deal.value_amount || !deal.total_contract_value) {
-      results.push({ id: def.id, label: def.label, status: 'missing', explanation: 'ACV or TCV is not computed — likely because amount or contract term is missing.', question: 'Please confirm the monthly amount and contract term so ACV and TCV can be calculated.', severity: def.severity })
+    const rev = extractDealRevenue(deal)
+
+    if (rev.acv <= 0) {
+      // No ACV at all — could not be computed
+      results.push({ id: def.id, label: def.label, status: 'missing', explanation: 'ACV has not been computed — likely because the revenue amount is missing.', question: 'Please confirm the contract amount so ACV and TCV can be calculated.', severity: def.severity })
+    } else if (rev.tcv <= 0 && rev.term > 0) {
+      // ACV is present but TCV is missing despite a term being set — data gap
+      results.push({ id: def.id, label: def.label, status: 'missing', explanation: `ACV is $${Math.round(rev.acv).toLocaleString()} but TCV is not recorded despite a ${rev.term}-month term.`, question: 'Please verify the total contract value is correctly set.', severity: def.severity })
+    } else if (rev.tcv <= 0) {
+      // No term → TCV cannot be computed; ACV alone is acceptable (one-time or term not entered)
+      results.push({ id: def.id, label: def.label, status: 'pass', explanation: `ACV is $${Math.round(rev.acv).toLocaleString()}${rev.isOneTime ? ' (one-time)' : '; TCV not computed — no contract term set'}.`, question: null, severity: def.severity })
     } else {
-      // Check rough alignment: TCV should roughly equal value_amount/12 * term (or value_amount * term for 1-month deals)
-      results.push({ id: def.id, label: def.label, status: 'pass', explanation: `ACV is $${Math.round(deal.value_amount).toLocaleString()} and TCV is $${Math.round(deal.total_contract_value).toLocaleString()}.`, question: null, severity: def.severity })
+      // Both ACV and TCV present — verify rough alignment (±5% tolerance for rounding)
+      const expectedTcv = rev.term === 1 ? rev.acv : (rev.mrr > 0 ? rev.mrr * rev.term : rev.acv)
+      const ratio = expectedTcv > 0 ? Math.abs(rev.tcv - expectedTcv) / expectedTcv : 0
+      if (ratio > 0.05 && expectedTcv > 0) {
+        results.push({ id: def.id, label: def.label, status: 'mismatch', explanation: `ACV is $${Math.round(rev.acv).toLocaleString()} and TCV is $${Math.round(rev.tcv).toLocaleString()}, but they appear misaligned for a ${rev.term}-month term.`, question: 'Do the ACV and TCV values look correct for this contract?', severity: def.severity })
+      } else {
+        results.push({ id: def.id, label: def.label, status: 'pass', explanation: `ACV is $${Math.round(rev.acv).toLocaleString()} and TCV is $${Math.round(rev.tcv).toLocaleString()}.`, question: null, severity: def.severity })
+      }
     }
   }
 

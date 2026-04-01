@@ -1,0 +1,31 @@
+{
+  "extractDealRevenue": [
+    { "label": "recurring: MRR + ACV + TCV all set",                         "result": { "mrr": 1000,  "acv": 12000, "tcv": 36000, "term": 36, "hasRevenue": true,  "isOneTime": false } },
+    { "label": "one-time: amount=null, ACV=TCV (worksheet OT pattern)",       "result": { "mrr": 0,     "acv": 5000,  "tcv": 5000,  "term": 0,  "hasRevenue": true,  "isOneTime": true  } },
+    { "label": "CSV import: amount set, no term → TCV missing",               "result": { "mrr": 500,   "acv": 6000,  "tcv": 0,     "term": 0,  "hasRevenue": true,  "isOneTime": false } },
+    { "label": "completely empty deal",                                        "result": { "mrr": 0,     "acv": 0,     "tcv": 0,     "term": 0,  "hasRevenue": false, "isOneTime": false } },
+    { "label": "amount=0, value_amount=0 (zeroed out)",                        "result": { "mrr": 0,     "acv": 0,     "tcv": 0,     "term": 12, "hasRevenue": false, "isOneTime": false } },
+    { "label": "string amounts (CSV import resilience)",                       "result": { "mrr": 1000,  "acv": 12000, "tcv": 36000, "term": 36, "hasRevenue": true,  "isOneTime": false } },
+    { "label": "TELUS regression: OT migration deal, amount=null, ACV+TCV present", "result": { "mrr": 0, "acv": 15000, "tcv": 15000, "term": 0, "hasRevenue": true, "isOneTime": true } }
+  ],
+  "amountReasonableStatus": [
+    { "label": "recurring: MRR present → pass",                       "result": "pass"    },
+    { "label": "one-time: amount=null but ACV present → pass",        "result": "pass"    },
+    { "label": "CSV import: amount set → pass",                       "result": "pass"    },
+    { "label": "no revenue at all → missing",                         "result": "missing" },
+    { "label": "amount=0, value_amount=0 → missing",                  "result": "missing" },
+    { "label": "TELUS regression: OT deal amount=null, ACV=15000 → pass", "result": "pass" },
+    { "label": "string amount (CSV resilience) → pass",               "result": "pass"    }
+  ],
+  "acvTcvAlignedStatus": [
+    { "label": "recurring 36-month: ACV+TCV both present and aligned → pass",    "result": "pass"     },
+    { "label": "one-time: ACV=TCV, no term → pass",                              "result": "pass"     },
+    { "label": "CSV import: ACV set, TCV missing (no term) → pass",              "result": "pass"     },
+    { "label": "no ACV → missing",                                                "result": "missing"  },
+    { "label": "ACV present but TCV missing despite 36-month term → missing",    "result": "missing"  },
+    { "label": "1-month term: ACV = amount (no annualisation) → pass",           "result": "pass"     },
+    { "label": "TELUS regression: OT deal ACV=TCV=15000, no term → pass",        "result": "pass"     },
+    { "label": "misaligned TCV (off by >5%) → mismatch",                         "result": "mismatch" },
+    { "label": "string amounts (CSV resilience) recurring → pass",               "result": "pass"     }
+  ]
+}

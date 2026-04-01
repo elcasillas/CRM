@@ -30,3 +30,45 @@ export function calcTCV(amountStr: string, monthsStr: string): number {
   const m = Math.max(0, Math.floor(parseFloat(monthsStr) || 0))
   return a * m
 }
+
+/**
+ * Normalizes revenue fields from a deal row into consistent numeric values.
+ *
+ * Handles every storage scenario:
+ *   - Worksheet one-time deals: amount=null, value_amount=X, total_contract_value=X
+ *   - Worksheet recurring deals: amount=MRR, value_amount=ACV, total_contract_value=TCV
+ *   - CSV-imported deals: amount=X, value_amount=X*12, total_contract_value=null (no term)
+ *   - Legacy deals (no worksheet): any combination of the above
+ *
+ * Returns:
+ *   mrr       — monthly recurring amount; 0 if not set / one-time deal
+ *   acv       — annual contract value; 0 if not computable
+ *   tcv       — total contract value; 0 if no contract term
+ *   term      — contract term in months; 0 if not set
+ *   hasRevenue — true if ANY positive revenue indicator is present
+ *   isOneTime  — true when mrr is absent but acv is present (one-time deal pattern)
+ */
+export function extractDealRevenue(deal: {
+  amount?:               number | string | null
+  value_amount?:         number | string | null
+  total_contract_value?: number | string | null
+  contract_term_months?: number | string | null
+}): {
+  mrr:        number
+  acv:        number
+  tcv:        number
+  term:       number
+  hasRevenue: boolean
+  isOneTime:  boolean
+} {
+  const mrr  = parseAmount(String(deal.amount               ?? ''))
+  const acv  = parseAmount(String(deal.value_amount         ?? ''))
+  const tcv  = parseAmount(String(deal.total_contract_value ?? ''))
+  const term = Math.max(0, Math.floor(parseFloat(String(deal.contract_term_months ?? '')) || 0))
+
+  const hasRevenue = mrr > 0 || acv > 0
+  // One-time pattern: MRR is absent but ACV was set (worksheet one-time, or imported deal typed as OT)
+  const isOneTime  = mrr === 0 && acv > 0 && term === 0
+
+  return { mrr, acv, tcv, term, hasRevenue, isOneTime }
+}

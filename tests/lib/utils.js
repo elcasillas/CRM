@@ -78,6 +78,46 @@ function calcTCV(amountStr, monthsStr) {
   return a * m
 }
 
+/**
+ * Normalizes revenue fields from a deal row into consistent numeric values.
+ * Mirrors lib/dealCalc.ts → extractDealRevenue.
+ * Handles all storage scenarios: worksheet one-time, worksheet recurring,
+ * CSV-imported (with or without contract term), and legacy deals.
+ */
+function extractDealRevenue(deal) {
+  const mrr  = parseAmount(String(deal.amount               ?? ''))
+  const acv  = parseAmount(String(deal.value_amount         ?? ''))
+  const tcv  = parseAmount(String(deal.total_contract_value ?? ''))
+  const term = Math.max(0, Math.floor(parseFloat(String(deal.contract_term_months ?? '')) || 0))
+  const hasRevenue = mrr > 0 || acv > 0
+  const isOneTime  = mrr === 0 && acv > 0 && term === 0
+  return { mrr, acv, tcv, term, hasRevenue, isOneTime }
+}
+
+/**
+ * Mirrors the amount_reasonable check from lib/deal-inspect.ts.
+ * Returns 'pass' or 'missing'.
+ */
+function amountReasonableStatus(deal) {
+  const rev = extractDealRevenue(deal)
+  return rev.hasRevenue ? 'pass' : 'missing'
+}
+
+/**
+ * Mirrors the acv_tcv_aligned check from lib/deal-inspect.ts.
+ * Returns 'pass', 'missing', or 'mismatch'.
+ */
+function acvTcvAlignedStatus(deal) {
+  const rev = extractDealRevenue(deal)
+  if (rev.acv <= 0) return 'missing'
+  if (rev.tcv <= 0 && rev.term > 0) return 'missing'
+  if (rev.tcv <= 0) return 'pass'  // one-time or no term — ACV alone is acceptable
+  const expectedTcv = rev.term === 1 ? rev.acv : (rev.mrr > 0 ? rev.mrr * rev.term : rev.acv)
+  const ratio = expectedTcv > 0 ? Math.abs(rev.tcv - expectedTcv) / expectedTcv : 0
+  if (ratio > 0.05 && expectedTcv > 0) return 'mismatch'
+  return 'pass'
+}
+
 // ── Stage badges ──────────────────────────────────────────────────────────────
 
 function stageBadgeClass(s) {

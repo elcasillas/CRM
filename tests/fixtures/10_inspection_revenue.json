@@ -1,0 +1,105 @@
+{
+  "description": "Inspection revenue checks: amount_reasonable and acv_tcv_aligned",
+  "note": "All deal objects use the same field names as the deals table (amount, value_amount, total_contract_value, contract_term_months).",
+
+  "extractDealRevenue": [
+    {
+      "label": "recurring: MRR + ACV + TCV all set",
+      "deal": { "amount": 1000, "value_amount": 12000, "total_contract_value": 36000, "contract_term_months": 36 }
+    },
+    {
+      "label": "one-time: amount=null, ACV=TCV (worksheet OT pattern)",
+      "deal": { "amount": null, "value_amount": 5000, "total_contract_value": 5000, "contract_term_months": 0 }
+    },
+    {
+      "label": "CSV import: amount set, no term → TCV missing",
+      "deal": { "amount": 500, "value_amount": 6000, "total_contract_value": null, "contract_term_months": null }
+    },
+    {
+      "label": "completely empty deal",
+      "deal": { "amount": null, "value_amount": null, "total_contract_value": null, "contract_term_months": null }
+    },
+    {
+      "label": "amount=0, value_amount=0 (zeroed out)",
+      "deal": { "amount": 0, "value_amount": 0, "total_contract_value": 0, "contract_term_months": 12 }
+    },
+    {
+      "label": "string amounts (CSV import resilience)",
+      "deal": { "amount": "1000.00", "value_amount": "12000.00", "total_contract_value": "36000.00", "contract_term_months": "36" }
+    },
+    {
+      "label": "TELUS regression: OT migration deal, amount=null, ACV+TCV present",
+      "deal": { "amount": null, "value_amount": 15000, "total_contract_value": 15000, "contract_term_months": 0 }
+    }
+  ],
+
+  "amountReasonableStatus": [
+    {
+      "label": "recurring: MRR present → pass",
+      "deal": { "amount": 1000, "value_amount": 12000, "total_contract_value": 36000, "contract_term_months": 36 }
+    },
+    {
+      "label": "one-time: amount=null but ACV present → pass",
+      "deal": { "amount": null, "value_amount": 5000, "total_contract_value": 5000, "contract_term_months": 0 }
+    },
+    {
+      "label": "CSV import: amount set → pass",
+      "deal": { "amount": 500, "value_amount": 6000, "total_contract_value": null, "contract_term_months": null }
+    },
+    {
+      "label": "no revenue at all → missing",
+      "deal": { "amount": null, "value_amount": null, "total_contract_value": null, "contract_term_months": null }
+    },
+    {
+      "label": "amount=0, value_amount=0 → missing",
+      "deal": { "amount": 0, "value_amount": 0, "total_contract_value": 0, "contract_term_months": 12 }
+    },
+    {
+      "label": "TELUS regression: OT deal amount=null, ACV=15000 → pass",
+      "deal": { "amount": null, "value_amount": 15000, "total_contract_value": 15000, "contract_term_months": 0 }
+    },
+    {
+      "label": "string amount (CSV resilience) → pass",
+      "deal": { "amount": "1000.00", "value_amount": "12000.00", "total_contract_value": "36000.00", "contract_term_months": "36" }
+    }
+  ],
+
+  "acvTcvAlignedStatus": [
+    {
+      "label": "recurring 36-month: ACV+TCV both present and aligned → pass",
+      "deal": { "amount": 1000, "value_amount": 12000, "total_contract_value": 36000, "contract_term_months": 36 }
+    },
+    {
+      "label": "one-time: ACV=TCV, no term → pass",
+      "deal": { "amount": null, "value_amount": 5000, "total_contract_value": 5000, "contract_term_months": 0 }
+    },
+    {
+      "label": "CSV import: ACV set, TCV missing (no term) → pass",
+      "deal": { "amount": 500, "value_amount": 6000, "total_contract_value": null, "contract_term_months": null }
+    },
+    {
+      "label": "no ACV → missing",
+      "deal": { "amount": null, "value_amount": null, "total_contract_value": null, "contract_term_months": null }
+    },
+    {
+      "label": "ACV present but TCV missing despite 36-month term → missing",
+      "deal": { "amount": 1000, "value_amount": 12000, "total_contract_value": null, "contract_term_months": 36 }
+    },
+    {
+      "label": "1-month term: ACV = amount (no annualisation) → pass",
+      "deal": { "amount": 1000, "value_amount": 1000, "total_contract_value": 1000, "contract_term_months": 1 }
+    },
+    {
+      "label": "TELUS regression: OT deal ACV=TCV=15000, no term → pass",
+      "deal": { "amount": null, "value_amount": 15000, "total_contract_value": 15000, "contract_term_months": 0 }
+    },
+    {
+      "label": "misaligned TCV (off by >5%) → mismatch",
+      "deal": { "amount": 1000, "value_amount": 12000, "total_contract_value": 5000, "contract_term_months": 36 }
+    },
+    {
+      "label": "string amounts (CSV resilience) recurring → pass",
+      "deal": { "amount": "1000.00", "value_amount": "12000.00", "total_contract_value": "36000.00", "contract_term_months": "36" }
+    }
+  ]
+}
