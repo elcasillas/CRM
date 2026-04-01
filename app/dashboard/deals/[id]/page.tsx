@@ -56,11 +56,10 @@ function CadEquiv({ amount, currency, fxRate, fxError }: {
   if (fxRate == null) {
     return fxError ? <span className="text-gray-400 text-xs ml-1">(CAD unavailable)</span> : null
   }
-  const cad = Math.round(amount * fxRate * 100) / 100
-  const formatted = new Intl.NumberFormat('en-CA', {
-    style: 'currency', currency: 'CAD', minimumFractionDigits: 0, maximumFractionDigits: 0,
-  }).format(cad) + ' CAD'
-  return <span className="font-medium ml-1.5">({formatted})</span>
+  const cad = amount * fxRate
+  const rounded = Math.max(1000, Math.round(cad / 1000) * 1000)
+  const formatted = `$${rounded / 1000}k CAD`
+  return <span className="font-medium ml-1.5"> to ({formatted})</span>
 }
 
 function fmtDate(d: string | null | undefined): string {
