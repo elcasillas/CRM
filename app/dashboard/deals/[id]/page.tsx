@@ -60,7 +60,7 @@ function CadEquiv({ amount, currency, fxRate, fxError }: {
   const formatted = new Intl.NumberFormat('en-CA', {
     style: 'currency', currency: 'CAD', minimumFractionDigits: 0, maximumFractionDigits: 0,
   }).format(cad) + ' CAD'
-  return <span className="text-gray-400 text-xs ml-1">(~{formatted})</span>
+  return <span className="font-medium ml-1.5">({formatted})</span>
 }
 
 function fmtDate(d: string | null | undefined): string {
