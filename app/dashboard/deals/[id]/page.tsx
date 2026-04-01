@@ -723,7 +723,7 @@ export default function DealDetailPage() {
                           ))}
                         </tbody>
                         <tfoot>
-                          <tr className="border-t-2 border-gray-200 bg-gray-50">
+                          <tr className="border-t-2 border-gray-200 bg-white">
                             <td className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wide">Total ARPU</td>
                             <td /><td />
                             <td className="px-4 py-2 text-right text-sm font-semibold tabular-nums text-gray-900">
@@ -770,7 +770,7 @@ export default function DealDetailPage() {
                         ))}
                       </tbody>
                       <tfoot>
-                        <tr className="border-t-2 border-gray-200 bg-gray-50">
+                        <tr className="border-t-2 border-gray-200 bg-white">
                           <td className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wide">Total</td>
                           <td /><td />
                           <td className="px-4 py-2 text-right text-sm font-semibold tabular-nums text-gray-900">
@@ -785,10 +785,11 @@ export default function DealDetailPage() {
             })()}
 
             {/* Revenue summary */}
-            <div className="px-5 py-2.5 bg-gray-50 border-b border-gray-200 border-t border-t-gray-200">
-              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Revenue Summary</span>
+            <div className="px-5 py-3 bg-gray-100 border-b border-gray-200 border-t-2 border-t-gray-300">
+              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Revenue Summary</span>
             </div>
-            <div className="px-6 py-5 space-y-4">
+            <div className="px-5 py-4">
+              <div className="bg-gray-50 rounded-xl border border-gray-100 px-5 py-4 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <ViewField label="Currency">
                   <span>{deal.currency || 'USD'}</span>
@@ -822,6 +823,7 @@ export default function DealDetailPage() {
                     </span>
                   ) : <span className="text-gray-400">—</span>}
                 </ViewField>
+              </div>
               </div>
             </div>
           </>
