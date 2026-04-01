@@ -11,7 +11,7 @@ import { useBeforeUnload, formIsDirty } from '@/hooks/useUnsavedChanges'
 import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
 import { DealStageBadge } from '@/components/dashboard/deal-stage-badge'
 import { DealWorksheet } from '@/components/deals/DealWorksheet'
-import type { WorksheetData, WorksheetCalcs } from '@/components/deals/DealWorksheet'
+import type { WorksheetData, WorksheetCalcs, WProductRow, WProductRowOT } from '@/components/deals/DealWorksheet'
 import { useCadRate } from '@/hooks/useCadRate'
 
 const supabase = createClient()
@@ -122,6 +122,129 @@ type FormData = {
   close_date: string
   region: string
   deal_type: string
+}
+
+// ── Products / Plans summary card (view mode) ─────────────────────────────────
+
+const CURRENCY_SYMBOLS: Record<string, string> = { CAD: '$', USD: '$', MXN: '$', EUR: '€', GBP: '£' }
+function pParseNum(s: string | undefined): number {
+  const n = parseFloat(String(s ?? '').replace(/[^0-9.\-]/g, ''))
+  return isNaN(n) ? 0 : n
+}
+function pFmtMoney(n: number, currency: string): string {
+  return new Intl.NumberFormat('en-CA', {
+    style: 'currency', currency,
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  }).format(n)
+}
+
+function ProductsPlansCard({ worksheetData, dealCurrency }: {
+  worksheetData: unknown
+  dealCurrency: string
+}) {
+  const wd = worksheetData as WorksheetData | null
+  if (!wd?.version) return null
+
+  const cur = wd.currency || dealCurrency || 'USD'
+  const sym = CURRENCY_SYMBOLS[cur] ?? cur
+
+  if (wd.dealType === 'recurring') {
+    const rows: WProductRow[] = (wd.products ?? []).filter(p => p.name)
+    if (!rows.length) return null
+    const units    = Math.round(pParseNum(wd.units))
+    const arpu     = rows.map(p => pParseNum(p.unitPrice) * (pParseNum(p.spread) / 100))
+    const totalArpu = arpu.reduce((s, v) => s + v, 0)
+
+    return (
+      <div className="mt-6 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-3 bg-[#00ADB1] rounded-t-xl">
+          <h2 className="font-semibold text-white">Products / Plans</h2>
+          <span className="text-sm text-white/80 font-medium">Units: {units.toLocaleString('en-US')}</span>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50">
+                <th className="px-4 py-2.5 text-left  text-xs font-medium text-gray-500">Product / Plan</th>
+                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">Unit Price</th>
+                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">Spread %</th>
+                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">ARPU</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {rows.map((p, i) => (
+                <tr key={p.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-2.5 text-gray-900">{p.name}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-gray-700">{sym}{pParseNum(p.unitPrice).toFixed(2)}</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums text-gray-700">{pParseNum(p.spread).toFixed(2)}%</td>
+                  <td className="px-4 py-2.5 text-right tabular-nums font-medium text-gray-900">
+                    {arpu[i] > 0 ? pFmtMoney(arpu[i], cur) : <span className="text-gray-300">—</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr className="border-t-2 border-gray-200 bg-gray-50">
+                <td className="px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">Total ARPU</td>
+                <td /><td />
+                <td className="px-4 py-2.5 text-right text-sm font-semibold tabular-nums text-gray-900">
+                  {totalArpu > 0 ? pFmtMoney(totalArpu, cur) : <span className="text-gray-400">—</span>}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    )
+  }
+
+  // one_time
+  const rows: WProductRowOT[] = (wd.otProducts ?? []).filter(p => p.name)
+  if (!rows.length) return null
+  const lineVals = rows.map(p => pParseNum(p.unitPrice) * Math.max(0, Math.round(pParseNum(p.qty))))
+  const total    = lineVals.reduce((s, v) => s + v, 0)
+
+  return (
+    <div className="mt-6 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+      <div className="flex items-center justify-between px-6 py-3 bg-[#00ADB1] rounded-t-xl">
+        <h2 className="font-semibold text-white">Products / Plans</h2>
+        <span className="text-sm text-white/80 font-medium">{rows.length} line{rows.length !== 1 ? 's' : ''}</span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 bg-gray-50">
+              <th className="px-4 py-2.5 text-left  text-xs font-medium text-gray-500">Product / Plan</th>
+              <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">Unit Price</th>
+              <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">Qty</th>
+              <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">Line Value</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {rows.map((p, i) => (
+              <tr key={p.id} className="hover:bg-gray-50">
+                <td className="px-4 py-2.5 text-gray-900">{p.name}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-gray-700">{sym}{pParseNum(p.unitPrice).toFixed(2)}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-gray-700">{Math.max(0, Math.round(pParseNum(p.qty))).toLocaleString('en-US')}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums font-medium text-gray-900">
+                  {lineVals[i] > 0 ? pFmtMoney(lineVals[i], cur) : <span className="text-gray-300">—</span>}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-gray-200 bg-gray-50">
+              <td className="px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">Total</td>
+              <td /><td />
+              <td className="px-4 py-2.5 text-right text-sm font-semibold tabular-nums text-gray-900">
+                {total > 0 ? pFmtMoney(total, cur) : <span className="text-gray-400">—</span>}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  )
 }
 
 export default function DealDetailPage() {
@@ -630,6 +753,11 @@ export default function DealDetailPage() {
         )}
         </div>
       </div>
+
+      {/* Products / Plans (view mode only) */}
+      {!isEditing && (
+        <ProductsPlansCard worksheetData={deal.worksheet_data} dealCurrency={deal.currency || 'USD'} />
+      )}
 
       {/* Revenue */}
       <div className="mt-6 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
