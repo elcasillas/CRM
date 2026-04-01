@@ -333,6 +333,10 @@ export default function DealDetailPage() {
 
   async function saveDeal(): Promise<boolean> {
     if (!form || !deal) return false
+    if (worksheetCalcsRef.current?.valid === false) {
+      setSaveError('Revenue conflict: choose either Organic Recurring or One-Time Fee before saving.')
+      return false
+    }
     setSaving(true); setSaveError(null); setSaved(false)
     const { data: { user: u } } = await supabase.auth.getUser()
     const prevStageId = deal.stage_id

@@ -110,6 +110,10 @@ export default function NewDealPage() {
 
   async function saveDeal() {
     if (!form.deal_name.trim() || !form.stage_id) return
+    if (worksheetCalcsRef.current?.valid === false) {
+      setSaveError('Revenue conflict: choose either Organic Recurring or One-Time Fee before saving.')
+      return
+    }
     setSaving(true); setSaveError(null)
 
     const wCalcs = worksheetCalcsRef.current

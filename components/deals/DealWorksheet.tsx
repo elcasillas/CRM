@@ -48,6 +48,7 @@ export type WorksheetCalcs = {
   acv:               number   // ACV in billing currency
   tcv:               number   // TCV in billing currency
   contractTermMonths: number  // recurring term; 0 for one-time
+  valid:             boolean  // false when both models are populated (conflict must be resolved)
 }
 
 // ── Exchange rate types & localStorage cache ──────────────────────────────────
@@ -83,6 +84,15 @@ function getStaleCachedRate(cur: string): FxCacheEntry | null { return loadFxCac
 function evictCachedRate(cur: string) { const c = loadFxCache(); delete c[cur]; saveFxCache(c) }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Returns true if any recurring product row has a name or non-zero price entered. */
+function hasRecurringData(prods: WProductRow[]): boolean {
+  return prods.some(p => p.name !== '' || parseNum(p.unitPrice) > 0)
+}
+/** Returns true if any one-time product row has a name or non-zero price entered. */
+function hasOneTimeData(prods: WProductRowOT[]): boolean {
+  return prods.some(p => p.name !== '' || parseNum(p.unitPrice) > 0)
+}
 
 function parseNum(s: string): number {
   const n = parseFloat(String(s).replace(/[^0-9.\-]/g, ''))
@@ -165,6 +175,12 @@ export function DealWorksheet({ initialData, onChange }: {
   const [dbProducts,   setDbProducts]   = useState<DbProduct[]>([])
   const [fxResult,     setFxResult]     = useState<ExchangeRateResult>({ status: 'idle' })
 
+  // Conflict: true when initial data has both models populated (legacy records).
+  // Also set to false whenever the user switches tabs (clearing the leaving model).
+  const [hasConflict, setHasConflict] = useState<boolean>(() =>
+    !!initialData && hasRecurringData(initialData.products ?? []) && hasOneTimeData(initialData.otProducts ?? [])
+  )
+
   // ── Fetch products from DB ─────────────────────────────────────────────────
 
   useEffect(() => {
@@ -236,9 +252,10 @@ export function DealWorksheet({ initialData, onChange }: {
       acv:               dealType === 'recurring' ? round2(recAcv) : otAcv2,
       tcv:               dealType === 'recurring' ? round2(recTcv) : otAcv2,
       contractTermMonths: dealType === 'recurring' ? ctNum2 : 0,
+      valid:             !hasConflict,
     }
     onChangeRef.current(data, calcs)
-  }, [dealType, currency, products, units, churnPct, contractTerm, otProducts])
+  }, [dealType, currency, products, units, churnPct, contractTerm, otProducts, hasConflict])
 
   // ── Calculations for render ────────────────────────────────────────────────
 
@@ -336,12 +353,19 @@ export function DealWorksheet({ initialData, onChange }: {
           <nav className="flex gap-0">
             {([
               { id: 'recurring' as WorksheetDealType, label: 'Organic Recurring' },
-              { id: 'one_time'  as WorksheetDealType, label: 'One-Time' },
+              { id: 'one_time'  as WorksheetDealType, label: 'One-Time Fee' },
             ]).map(tab => (
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setDealType(tab.id)}
+                onClick={() => {
+                  if (tab.id === dealType) return
+                  // Clear the model being left so both can never be populated simultaneously
+                  if (dealType === 'recurring') clearRecurring()
+                  else clearOneTime()
+                  setHasConflict(false)
+                  setDealType(tab.id)
+                }}
                 className={`px-5 py-2.5 text-xs font-semibold uppercase tracking-wide border-b-2 transition-colors whitespace-nowrap
                   ${dealType === tab.id
                     ? 'border-[#00ADB1] text-[#00ADB1]'
@@ -364,6 +388,40 @@ export function DealWorksheet({ initialData, onChange }: {
           </select>
         </div>
       </div>
+
+      {/* ── Conflict banner (legacy records with both models populated) ──── */}
+      {hasConflict && (
+        <div className="rounded-xl bg-amber-50 border border-amber-200 px-5 py-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-amber-500 shrink-0 mt-0.5">
+              <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <p className="text-sm font-semibold text-amber-800">Revenue model conflict</p>
+              <p className="text-sm text-amber-700 mt-0.5">
+                This deal has data in both <strong>Organic Recurring</strong> and <strong>One-Time Fee</strong> models.
+                Only one can be active — choose which to keep. The other will be cleared.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 pl-8">
+            <button
+              type="button"
+              onClick={() => { clearOneTime(); setHasConflict(false); setDealType('recurring') }}
+              className="text-sm font-medium px-4 py-2 rounded-lg bg-white border border-amber-300 text-amber-800 hover:bg-amber-100 transition-colors"
+            >
+              Keep Organic Recurring
+            </button>
+            <button
+              type="button"
+              onClick={() => { clearRecurring(); setHasConflict(false); setDealType('one_time') }}
+              className="text-sm font-medium px-4 py-2 rounded-lg bg-white border border-amber-300 text-amber-800 hover:bg-amber-100 transition-colors"
+            >
+              Keep One-Time Fee
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── ORGANIC RECURRING ──────────────────────────────────────────────── */}
       {dealType === 'recurring' && (
