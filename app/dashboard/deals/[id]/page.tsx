@@ -650,15 +650,35 @@ export default function DealDetailPage() {
           <h2 className="font-semibold text-white">Revenue</h2>
         </div>
         {isEditing ? (
-          <div className="px-5 py-5 overflow-x-auto">
-            <DealWorksheet
-              initialData={deal.worksheet_data as unknown as WorksheetData | null}
-              onChange={(data, calcs) => {
-                worksheetDataRef.current  = data
-                worksheetCalcsRef.current = calcs
-              }}
-            />
-          </div>
+          <>
+            <div className="px-5 py-5 overflow-x-auto">
+              <DealWorksheet
+                initialData={deal.worksheet_data as unknown as WorksheetData | null}
+                onChange={(data, calcs) => {
+                  worksheetDataRef.current  = data
+                  worksheetCalcsRef.current = calcs
+                }}
+              />
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center gap-3">
+              <button
+                onClick={saveDeal}
+                disabled={saving || !form.deal_name.trim() || !form.stage_id}
+                className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                onClick={cancelEditing}
+                disabled={saving}
+                className="text-sm text-gray-500 hover:text-gray-700 font-medium px-4 py-2 rounded-lg border border-gray-300 hover:border-gray-400 transition-colors"
+              >
+                Cancel
+              </button>
+              {saved     && <span className="text-sm text-green-600 font-medium">✓ Saved</span>}
+              {saveError && <span className="text-sm text-red-600">{saveError}</span>}
+            </div>
+          </>
         ) : (
           <>
             {/* Products / Plans table */}
