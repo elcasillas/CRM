@@ -12,6 +12,7 @@ import { UnsavedChangesDialog } from '@/components/UnsavedChangesDialog'
 import { DealStageBadge } from '@/components/dashboard/deal-stage-badge'
 import { DealWorksheet } from '@/components/deals/DealWorksheet'
 import type { WorksheetData, WorksheetCalcs } from '@/components/deals/DealWorksheet'
+import { useCadRate } from '@/hooks/useCadRate'
 
 const supabase = createClient()
 const SLACK_TEAM_ID = process.env.NEXT_PUBLIC_SLACK_TEAM_ID ?? ''
@@ -42,6 +43,24 @@ function fmtCurrency(v: number | null | undefined): string {
   if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`
   if (n >= 1_000)     return `$${(n / 1_000).toFixed(1).replace(/\.0$/, '')}k`
   return `$${n.toFixed(0)}`
+}
+
+/** Inline CAD equivalent badge shown next to a foreign-currency value. */
+function CadEquiv({ amount, currency, fxRate, fxError }: {
+  amount: number | null | undefined
+  currency: string
+  fxRate: number | null
+  fxError: boolean
+}) {
+  if (currency === 'CAD' || !amount) return null
+  if (fxRate == null) {
+    return fxError ? <span className="text-gray-400 text-xs ml-1">(CAD unavailable)</span> : null
+  }
+  const cad = Math.round(amount * fxRate * 100) / 100
+  const formatted = new Intl.NumberFormat('en-CA', {
+    style: 'currency', currency: 'CAD', minimumFractionDigits: 0, maximumFractionDigits: 0,
+  }).format(cad) + ' CAD'
+  return <span className="text-gray-400 text-xs ml-1">(~{formatted})</span>
 }
 
 function fmtDate(d: string | null | undefined): string {
@@ -149,6 +168,11 @@ export default function DealDetailPage() {
   const worksheetCalcsRef = useRef<WorksheetCalcs | null>(null)
   const [showNavWarning, setShowNavWarning] = useState(false)
   const [navWarnSaving, setNavWarnSaving]   = useState(false)
+
+  // CAD exchange rate for view mode Revenue section
+  const cadRate  = useCadRate(deal?.currency ?? 'USD')
+  const fxRate   = cadRate.status === 'ok'    ? cadRate.rate : null
+  const fxError  = cadRate.status === 'error'
 
   // Deal Details Modal
   const [showDetailsModal,          setShowDetailsModal]          = useState(false)
@@ -626,25 +650,36 @@ export default function DealDetailPage() {
           <div className="px-6 py-5 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <ViewField label="Currency">
-                <span>{deal.currency || <span className="text-gray-400">—</span>}</span>
+                <span>{deal.currency || 'USD'}</span>
               </ViewField>
               <ViewField label="Term">
                 <span>{deal.contract_term_months != null ? `${deal.contract_term_months} months` : <span className="text-gray-400">—</span>}</span>
               </ViewField>
             </div>
             <ViewField label="MRR Amount">
-              <span className="font-medium">
-                {deal.amount != null
-                  ? `$${Number(deal.amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
-                  : <span className="text-gray-400">—</span>}
-              </span>
+              {deal.amount != null ? (
+                <span className="flex items-baseline">
+                  <span className="font-medium">{`$${Number(deal.amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${deal.currency || 'USD'}`}</span>
+                  <CadEquiv amount={deal.amount} currency={deal.currency || 'USD'} fxRate={fxRate} fxError={fxError} />
+                </span>
+              ) : <span className="text-gray-400">—</span>}
             </ViewField>
             <div className="grid grid-cols-2 gap-4">
               <ViewField label="Annual Contract Value">
-                <span className="font-medium">{fmtCurrency(deal.value_amount)}</span>
+                {deal.value_amount != null ? (
+                  <span className="flex items-baseline">
+                    <span className="font-medium">{fmtCurrency(deal.value_amount)} {deal.currency || 'USD'}</span>
+                    <CadEquiv amount={deal.value_amount} currency={deal.currency || 'USD'} fxRate={fxRate} fxError={fxError} />
+                  </span>
+                ) : <span className="text-gray-400">—</span>}
               </ViewField>
               <ViewField label="Total Contract Value">
-                <span className="font-medium">{fmtCurrency(deal.total_contract_value)}</span>
+                {deal.total_contract_value != null ? (
+                  <span className="flex items-baseline">
+                    <span className="font-medium">{fmtCurrency(deal.total_contract_value)} {deal.currency || 'USD'}</span>
+                    <CadEquiv amount={deal.total_contract_value} currency={deal.currency || 'USD'} fxRate={fxRate} fxError={fxError} />
+                  </span>
+                ) : <span className="text-gray-400">—</span>}
               </ViewField>
             </div>
           </div>
