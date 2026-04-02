@@ -1055,7 +1055,7 @@ export default function AccountDetailPage() {
             <Field label="Phone"><input type="text" value={contactForm.phone} onChange={e => setContactForm(f => ({ ...f, phone: e.target.value }))} className={INPUT} /></Field>
             <Field label="Title"><input type="text" value={contactForm.title} onChange={e => setContactForm(f => ({ ...f, title: e.target.value }))} className={INPUT} /></Field>
           </div>
-          <Field label="Roles *">
+          <Field label="Type *">
             <div className="flex flex-wrap gap-x-5 gap-y-2 pt-1">
               {CONTACT_ROLES.map(role => (
                 <label key={role} className="flex items-center gap-2 cursor-pointer">
