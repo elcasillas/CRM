@@ -651,8 +651,8 @@ export default function AccountDetailPage() {
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roles</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                     <th className="px-5 py-3"></th>
@@ -664,6 +664,7 @@ export default function AccountDetailPage() {
                       <td className="px-5 py-3 font-medium">
                         <button onClick={() => openEditContact(c)} className="text-gray-900 hover:text-[#00ADB1] text-left transition-colors">{contactName(c)}</button>
                       </td>
+                      <td className="px-5 py-3 text-gray-500">{c.title ?? '—'}</td>
                       <td className="px-5 py-3">
                         <div className="flex flex-wrap gap-1">
                           {c.contact_roles.length === 0 ? (
@@ -675,7 +676,6 @@ export default function AccountDetailPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-5 py-3 text-gray-500">{c.title ?? '—'}</td>
                       <td className="px-5 py-3 text-gray-500">{c.email}</td>
                       <td className="px-5 py-3 text-gray-500">{c.phone ?? '—'}</td>
                       <td className="px-5 py-3">
