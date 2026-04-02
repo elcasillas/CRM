@@ -40,6 +40,16 @@ function getInitials(name?: string): string {
   return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase()
 }
 
+const AVATAR_COLORS = ['#00ADB1', '#00989C', '#33C3C7', '#3A86FF', '#FFC857', '#B1005A']
+
+function getAvatarColor(name: string): string {
+  let hash = 0
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash)
+  }
+  return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length]
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 type ContactRow = {
@@ -142,7 +152,11 @@ export default function ContactsPage() {
                     {/* Name + email + avatar */}
                     <td className="px-5 py-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#E6F7F8] text-sm font-semibold text-[#007C80]">
+                        <div
+                          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white ring-2 ring-white/20"
+                          style={{ backgroundColor: getAvatarColor(name) }}
+                          title={name}
+                        >
                           {getInitials(name)}
                         </div>
                         <div className="min-w-0 flex flex-col">
