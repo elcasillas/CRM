@@ -51,6 +51,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          industry: string | null
           postal: string | null
           region: string | null
           service_manager_id: string | null
@@ -68,6 +69,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          industry?: string | null
           postal?: string | null
           region?: string | null
           service_manager_id?: string | null
@@ -85,6 +87,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          industry?: string | null
           postal?: string | null
           region?: string | null
           service_manager_id?: string | null
