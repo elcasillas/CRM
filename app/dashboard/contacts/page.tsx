@@ -10,7 +10,7 @@ const supabase = createClient()
 
 const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 text-sm'
 
-const CONTACT_ROLES = ['primary', 'billing', 'marketing', 'support', 'technical'] as const
+const CONTACT_ROLES = ['primary', 'billing', 'marketing', 'support', 'technical', 'other'] as const
 
 const ROLE_COLOR: Record<string, string> = {
   primary:   'bg-[#E6F7F8] text-[#00ADB1] ring-1 ring-[#00ADB1]/30',
@@ -18,10 +18,11 @@ const ROLE_COLOR: Record<string, string> = {
   marketing: 'bg-purple-50 text-purple-700 ring-1 ring-purple-200',
   support:   'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
   technical: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
+  other:     'bg-gray-100 text-gray-600 ring-1 ring-gray-200',
 }
 
 const ROLE_LABEL: Record<string, string> = {
-  primary: 'Primary', billing: 'Billing', marketing: 'Marketing', support: 'Support', technical: 'Technical',
+  primary: 'Primary', billing: 'Billing', marketing: 'Marketing', support: 'Support', technical: 'Technical', other: 'Other',
 }
 
 const CONTACT_ROLE_COLOR: Record<string, string> = {

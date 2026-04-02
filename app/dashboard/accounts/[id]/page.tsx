@@ -70,10 +70,10 @@ const EMPTY_HID: HidForm          = { hid_number: '', dc_location: '', cluster_i
 const EMPTY_CONTRACT: ContractForm = { entity_name: '', effective_date: '', renewal_date: '', renewal_term_months: '', auto_renew: false, status: 'active' }
 const EMPTY_DEAL: DealForm        = { deal_name: '', deal_description: '', stage_id: '', deal_owner_id: '', solutions_engineer_id: '', amount: '', contract_term_months: '', currency: 'USD', close_date: '', region: '', deal_type: '' }
 
-const CONTACT_ROLES = ['primary', 'billing', 'marketing', 'support', 'technical'] as const
+const CONTACT_ROLES = ['primary', 'billing', 'marketing', 'support', 'technical', 'other'] as const
 
 const ROLE_LABEL: Record<string, string> = {
-  primary: 'Primary', billing: 'Billing', marketing: 'Marketing', support: 'Support', technical: 'Technical',
+  primary: 'Primary', billing: 'Billing', marketing: 'Marketing', support: 'Support', technical: 'Technical', other: 'Other',
 }
 
 const ROLE_COLOR: Record<string, string> = {
@@ -82,6 +82,7 @@ const ROLE_COLOR: Record<string, string> = {
   marketing: 'bg-purple-50 text-purple-700 ring-1 ring-purple-200',
   support:   'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
   technical: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
+  other:     'bg-gray-100 text-gray-600 ring-1 ring-gray-200',
 }
 
 const CONTACT_ROLE_COLOR: Record<string, string> = {
