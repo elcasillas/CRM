@@ -685,151 +685,292 @@ export default function DealDetailPage() {
           </>
         ) : (
           <>
-            {/* Products / Plans table */}
             {(() => {
-              const wd  = deal.worksheet_data as WorksheetData | null
-              if (!wd?.version) return null
-              const wCur = wd.currency || deal.currency || 'USD'
-              const sym  = CURRENCY_SYMBOLS[wCur] ?? wCur
+              const wd       = deal.worksheet_data as WorksheetData | null
+              const wCur     = wd?.currency || deal.currency || 'USD'
+              const sym      = CURRENCY_SYMBOLS[wCur] ?? wCur
+              const fxLoading = cadRate.status === 'loading'
 
-              if (wd.dealType === 'recurring') {
-                const rows      = (wd.products ?? []).filter(p => p.name)
-                if (!rows.length) return null
-                const units     = Math.round(pParseNum(wd.units))
-                const arpu      = rows.map(p => pParseNum(p.unitPrice) * (pParseNum(p.spread) / 100))
-                const totalArpu = arpu.reduce((s, v) => s + v, 0)
+              // ── Helper: Revenue Forecast card (shared by both deal types) ──
+              function RevenueForecastCard({ rows: fcRows }: {
+                rows: { label: string; val: number | null }[]
+              }) {
+                return (
+                  <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                    <div className="px-5 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Revenue Forecast</h3>
+                      {wCur !== 'CAD' && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <span className="font-medium text-gray-700">{wCur}</span>
+                          <span className="text-gray-300">→</span>
+                          <span className="font-medium text-green-700">CAD</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="divide-y divide-gray-100">
+                      {fcRows.map(({ label, val }) => {
+                        const cadVal = val != null && fxRate != null ? val * fxRate : null
+                        return (
+                          <div key={label} className="px-5 py-3 flex items-center justify-between gap-4">
+                            <span className="text-sm text-gray-700 min-w-0">{label}</span>
+                            <div className="flex items-center gap-6 shrink-0 tabular-nums">
+                              <span className="text-sm text-gray-900 font-medium w-28 text-right">
+                                {val != null && val > 0 ? pFmtMoney(val, wCur) : <span className="text-gray-300">—</span>}
+                              </span>
+                              {wCur !== 'CAD' && (
+                                <span className={`text-sm font-semibold w-28 text-right ${cadVal != null && cadVal > 0 ? 'text-green-700' : 'text-gray-300'}`}>
+                                  {fxLoading
+                                    ? <span className="text-gray-400 text-xs">Loading…</span>
+                                    : cadVal != null && cadVal > 0 ? pFmtMoney(cadVal, 'CAD') : '—'}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              }
+
+              // ── RECURRING ─────────────────────────────────────────────────
+              if (wd?.version && wd.dealType === 'recurring') {
+                const rows           = (wd.products ?? []).filter(p => p.name)
+                const units          = Math.round(pParseNum(wd.units))
+                const churnPct       = Math.min(100, Math.max(0, pParseNum(wd.churnPct)))
+                const contractTermNum = Math.max(1, Math.round(pParseNum(wd.contractTerm)))
+                const arpu           = rows.map(p => pParseNum(p.unitPrice) * (pParseNum(p.spread) / 100))
+                const totalArpu      = arpu.reduce((s, v) => s + v, 0)
+                const totalSpreadPct = rows.reduce((s, p) => s + pParseNum(p.spread), 0)
                 return (
                   <>
-                    <div className="px-5 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                      <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Products / Plans</span>
-                      <span className="text-xs font-medium text-gray-500">Units: {units.toLocaleString('en-US')}</span>
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-gray-200">
-                            <th className="px-4 py-2 text-left  text-xs font-medium text-gray-500">Product / Plan</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Unit Price</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Spread %</th>
-                            <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">ARPU</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                          {rows.map((p, i) => (
-                            <tr key={p.id} className="hover:bg-gray-50">
-                              <td className="px-4 py-2 text-gray-900">{p.name}</td>
-                              <td className="px-4 py-2 text-right tabular-nums text-gray-700">{sym}{pParseNum(p.unitPrice).toFixed(2)}</td>
-                              <td className="px-4 py-2 text-right tabular-nums text-gray-700">{pParseNum(p.spread).toFixed(2)}%</td>
-                              <td className="px-4 py-2 text-right tabular-nums font-medium text-gray-900">
-                                {arpu[i] > 0 ? pFmtMoney(arpu[i], wCur) : <span className="text-gray-300">—</span>}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot>
-                          <tr className="border-t-2 border-gray-200 bg-white">
-                            <td className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wide">Total ARPU</td>
-                            <td /><td />
-                            <td className="px-4 py-2 text-right text-sm font-semibold tabular-nums text-gray-900">
-                              {totalArpu > 0 ? pFmtMoney(totalArpu, wCur) : <span className="text-gray-400">—</span>}
-                            </td>
-                          </tr>
-                        </tfoot>
-                      </table>
+                    {/* Products / Plans table */}
+                    {rows.length > 0 && (
+                      <>
+                        <div className="px-5 py-2.5 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Products / Plans</span>
+                          <span className="text-xs font-medium text-gray-500">Units: {units.toLocaleString('en-US')}</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-gray-200">
+                                <th className="px-4 py-2.5 text-left  text-xs font-medium text-gray-500">Category</th>
+                                <th className="px-4 py-2.5 text-left  text-xs font-medium text-gray-500">Name</th>
+                                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">Unit Price</th>
+                                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">Spread %</th>
+                                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">ARPU</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {rows.map((p, i) => (
+                                <tr key={p.id} className="hover:bg-gray-50">
+                                  <td className="px-4 py-2 text-xs text-gray-500">{p.category || <span className="text-gray-300">—</span>}</td>
+                                  <td className="px-4 py-2 text-gray-900">{p.name}</td>
+                                  <td className="px-4 py-2 text-right tabular-nums text-gray-700">{sym}{pParseNum(p.unitPrice).toFixed(2)}</td>
+                                  <td className="px-4 py-2 text-right tabular-nums text-gray-700">{pParseNum(p.spread).toFixed(2)}%</td>
+                                  <td className="px-4 py-2 text-right tabular-nums font-medium text-gray-900">
+                                    {arpu[i] > 0 ? pFmtMoney(arpu[i], wCur) : <span className="text-gray-300">—</span>}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr className="border-t-2 border-gray-200 bg-white">
+                                <td className="px-4 py-2.5" />
+                                <td className="px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">ARPU</td>
+                                <td className="px-4 py-2.5" />
+                                <td className="px-4 py-2.5 text-right tabular-nums text-xs font-semibold text-gray-600">
+                                  {totalSpreadPct.toFixed(2)}%
+                                </td>
+                                <td className="px-4 py-2.5 text-right text-sm font-semibold tabular-nums text-gray-900">
+                                  {totalArpu > 0 ? pFmtMoney(totalArpu, wCur) : <span className="text-gray-400">—</span>}
+                                </td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Assumptions + Revenue Forecast */}
+                    <div className="px-5 py-4">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                          <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Assumptions</h3>
+                            <p className="text-xs text-gray-400 mt-0.5">Deal assumptions used for revenue calculation</p>
+                          </div>
+                          <div className="px-5 py-4 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Units</p>
+                                <p className="text-sm text-gray-900">{units.toLocaleString('en-US')}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Estimated Churn Out</p>
+                                <p className="text-sm text-gray-900">{churnPct.toFixed(2)}%</p>
+                              </div>
+                              <div>
+                                <p className="text-xs font-medium text-gray-400 uppercase tracking-wide mb-1">Contract Term</p>
+                                <p className="text-sm text-gray-900">{contractTermNum} mo</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between py-2 border-t border-gray-100">
+                              <span className="text-sm text-gray-600">Average Revenue per Unit</span>
+                              <span className="text-sm font-semibold text-gray-900 tabular-nums">
+                                {totalArpu > 0 ? pFmtMoney(totalArpu, wCur) : <span className="text-gray-400">—</span>}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <RevenueForecastCard rows={[
+                          { label: 'MRR Amount',            val: deal.amount },
+                          { label: 'Annual Contract Value',  val: deal.value_amount },
+                          { label: 'Total Contract Value',   val: deal.total_contract_value },
+                        ]} />
+                      </div>
                     </div>
                   </>
                 )
               }
 
-              // one_time
-              const rows     = (wd.otProducts ?? []).filter(p => p.name)
-              if (!rows.length) return null
-              const lineVals = rows.map(p => pParseNum(p.unitPrice) * Math.max(0, Math.round(pParseNum(p.qty))))
-              const total    = lineVals.reduce((s, v) => s + v, 0)
+              // ── ONE-TIME ──────────────────────────────────────────────────
+              if (wd?.version && wd.dealType === 'one_time') {
+                const rows     = (wd.otProducts ?? []).filter(p => p.name)
+                const lineVals = rows.map(p => pParseNum(p.unitPrice) * Math.max(0, Math.round(pParseNum(p.qty))))
+                const total    = lineVals.reduce((s, v) => s + v, 0)
+                return (
+                  <>
+                    {/* Products / Plans table */}
+                    {rows.length > 0 && (
+                      <>
+                        <div className="px-5 py-2.5 bg-gray-50 border-b border-gray-200">
+                          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Products / Plans</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-gray-200">
+                                <th className="px-4 py-2.5 text-left  text-xs font-medium text-gray-500">Category</th>
+                                <th className="px-4 py-2.5 text-left  text-xs font-medium text-gray-500">Name</th>
+                                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">Unit Price</th>
+                                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">Qty</th>
+                                <th className="px-4 py-2.5 text-right text-xs font-medium text-gray-500">Line Value</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {rows.map((p, i) => (
+                                <tr key={p.id} className="hover:bg-gray-50">
+                                  <td className="px-4 py-2 text-xs text-gray-500">{p.category || <span className="text-gray-300">—</span>}</td>
+                                  <td className="px-4 py-2 text-gray-900">{p.name}</td>
+                                  <td className="px-4 py-2 text-right tabular-nums text-gray-700">{sym}{pParseNum(p.unitPrice).toFixed(2)}</td>
+                                  <td className="px-4 py-2 text-right tabular-nums text-gray-700">{Math.max(0, Math.round(pParseNum(p.qty))).toLocaleString('en-US')}</td>
+                                  <td className="px-4 py-2 text-right tabular-nums font-medium text-gray-900">
+                                    {lineVals[i] > 0 ? pFmtMoney(lineVals[i], wCur) : <span className="text-gray-300">—</span>}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr className="border-t-2 border-gray-200 bg-white">
+                                <td className="px-4 py-2.5" />
+                                <td className="px-4 py-2.5 text-xs font-semibold text-gray-600 uppercase tracking-wide">Total</td>
+                                <td className="px-4 py-2.5" /><td className="px-4 py-2.5" />
+                                <td className="px-4 py-2.5 text-right text-sm font-semibold tabular-nums text-gray-900">
+                                  {total > 0 ? pFmtMoney(total, wCur) : <span className="text-gray-400">—</span>}
+                                </td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Assumptions + Revenue Forecast */}
+                    <div className="px-5 py-4">
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                          <div className="px-5 py-3 bg-gray-50 border-b border-gray-200">
+                            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Assumptions</h3>
+                            <p className="text-xs text-gray-400 mt-0.5">Revenue is derived directly from product line values</p>
+                          </div>
+                          <div className="px-5 py-4 space-y-3">
+                            <div className="flex items-center justify-between py-2">
+                              <span className="text-sm text-gray-600">Total Product Lines</span>
+                              <span className="text-sm font-semibold text-gray-900 tabular-nums">
+                                {rows.filter(p => pParseNum(p.unitPrice) > 0).length}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between py-2 border-t border-gray-100">
+                              <span className="text-sm text-gray-600">One-Time Revenue</span>
+                              <span className="text-sm font-semibold text-gray-900 tabular-nums">
+                                {total > 0 ? pFmtMoney(total, wCur) : <span className="text-gray-400">—</span>}
+                              </span>
+                            </div>
+                            <div className="rounded-lg bg-blue-50 border border-blue-100 px-4 py-2.5">
+                              <p className="text-xs text-blue-600">ACV and TCV both equal the sum of all product line values for one-time deals.</p>
+                            </div>
+                          </div>
+                        </div>
+                        <RevenueForecastCard rows={[
+                          { label: 'One-Time Revenue',       val: deal.value_amount },
+                          { label: 'Annual Contract Value',  val: deal.value_amount },
+                          { label: 'Total Contract Value',   val: deal.total_contract_value },
+                        ]} />
+                      </div>
+                    </div>
+                  </>
+                )
+              }
+
+              // ── FALLBACK (no worksheet_data) ──────────────────────────────
               return (
                 <>
-                  <div className="px-5 py-2.5 bg-gray-50 border-b border-gray-200">
-                    <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Products / Plans</span>
+                  <div className="px-5 py-3 bg-gray-100 border-b border-gray-200 border-t-2 border-t-gray-300">
+                    <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Revenue Summary</span>
                   </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-200">
-                          <th className="px-4 py-2 text-left  text-xs font-medium text-gray-500">Product / Plan</th>
-                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Unit Price</th>
-                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Qty</th>
-                          <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Line Value</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {rows.map((p, i) => (
-                          <tr key={p.id} className="hover:bg-gray-50">
-                            <td className="px-4 py-2 text-gray-900">{p.name}</td>
-                            <td className="px-4 py-2 text-right tabular-nums text-gray-700">{sym}{pParseNum(p.unitPrice).toFixed(2)}</td>
-                            <td className="px-4 py-2 text-right tabular-nums text-gray-700">{Math.max(0, Math.round(pParseNum(p.qty))).toLocaleString('en-US')}</td>
-                            <td className="px-4 py-2 text-right tabular-nums font-medium text-gray-900">
-                              {lineVals[i] > 0 ? pFmtMoney(lineVals[i], wCur) : <span className="text-gray-300">—</span>}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                      <tfoot>
-                        <tr className="border-t-2 border-gray-200 bg-white">
-                          <td className="px-4 py-2 text-xs font-semibold text-gray-600 uppercase tracking-wide">Total</td>
-                          <td /><td />
-                          <td className="px-4 py-2 text-right text-sm font-semibold tabular-nums text-gray-900">
-                            {total > 0 ? pFmtMoney(total, wCur) : <span className="text-gray-400">—</span>}
-                          </td>
-                        </tr>
-                      </tfoot>
-                    </table>
+                  <div className="px-5 py-4">
+                    <div className="bg-gray-50 rounded-xl border border-gray-100 px-5 py-4 space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <ViewField label="Currency">
+                          <span>{deal.currency || 'USD'}</span>
+                        </ViewField>
+                        <ViewField label="Term">
+                          <span>{deal.contract_term_months != null ? `${deal.contract_term_months} months` : <span className="text-gray-400">—</span>}</span>
+                        </ViewField>
+                      </div>
+                      <ViewField label="MRR Amount">
+                        {deal.amount != null ? (
+                          <span className="flex items-baseline">
+                            <span className="font-medium">{`$${Number(deal.amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${deal.currency || 'USD'}`}</span>
+                            <CadEquiv amount={deal.amount} currency={deal.currency || 'USD'} fxRate={fxRate} fxError={fxError} />
+                          </span>
+                        ) : <span className="text-gray-400">—</span>}
+                      </ViewField>
+                      <div className="grid grid-cols-2 gap-4">
+                        <ViewField label="Annual Contract Value">
+                          {deal.value_amount != null ? (
+                            <span className="flex items-baseline">
+                              <span className="font-medium">{fmtCurrency(deal.value_amount)} {deal.currency || 'USD'}</span>
+                              <CadEquiv amount={deal.value_amount} currency={deal.currency || 'USD'} fxRate={fxRate} fxError={fxError} />
+                            </span>
+                          ) : <span className="text-gray-400">—</span>}
+                        </ViewField>
+                        <ViewField label="Total Contract Value">
+                          {deal.total_contract_value != null ? (
+                            <span className="flex items-baseline">
+                              <span className="font-medium">{fmtCurrency(deal.total_contract_value)} {deal.currency || 'USD'}</span>
+                              <CadEquiv amount={deal.total_contract_value} currency={deal.currency || 'USD'} fxRate={fxRate} fxError={fxError} />
+                            </span>
+                          ) : <span className="text-gray-400">—</span>}
+                        </ViewField>
+                      </div>
+                    </div>
                   </div>
                 </>
               )
             })()}
-
-            {/* Revenue summary */}
-            <div className="px-5 py-3 bg-gray-100 border-b border-gray-200 border-t-2 border-t-gray-300">
-              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Revenue Summary</span>
-            </div>
-            <div className="px-5 py-4">
-              <div className="bg-gray-50 rounded-xl border border-gray-100 px-5 py-4 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <ViewField label="Currency">
-                  <span>{deal.currency || 'USD'}</span>
-                </ViewField>
-                <ViewField label="Term">
-                  <span>{deal.contract_term_months != null ? `${deal.contract_term_months} months` : <span className="text-gray-400">—</span>}</span>
-                </ViewField>
-              </div>
-              <ViewField label="MRR Amount">
-                {deal.amount != null ? (
-                  <span className="flex items-baseline">
-                    <span className="font-medium">{`$${Number(deal.amount).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} ${deal.currency || 'USD'}`}</span>
-                    <CadEquiv amount={deal.amount} currency={deal.currency || 'USD'} fxRate={fxRate} fxError={fxError} />
-                  </span>
-                ) : <span className="text-gray-400">—</span>}
-              </ViewField>
-              <div className="grid grid-cols-2 gap-4">
-                <ViewField label="Annual Contract Value">
-                  {deal.value_amount != null ? (
-                    <span className="flex items-baseline">
-                      <span className="font-medium">{fmtCurrency(deal.value_amount)} {deal.currency || 'USD'}</span>
-                      <CadEquiv amount={deal.value_amount} currency={deal.currency || 'USD'} fxRate={fxRate} fxError={fxError} />
-                    </span>
-                  ) : <span className="text-gray-400">—</span>}
-                </ViewField>
-                <ViewField label="Total Contract Value">
-                  {deal.total_contract_value != null ? (
-                    <span className="flex items-baseline">
-                      <span className="font-medium">{fmtCurrency(deal.total_contract_value)} {deal.currency || 'USD'}</span>
-                      <CadEquiv amount={deal.total_contract_value} currency={deal.currency || 'USD'} fxRate={fxRate} fxError={fxError} />
-                    </span>
-                  ) : <span className="text-gray-400">—</span>}
-                </ViewField>
-              </div>
-              </div>
-            </div>
           </>
         )}
       </div>
