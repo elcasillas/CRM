@@ -661,7 +661,6 @@ export default function AccountDetailPage() {
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
-                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                     <th className="px-5 py-3"></th>
                   </tr>
@@ -669,8 +668,11 @@ export default function AccountDetailPage() {
                 <tbody className="divide-y divide-gray-100">
                   {contacts.map(c => (
                     <tr key={c.id} className="hover:bg-[#E6F7F8]">
-                      <td className="px-5 py-3 font-medium">
-                        <button onClick={() => openEditContact(c)} className="text-gray-900 hover:text-[#00ADB1] text-left transition-colors">{contactName(c)}</button>
+                      <td className="px-5 py-3">
+                        <div className="flex flex-col">
+                          <button onClick={() => openEditContact(c)} className="font-medium text-gray-900 hover:text-[#00ADB1] text-left transition-colors">{contactName(c)}</button>
+                          <span className="text-sm text-gray-500 mt-1 break-all">{c.email}</span>
+                        </div>
                       </td>
                       <td className="px-5 py-3 text-gray-500">{c.title ?? '—'}</td>
                       <td className="px-5 py-3">
@@ -689,7 +691,6 @@ export default function AccountDetailPage() {
                           ? <span className={`inline-flex px-1.5 py-0 rounded text-xs font-medium ${CONTACT_ROLE_COLOR[c.role] ?? 'bg-gray-100 text-gray-600'}`}>{c.role}</span>
                           : <span className="text-gray-400">—</span>}
                       </td>
-                      <td className="px-5 py-3 text-gray-500">{c.email}</td>
                       <td className="px-5 py-3 text-gray-500">{c.phone ?? '—'}</td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3 justify-end">
