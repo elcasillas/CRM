@@ -157,7 +157,8 @@ export default function DealDetailPage() {
   const [userId,         setUserId]         = useState('')
 
   // Edit form
-  const [isEditing, setIsEditing] = useState(false)
+  const [isEditing,        setIsEditing]        = useState(false)
+  const [isEditingRevenue, setIsEditingRevenue] = useState(false)
   const [form,      setFormState] = useState<FormData | null>(null)
   const [saving,    setSaving]    = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -279,6 +280,11 @@ export default function DealDetailPage() {
     setSaveError(null)
   }
 
+  function cancelRevenue() {
+    setIsEditingRevenue(false)
+    setSaveError(null)
+  }
+
   // ── Deal Details Modal ───────────────────────────────────────────────────────
 
   async function openDetailsModal() {
@@ -375,6 +381,7 @@ export default function DealDetailPage() {
       setSaved(true)
       setTimeout(() => setSaved(false), 2500)
       setIsEditing(false)
+      setIsEditingRevenue(false)
       await fetchDeal()
     }
     setSaving(false)
@@ -650,10 +657,22 @@ export default function DealDetailPage() {
 
       {/* Revenue */}
       <div className="mt-6 bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-        <div className="flex items-center px-6 py-3 bg-[#00ADB1] rounded-t-xl">
+        <div className="flex items-center justify-between px-6 py-3 bg-[#00ADB1] rounded-t-xl">
           <h2 className="font-semibold text-white">Revenue</h2>
+          {!isEditingRevenue && (
+            <button
+              onClick={() => setIsEditingRevenue(true)}
+              title="Edit Revenue"
+              aria-label="Edit Revenue"
+              className="text-white/70 hover:text-white transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                <path d="M2.695 14.763l-1.262 3.154a.5.5 0 00.65.65l3.155-1.262a4 4 0 001.343-.885L17.5 5.5a2.121 2.121 0 00-3-3L3.58 13.42a4 4 0 00-.885 1.343z" />
+              </svg>
+            </button>
+          )}
         </div>
-        {isEditing ? (
+        {isEditingRevenue ? (
           <>
             <div className="px-5 py-5 overflow-x-auto">
               <DealWorksheet
@@ -673,7 +692,7 @@ export default function DealDetailPage() {
                 {saving ? 'Saving…' : 'Save'}
               </button>
               <button
-                onClick={cancelEditing}
+                onClick={cancelRevenue}
                 disabled={saving}
                 className="text-sm text-gray-500 hover:text-gray-700 font-medium px-4 py-2 rounded-lg border border-gray-300 hover:border-gray-400 transition-colors"
               >
