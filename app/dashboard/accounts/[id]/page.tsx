@@ -59,13 +59,13 @@ function stageBadgeClass(s: { is_won: boolean; is_lost: boolean; sort_order: num
 
 // ── Form types ────────────────────────────────────────────────────────────────
 
-type ContactForm = { first_name: string; last_name: string; email: string; phone: string; title: string; role: string; roles: string[] }
+type ContactForm = { first_name: string; last_name: string; email: string; phone: string; title: string; role: string; status: string; roles: string[] }
 type HidForm     = { hid_number: string; dc_location: string; cluster_id: string; start_date: string; domain_name: string }
 type ContractForm = { entity_name: string; effective_date: string; renewal_date: string; renewal_term_months: string; auto_renew: boolean; status: string }
 type DealForm    = { deal_name: string; deal_description: string; stage_id: string; deal_owner_id: string; solutions_engineer_id: string; amount: string; contract_term_months: string; currency: string; close_date: string; region: string; deal_type: string }
 type AccountForm = { account_name: string; account_website: string; address_line1: string; address_line2: string; city: string; region: string; postal: string; country: string; status: string; account_owner_id: string; service_manager_id: string }
 
-const EMPTY_CONTACT: ContactForm  = { first_name: '', last_name: '', email: '', phone: '', title: '', role: '', roles: [] }
+const EMPTY_CONTACT: ContactForm  = { first_name: '', last_name: '', email: '', phone: '', title: '', role: '', status: 'Active', roles: [] }
 const EMPTY_HID: HidForm          = { hid_number: '', dc_location: '', cluster_id: '', start_date: '', domain_name: '' }
 const EMPTY_CONTRACT: ContractForm = { entity_name: '', effective_date: '', renewal_date: '', renewal_term_months: '', auto_renew: false, status: 'active' }
 const EMPTY_DEAL: DealForm        = { deal_name: '', deal_description: '', stage_id: '', deal_owner_id: '', solutions_engineer_id: '', amount: '', contract_term_months: '', currency: 'USD', close_date: '', region: '', deal_type: '' }
@@ -89,6 +89,19 @@ const CONTACT_ROLE_COLOR: Record<string, string> = {
   'Decision Maker': 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
   'Influencer':     'bg-[#E6F7F8] text-[#00ADB1] ring-1 ring-[#00ADB1]/30',
   'Blocker':        'bg-red-50 text-red-600 ring-1 ring-red-200',
+}
+
+const CONTACT_STATUS_COLOR: Record<string, string> = {
+  'Active':   'bg-green-50 text-green-700 ring-1 ring-green-200',
+  'Prospect': 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+  'Inactive': 'bg-gray-100 text-gray-600 ring-1 ring-gray-200',
+}
+
+function getInitials(name?: string): string {
+  if (!name) return '?'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase()
 }
 
 type Tab = 'contacts' | 'hids' | 'contracts' | 'deals' | 'notes'
@@ -376,7 +389,7 @@ export default function AccountDetailPage() {
   // ── Contact CRUD ────────────────────────────────────────────────────────────
 
   function openAddContact()        { setContactForm(EMPTY_CONTACT); setEditingContact(null); clearError(); setContactModal('add'); modalInitialRef.current = JSON.stringify(EMPTY_CONTACT) }
-  function openEditContact(c: ContactWithRoles) { const cf = { first_name: c.first_name ?? '', last_name: c.last_name ?? '', email: c.email, phone: c.phone ?? '', title: c.title ?? '', role: c.role ?? '', roles: c.contact_roles.map(r => r.role_type) }; setContactForm(cf); setEditingContact(c); clearError(); setContactModal('edit'); modalInitialRef.current = JSON.stringify(cf) }
+  function openEditContact(c: ContactWithRoles) { const cf = { first_name: c.first_name ?? '', last_name: c.last_name ?? '', email: c.email, phone: c.phone ?? '', title: c.title ?? '', role: c.role ?? '', status: c.status ?? 'Active', roles: c.contact_roles.map(r => r.role_type) }; setContactForm(cf); setEditingContact(c); clearError(); setContactModal('edit'); modalInitialRef.current = JSON.stringify(cf) }
   function closeContactModal()     { guardedClose(JSON.stringify(contactForm), () => { setContactModal(null); setEditingContact(null); clearError() }) }
 
   async function saveContact() {
@@ -396,7 +409,7 @@ export default function AccountDetailPage() {
       }
     }
 
-    const payload = { account_id: id, first_name: contactForm.first_name.trim() || null, last_name: contactForm.last_name.trim() || null, email: contactForm.email.trim(), phone: contactForm.phone.trim() || null, title: contactForm.title.trim() || null, role: contactForm.role || null, is_primary: isPrimary }
+    const payload = { account_id: id, first_name: contactForm.first_name.trim() || null, last_name: contactForm.last_name.trim() || null, email: contactForm.email.trim(), phone: contactForm.phone.trim() || null, title: contactForm.title.trim() || null, role: contactForm.role || null, status: contactForm.status || 'Active', is_primary: isPrimary }
 
     let contactId: string
     if (contactModal === 'add') {
@@ -661,6 +674,7 @@ export default function AccountDetailPage() {
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                    <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     <th className="px-5 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
                     <th className="px-5 py-3"></th>
                   </tr>
@@ -669,9 +683,14 @@ export default function AccountDetailPage() {
                   {contacts.map(c => (
                     <tr key={c.id} className="hover:bg-[#E6F7F8]">
                       <td className="px-5 py-3">
-                        <div className="flex flex-col">
-                          <button onClick={() => openEditContact(c)} className="font-medium text-gray-900 hover:text-[#00ADB1] text-left transition-colors">{contactName(c)}</button>
-                          <span className="text-sm text-gray-500 mt-1 break-all">{c.email}</span>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#E6F7F8] text-sm font-semibold text-[#007C80]">
+                            {getInitials(contactName(c))}
+                          </div>
+                          <div className="min-w-0 flex flex-col">
+                            <button onClick={() => openEditContact(c)} className="font-medium text-gray-900 hover:text-[#00ADB1] text-left transition-colors truncate">{contactName(c)}</button>
+                            <span className="text-sm text-gray-500 mt-0.5 break-all">{c.email}</span>
+                          </div>
                         </div>
                       </td>
                       <td className="px-5 py-3 text-gray-500">{c.title ?? '—'}</td>
@@ -690,6 +709,9 @@ export default function AccountDetailPage() {
                         {c.role
                           ? <span className={`inline-flex px-1.5 py-0 rounded text-xs font-medium ${CONTACT_ROLE_COLOR[c.role] ?? 'bg-gray-100 text-gray-600'}`}>{c.role}</span>
                           : <span className="text-gray-400">—</span>}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`inline-flex px-1.5 py-0 rounded text-xs font-medium ${CONTACT_STATUS_COLOR[c.status] ?? 'bg-gray-100 text-gray-600'}`}>{c.status}</span>
                       </td>
                       <td className="px-5 py-3 text-gray-500">{c.phone ?? '—'}</td>
                       <td className="px-5 py-3">
@@ -1069,15 +1091,24 @@ export default function AccountDetailPage() {
             <Field label="Phone"><input type="text" value={contactForm.phone} onChange={e => setContactForm(f => ({ ...f, phone: e.target.value }))} className={INPUT} /></Field>
             <Field label="Title"><input type="text" value={contactForm.title} onChange={e => setContactForm(f => ({ ...f, title: e.target.value }))} className={INPUT} /></Field>
           </div>
-          <Field label="Role">
-            <select value={contactForm.role} onChange={e => setContactForm(f => ({ ...f, role: e.target.value }))} className={INPUT}>
-              <option value="">— none —</option>
-              <option value="Champion">Champion</option>
-              <option value="Decision Maker">Decision Maker</option>
-              <option value="Influencer">Influencer</option>
-              <option value="Blocker">Blocker</option>
-            </select>
-          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Role">
+              <select value={contactForm.role} onChange={e => setContactForm(f => ({ ...f, role: e.target.value }))} className={INPUT}>
+                <option value="">— none —</option>
+                <option value="Champion">Champion</option>
+                <option value="Decision Maker">Decision Maker</option>
+                <option value="Influencer">Influencer</option>
+                <option value="Blocker">Blocker</option>
+              </select>
+            </Field>
+            <Field label="Status">
+              <select value={contactForm.status} onChange={e => setContactForm(f => ({ ...f, status: e.target.value }))} className={INPUT}>
+                <option value="Active">Active</option>
+                <option value="Prospect">Prospect</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </Field>
+          </div>
           <Field label="Type *">
             <div className="flex flex-wrap gap-x-5 gap-y-2 pt-1">
               {CONTACT_ROLES.map(role => (
