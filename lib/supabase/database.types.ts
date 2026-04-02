@@ -147,6 +147,7 @@ export type Database = {
           is_primary: boolean
           last_name: string | null
           phone: string | null
+          role: string | null
           title: string | null
           updated_at: string
         }
@@ -159,6 +160,7 @@ export type Database = {
           is_primary?: boolean
           last_name?: string | null
           phone?: string | null
+          role?: string | null
           title?: string | null
           updated_at?: string
         }
@@ -171,6 +173,7 @@ export type Database = {
           is_primary?: boolean
           last_name?: string | null
           phone?: string | null
+          role?: string | null
           title?: string | null
           updated_at?: string
         }
