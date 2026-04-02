@@ -553,8 +553,8 @@ export default function AccountDetailPage() {
 
   const TABS: { key: Tab; label: string; count: number }[] = [
     { key: 'deals',     label: 'Deals',     count: deals.length },
-    { key: 'hids',      label: 'HIDs',      count: hids.length },
     { key: 'contacts',  label: 'Contacts',  count: contacts.length },
+    { key: 'hids',      label: 'HIDs',      count: hids.length },
     { key: 'contracts', label: 'Contracts', count: contracts.length },
     { key: 'notes',     label: 'Notes',     count: notes.length },
   ]
