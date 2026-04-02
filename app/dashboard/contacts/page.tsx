@@ -6,7 +6,11 @@ import { createClient } from '@/lib/supabase/client'
 
 const supabase = createClient()
 
-// ── Pill color maps (identical to Account Detail page) ────────────────────────
+// ── Shared constants ──────────────────────────────────────────────────────────
+
+const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 text-sm'
+
+const CONTACT_ROLES = ['primary', 'billing', 'marketing', 'support', 'technical'] as const
 
 const ROLE_COLOR: Record<string, string> = {
   primary:   'bg-[#E6F7F8] text-[#00ADB1] ring-1 ring-[#00ADB1]/30',
@@ -33,14 +37,14 @@ const CONTACT_STATUS_COLOR: Record<string, string> = {
   'Inactive': 'bg-gray-100 text-gray-600 ring-1 ring-gray-200',
 }
 
+const AVATAR_COLORS = ['#00ADB1', '#00989C', '#33C3C7', '#3A86FF', '#FFC857', '#B1005A']
+
 function getInitials(name?: string): string {
   if (!name) return '?'
   const parts = name.trim().split(/\s+/)
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
   return `${parts[0][0] ?? ''}${parts[1][0] ?? ''}`.toUpperCase()
 }
-
-const AVATAR_COLORS = ['#00ADB1', '#00989C', '#33C3C7', '#3A86FF', '#FFC857', '#B1005A']
 
 function getAvatarColor(name: string): string {
   let hash = 0
@@ -62,22 +66,53 @@ type ContactRow = {
   role: string | null
   status: string
   account_id: string | null
+  is_primary: boolean
   contact_roles: { role_type: string }[]
   accounts: { id: string; account_name: string } | null
+}
+
+type ContactForm = {
+  first_name: string
+  last_name: string
+  email: string
+  phone: string
+  title: string
+  role: string
+  status: string
+  roles: string[]
 }
 
 function contactDisplayName(c: ContactRow): string {
   return [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email
 }
 
+// ── Small helpers ─────────────────────────────────────────────────────────────
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
+      {children}
+    </div>
+  )
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function ContactsPage() {
-  const [contacts, setContacts] = useState<ContactRow[]>([])
-  const [loading,  setLoading]  = useState(true)
-  const [search,   setSearch]   = useState('')
+  const [contacts,       setContacts]       = useState<ContactRow[]>([])
+  const [loading,        setLoading]        = useState(true)
+  const [search,         setSearch]         = useState('')
 
-  useEffect(() => {
+  // Edit modal
+  const [editingContact, setEditingContact] = useState<ContactRow | null>(null)
+  const [contactForm,    setContactForm]    = useState<ContactForm | null>(null)
+  const [saving,         setSaving]         = useState(false)
+  const [formError,      setFormError]      = useState<string | null>(null)
+
+  // ── Data fetching ─────────────────────────────────────────────────────────
+
+  function fetchContacts() {
     supabase
       .from('contacts')
       .select('*, contact_roles(role_type), accounts(id, account_name)')
@@ -86,7 +121,80 @@ export default function ContactsPage() {
         setContacts((data ?? []) as ContactRow[])
         setLoading(false)
       })
-  }, [])
+  }
+
+  useEffect(() => { fetchContacts() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Modal helpers ─────────────────────────────────────────────────────────
+
+  function openEditContact(c: ContactRow) {
+    setContactForm({
+      first_name: c.first_name ?? '',
+      last_name:  c.last_name  ?? '',
+      email:      c.email,
+      phone:      c.phone      ?? '',
+      title:      c.title      ?? '',
+      role:       c.role       ?? '',
+      status:     c.status     ?? 'Active',
+      roles:      c.contact_roles.map(r => r.role_type),
+    })
+    setEditingContact(c)
+    setFormError(null)
+  }
+
+  function closeModal() {
+    setEditingContact(null)
+    setContactForm(null)
+    setFormError(null)
+  }
+
+  async function saveContact() {
+    if (!contactForm || !editingContact) return
+    if (contactForm.roles.length === 0) { setFormError('At least one type must be selected'); return }
+    setSaving(true); setFormError(null)
+
+    const isPrimary = contactForm.roles.includes('primary')
+
+    // If setting primary, clear it from other contacts on the same account
+    if (isPrimary && editingContact.account_id) {
+      const siblings = contacts.filter(c =>
+        c.account_id === editingContact.account_id &&
+        c.id !== editingContact.id &&
+        c.contact_roles.some(r => r.role_type === 'primary')
+      )
+      for (const sibling of siblings) {
+        await supabase.from('contact_roles').delete().eq('contact_id', sibling.id).eq('role_type', 'primary')
+        await supabase.from('contacts').update({ is_primary: false }).eq('id', sibling.id)
+      }
+    }
+
+    const payload = {
+      first_name: contactForm.first_name.trim() || null,
+      last_name:  contactForm.last_name.trim()  || null,
+      email:      contactForm.email.trim(),
+      phone:      contactForm.phone.trim()       || null,
+      title:      contactForm.title.trim()       || null,
+      role:       contactForm.role               || null,
+      status:     contactForm.status             || 'Active',
+      is_primary: isPrimary,
+    }
+
+    const { error } = await supabase.from('contacts').update(payload).eq('id', editingContact.id)
+    if (error) { setFormError(error.message); setSaving(false); return }
+
+    // Replace contact_roles
+    await supabase.from('contact_roles').delete().eq('contact_id', editingContact.id)
+    const { error: rolesError } = await supabase.from('contact_roles').insert(
+      contactForm.roles.map(role_type => ({ contact_id: editingContact.id, role_type }))
+    )
+    if (rolesError) { setFormError(rolesError.message); setSaving(false); return }
+
+    closeModal()
+    fetchContacts()
+    setSaving(false)
+  }
+
+  // ── Derived state ─────────────────────────────────────────────────────────
 
   const filtered = search.trim()
     ? contacts.filter(c => {
@@ -99,6 +207,8 @@ export default function ContactsPage() {
         )
       })
     : contacts
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   if (loading) {
     return (
@@ -160,16 +270,12 @@ export default function ContactsPage() {
                           {getInitials(name)}
                         </div>
                         <div className="min-w-0 flex flex-col">
-                          {c.account_id ? (
-                            <Link
-                              href={`/dashboard/accounts/${c.account_id}?tab=contacts`}
-                              className="font-medium text-gray-900 hover:text-[#00ADB1] transition-colors truncate"
-                            >
-                              {name}
-                            </Link>
-                          ) : (
-                            <span className="font-medium text-gray-900 truncate">{name}</span>
-                          )}
+                          <button
+                            onClick={() => openEditContact(c)}
+                            className="font-medium text-gray-900 hover:text-[#00ADB1] transition-colors truncate text-left"
+                          >
+                            {name}
+                          </button>
                           <span className="text-sm text-gray-500 mt-0.5 break-all">{c.email}</span>
                         </div>
                       </div>
@@ -231,6 +337,94 @@ export default function ContactsPage() {
           </table>
         </div>
       )}
+
+      {/* ── Edit Contact Modal ───────────────────────────────────────────────── */}
+      {editingContact && contactForm && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-md">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 bg-[#00ADB1] rounded-t-xl">
+              <h3 className="font-semibold text-white">Edit Contact</h3>
+              <button onClick={closeModal} className="text-white/70 hover:text-white text-lg leading-none">✕</button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-4 max-h-[65vh] overflow-y-auto">
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="First name">
+                  <input type="text" value={contactForm.first_name} onChange={e => setContactForm(f => f && ({ ...f, first_name: e.target.value }))} className={INPUT} />
+                </Field>
+                <Field label="Last name">
+                  <input type="text" value={contactForm.last_name} onChange={e => setContactForm(f => f && ({ ...f, last_name: e.target.value }))} className={INPUT} />
+                </Field>
+              </div>
+              <Field label="Email *">
+                <input type="email" value={contactForm.email} onChange={e => setContactForm(f => f && ({ ...f, email: e.target.value }))} className={INPUT} />
+              </Field>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Phone">
+                  <input type="text" value={contactForm.phone} onChange={e => setContactForm(f => f && ({ ...f, phone: e.target.value }))} className={INPUT} />
+                </Field>
+                <Field label="Title">
+                  <input type="text" value={contactForm.title} onChange={e => setContactForm(f => f && ({ ...f, title: e.target.value }))} className={INPUT} />
+                </Field>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Field label="Role">
+                  <select value={contactForm.role} onChange={e => setContactForm(f => f && ({ ...f, role: e.target.value }))} className={INPUT}>
+                    <option value="">— none —</option>
+                    <option value="Champion">Champion</option>
+                    <option value="Decision Maker">Decision Maker</option>
+                    <option value="Influencer">Influencer</option>
+                    <option value="Blocker">Blocker</option>
+                  </select>
+                </Field>
+                <Field label="Status">
+                  <select value={contactForm.status} onChange={e => setContactForm(f => f && ({ ...f, status: e.target.value }))} className={INPUT}>
+                    <option value="Active">Active</option>
+                    <option value="Prospect">Prospect</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </Field>
+              </div>
+              <Field label="Type *">
+                <div className="flex flex-wrap gap-x-5 gap-y-2 pt-1">
+                  {CONTACT_ROLES.map(role => (
+                    <label key={role} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={contactForm.roles.includes(role)}
+                        onChange={e => setContactForm(f => f && ({
+                          ...f,
+                          roles: e.target.checked ? [...f.roles, role] : f.roles.filter(r => r !== role),
+                        }))}
+                        className="w-4 h-4 rounded border-gray-300 text-[#00ADB1]"
+                      />
+                      <span className="text-sm text-gray-700">{ROLE_LABEL[role]}</span>
+                    </label>
+                  ))}
+                </div>
+              </Field>
+              {formError && <p className="text-sm text-red-600">{formError}</p>}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button onClick={closeModal} disabled={saving} className="text-sm text-gray-500 hover:text-gray-700 font-medium">Cancel</button>
+              <button
+                onClick={saveContact}
+                disabled={saving || !contactForm.email.trim() || contactForm.roles.length === 0}
+                className="bg-[#00ADB1] hover:bg-[#00989C] disabled:opacity-50 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
