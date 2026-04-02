@@ -84,6 +84,13 @@ const ROLE_COLOR: Record<string, string> = {
   technical: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
 }
 
+const CONTACT_ROLE_COLOR: Record<string, string> = {
+  'Champion':       'bg-green-50 text-green-700 ring-1 ring-green-200',
+  'Decision Maker': 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
+  'Influencer':     'bg-[#E6F7F8] text-[#00ADB1] ring-1 ring-[#00ADB1]/30',
+  'Blocker':        'bg-red-50 text-red-600 ring-1 ring-red-200',
+}
+
 type Tab = 'contacts' | 'hids' | 'contracts' | 'deals' | 'notes'
 
 // ── Modal shell ───────────────────────────────────────────────────────────────
@@ -677,7 +684,11 @@ export default function AccountDetailPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-5 py-3 text-gray-500">{c.role ?? '—'}</td>
+                      <td className="px-5 py-3">
+                        {c.role
+                          ? <span className={`inline-flex px-1.5 py-0 rounded text-xs font-medium ${CONTACT_ROLE_COLOR[c.role] ?? 'bg-gray-100 text-gray-600'}`}>{c.role}</span>
+                          : <span className="text-gray-400">—</span>}
+                      </td>
                       <td className="px-5 py-3 text-gray-500">{c.email}</td>
                       <td className="px-5 py-3 text-gray-500">{c.phone ?? '—'}</td>
                       <td className="px-5 py-3">
