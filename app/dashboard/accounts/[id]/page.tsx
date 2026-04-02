@@ -63,7 +63,7 @@ type ContactForm = { first_name: string; last_name: string; email: string; phone
 type HidForm     = { hid_number: string; dc_location: string; cluster_id: string; start_date: string; domain_name: string }
 type ContractForm = { entity_name: string; effective_date: string; renewal_date: string; renewal_term_months: string; auto_renew: boolean; status: string }
 type DealForm    = { deal_name: string; deal_description: string; stage_id: string; deal_owner_id: string; solutions_engineer_id: string; amount: string; contract_term_months: string; currency: string; close_date: string; region: string; deal_type: string }
-type AccountForm = { account_name: string; account_website: string; address_line1: string; address_line2: string; city: string; region: string; postal: string; country: string; status: string; account_owner_id: string; service_manager_id: string }
+type AccountForm = { account_name: string; account_website: string; address_line1: string; address_line2: string; city: string; region: string; postal: string; country: string; industry: string; status: string; account_owner_id: string; service_manager_id: string }
 
 const EMPTY_CONTACT: ContactForm  = { first_name: '', last_name: '', email: '', phone: '', title: '', role: '', status: 'Active', roles: [] }
 const EMPTY_HID: HidForm          = { hid_number: '', dc_location: '', cluster_id: '', start_date: '', domain_name: '' }
@@ -204,7 +204,7 @@ export default function AccountDetailPage() {
   // account edit
   const [accountModal,    setAccountModal]    = useState(false)
   const [accountViewMode, setAccountViewMode] = useState<'view' | 'edit'>('view')
-  const [accountForm,     setAccountForm]     = useState<AccountForm>({ account_name: '', account_website: '', address_line1: '', address_line2: '', city: '', region: '', postal: '', country: '', status: 'active', account_owner_id: '', service_manager_id: '' })
+  const [accountForm,     setAccountForm]     = useState<AccountForm>({ account_name: '', account_website: '', address_line1: '', address_line2: '', city: '', region: '', postal: '', country: '', industry: '', status: 'active', account_owner_id: '', service_manager_id: '' })
   const [accountSaving,   setAccountSaving]   = useState(false)
   const [accountFormError, setAccountFormError] = useState<string | null>(null)
 
@@ -322,6 +322,7 @@ export default function AccountDetailPage() {
       region:             account.region             ?? '',
       postal:             account.postal             ?? '',
       country:            account.country            ?? '',
+      industry:           account.industry           ?? '',
       status:             account.status,
       account_owner_id:   account.account_owner_id   ?? '',
       service_manager_id: account.service_manager_id ?? '',
@@ -362,6 +363,7 @@ export default function AccountDetailPage() {
       region:             accountForm.region.trim()           || null,
       postal:             accountForm.postal.trim()           || null,
       country:            accountForm.country.trim()          || null,
+      industry:           accountForm.industry                || null,
       status:             accountForm.status,
       account_owner_id:   accountForm.account_owner_id        || null,
       service_manager_id: accountForm.service_manager_id      || null,
@@ -555,7 +557,18 @@ export default function AccountDetailPage() {
     </div>
   )
 
-  const STATUS_CLASSES: Record<string, string> = {
+  const INDUSTRY_OPTIONS = ['Teleco', 'Cableco', 'Hoster', 'MSP', 'Marketplace', 'Virtual Office'] as const
+
+const INDUSTRY_COLORS: Record<string, string> = {
+  'Teleco':          'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
+  'Cableco':         'bg-purple-50 text-purple-700 ring-1 ring-purple-200',
+  'Hoster':          'bg-[#E6F7F8] text-[#00ADB1] ring-1 ring-[#00ADB1]/30',
+  'MSP':             'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+  'Marketplace':     'bg-green-50 text-green-700 ring-1 ring-green-200',
+  'Virtual Office':  'bg-gray-100 text-gray-600 ring-1 ring-gray-200',
+}
+
+const STATUS_CLASSES: Record<string, string> = {
     active:   'bg-green-50 text-green-700 ring-1 ring-green-200',
     inactive: 'bg-gray-100 text-gray-600',
     churned:  'bg-red-50 text-red-600 ring-1 ring-red-200',
@@ -992,6 +1005,16 @@ export default function AccountDetailPage() {
                       </p>
                     </div>
                   )}
+                  {account.industry && (
+                    <div>
+                      <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Industry</p>
+                      <p className="mt-0.5">
+                        <span className={`inline-flex px-1.5 py-0 rounded text-xs font-medium ${INDUSTRY_COLORS[account.industry] ?? 'bg-gray-100 text-gray-600'}`}>
+                          {account.industry}
+                        </span>
+                      </p>
+                    </div>
+                  )}
                   {account.account_owner?.full_name && (
                     <div>
                       <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Account Owner</p>
@@ -1027,6 +1050,14 @@ export default function AccountDetailPage() {
                 </Field>
                 <Field label="Website">
                   <input type="url" value={accountForm.account_website} onChange={e => setAccountForm(f => ({ ...f, account_website: e.target.value }))} placeholder="https://" className={INPUT} />
+                </Field>
+                <Field label="Industry">
+                  <select value={accountForm.industry} onChange={e => setAccountForm(f => ({ ...f, industry: e.target.value }))} className={INPUT}>
+                    <option value="">— none —</option>
+                    {INDUSTRY_OPTIONS.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
                 </Field>
                 <Field label="Address line 1">
                   <input type="text" value={accountForm.address_line1} onChange={e => setAccountForm(f => ({ ...f, address_line1: e.target.value }))} className={INPUT} />
