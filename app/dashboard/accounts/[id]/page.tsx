@@ -516,10 +516,10 @@ export default function AccountDetailPage() {
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
-  if (loading) return <div className="max-w-5xl mx-auto px-6 py-8"><p className="text-gray-400 text-sm">Loading…</p></div>
+  if (loading) return <div className="max-w-7xl mx-auto px-6 py-8"><p className="text-gray-400 text-sm">Loading…</p></div>
 
   if (notFound || !account) return (
-    <div className="max-w-5xl mx-auto px-6 py-8">
+    <div className="max-w-7xl mx-auto px-6 py-8">
       <p className="text-gray-500 text-sm mb-3">Account not found.</p>
       <Link href="/dashboard/accounts" className="text-sm text-[#00ADB1] hover:text-[#00989C]">← Accounts</Link>
     </div>
@@ -540,7 +540,7 @@ export default function AccountDetailPage() {
   ]
 
   return (
-    <div className="max-w-5xl mx-auto px-6 py-8">
+    <div className="max-w-7xl mx-auto px-6 py-8">
       {/* Back */}
       <Link href="/dashboard/accounts" className="text-sm text-gray-500 hover:text-gray-700 transition-colors">
         ← Accounts
