@@ -12,6 +12,7 @@ const supabase = createClient()
 const STATUS_CLASSES: Record<string, string> = {
   active:   'bg-green-50 text-green-700 ring-1 ring-green-200',
   inactive: 'bg-gray-100 text-gray-600',
+  prospect: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
   churned:  'bg-red-50 text-red-600 ring-1 ring-red-200',
 }
 
@@ -312,6 +313,7 @@ export default function AccountsPage() {
           <option value="">All statuses</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
+          <option value="prospect">Prospect</option>
           <option value="churned">Churned</option>
         </select>
         {(search || filterStatus) && (
@@ -542,6 +544,7 @@ export default function AccountsPage() {
                   <select value={form.status} onChange={set('status')} className={INPUT}>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
+                    <option value="prospect">Prospect</option>
                     <option value="churned">Churned</option>
                   </select>
                 </Field>
