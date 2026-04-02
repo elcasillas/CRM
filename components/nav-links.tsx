@@ -8,11 +8,10 @@ type NavItem = { href: string; label: string; exact?: boolean }
 const BASE_ITEMS: NavItem[] = [
   { href: '/dashboard',              label: 'Overview',  exact: true },
   { href: '/dashboard/accounts',     label: 'Accounts' },
+  { href: '/dashboard/deals',                 label: 'Deals',      exact: true },
   { href: '/dashboard/contacts',     label: 'Contacts' },
   { href: '/dashboard/products',     label: 'Products' },
   { href: '/dashboard/partners',     label: 'AHI' },
-  { href: '/dashboard/deals',                 label: 'Deals',      exact: true },
-  { href: '/dashboard/deals/all',             label: 'All Deals',  exact: true },
   { href: '/dashboard/financial-worksheet',   label: 'Worksheet',  exact: true },
 ]
 
