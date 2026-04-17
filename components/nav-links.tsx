@@ -11,7 +11,7 @@ const BASE_ITEMS: NavItem[] = [
   { href: '/dashboard/deals',                 label: 'Deals',      exact: true },
   { href: '/dashboard/contacts',     label: 'Contacts' },
   { href: '/dashboard/products',     label: 'Products' },
-  { href: '/dashboard/partners',     label: 'AHI' },
+  { href: '/dashboard/partners',     label: 'PHI' },
   { href: '/dashboard/financial-worksheet',   label: 'Worksheet',  exact: true },
 ]
 
