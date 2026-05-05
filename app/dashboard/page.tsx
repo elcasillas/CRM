@@ -97,7 +97,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
-      <h1 className="text-xl font-semibold text-gray-900 mb-6">Overview</h1>
+      <h1 className="text-xl font-semibold text-gray-900 mb-6">Dashboard</h1>
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
