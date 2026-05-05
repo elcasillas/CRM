@@ -11,8 +11,7 @@ const API_KEY = process.env.EXCHANGERATE_API_KEY ?? '5e3b2faafec2ad11bbada5d84fd
 const BASE_URL = 'http://api.exchangerate.host/live'
 
 // Month-based in-process cache — refresh only when the calendar month changes.
-// Note: Vercel serverless cold-starts reset this cache; the client-side
-// localStorage cache is the primary monthly gate.
+// The client-side localStorage cache is the primary monthly gate.
 let cache: { quotes: Record<string, number>; fetchedAt: number; cacheMonth: string } | null = null
 
 /** Returns the current calendar month as "YYYY-MM". */

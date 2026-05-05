@@ -140,7 +140,7 @@ ${missingItemsBlock}`
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://crm-six-roan.vercel.app',
+        'HTTP-Referer': 'https://crm.hostopia.com',
         'X-Title': 'CRM Email Composer',
       },
       body: JSON.stringify({

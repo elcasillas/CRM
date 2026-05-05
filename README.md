@@ -2,7 +2,7 @@
 
 An internal sales CRM built with Next.js 15, Supabase, and Tailwind CSS. Features accounts, contacts, deal pipeline with health scoring, AI deal inspection, products catalog, financial worksheet, account health index, and an admin panel.
 
-**Production:** https://crm-six-roan.vercel.app
+**Production:** hosted on Coolify
 
 ---
 
@@ -51,7 +51,7 @@ An internal sales CRM built with Next.js 15, Supabase, and Tailwind CSS. Feature
 | Styling     | Tailwind CSS v3                                      |
 | Language    | TypeScript (strict)                                  |
 | AI          | OpenRouter (`anthropic/claude-haiku-4-5` default)    |
-| Deployment  | Vercel                                               |
+| Deployment  | Coolify (Docker)                                     |
 
 ---
 
@@ -156,11 +156,11 @@ Open http://localhost:3000. Sign in with your email and password at `/login`.
 
 ---
 
-## Vercel Deployment
+## Coolify Deployment
 
 ### Environment variables
 
-Add the same variables in **Vercel Dashboard → Project → Settings → Environment Variables** (Production environment):
+Set all variables from `.env.local.example` in the **Coolify service → Environment Variables** panel (Production environment):
 
 ```
 NEXT_PUBLIC_SUPABASE_URL
@@ -169,22 +169,25 @@ SUPABASE_SERVICE_ROLE_KEY
 NEXT_PUBLIC_SLACK_TEAM_ID
 OPENROUTER_API_KEY
 OPENROUTER_MODEL
+EXCHANGERATE_API_KEY
 ```
 
 ### Deploy
 
-Pushes to `master` auto-deploy via the Vercel GitHub integration. To deploy manually:
+Connect Coolify to the GitHub repo (`ed-casillas-projects/crm`) and enable auto-deploy on push to `master`. The Dockerfile at the repo root builds a Next.js standalone image.
+
+DB migrations are not run automatically — apply them separately:
 
 ```bash
-vercel --prod
+supabase db push
 ```
 
 ### Supabase Auth redirect URL
 
-In **Supabase Dashboard → Authentication → URL Configuration**, add your Vercel domain as an allowed redirect URL:
+In **Supabase Dashboard → Authentication → URL Configuration**, add your Coolify app domain as an allowed redirect URL:
 
 ```
-https://your-project.vercel.app/**
+https://your-coolify-domain/**
 ```
 
 ---

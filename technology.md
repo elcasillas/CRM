@@ -2,7 +2,7 @@
 
 ## Overview
 
-An internal CRM web application for a software company's sales and service teams. Built as a Next.js 15 App Router application with TypeScript, deployed on Vercel. The frontend uses React server components for data-fetching pages and client components for interactive UIs. Supabase provides the Postgres database, row-level security enforcement, and email/password authentication. Business logic (deal health scoring, ACV/TCV calculations, deal inspection) runs in both PostgreSQL functions and TypeScript utilities. AI-generated deal summaries and 15-point deal inspection reports are produced via the OpenRouter API using Anthropic's Claude model. A Financial Worksheet provides a live multi-currency recurring revenue model using the exchangerate.host API. An Account Health Index (AHI) module tracks partner/account health scores and snapshots. There is no separate backend server — all server-side logic runs in Next.js route handlers and server components on Vercel's serverless infrastructure.
+An internal CRM web application for a software company's sales and service teams. Built as a Next.js 15 App Router application with TypeScript, deployed on Coolify via Docker. The frontend uses React server components for data-fetching pages and client components for interactive UIs. Supabase provides the Postgres database, row-level security enforcement, and email/password authentication. Business logic (deal health scoring, ACV/TCV calculations, deal inspection) runs in both PostgreSQL functions and TypeScript utilities. AI-generated deal summaries and 15-point deal inspection reports are produced via the OpenRouter API using Anthropic's Claude model. A Financial Worksheet provides a live multi-currency recurring revenue model using the exchangerate.host API. An Account Health Index (AHI) module tracks partner/account health scores and snapshots. There is no separate backend server — all server-side logic runs in Next.js route handlers and server components.
 
 ---
 
@@ -101,20 +101,20 @@ TypeScript config targets `ES2017`, strict mode enabled, `moduleResolution: bund
 
 | Service | Usage |
 |---|---|
-| Vercel | Hosting, serverless function execution, CDN, automatic HTTPS |
-| GitHub | Source control; `master` branch auto-deploys to Vercel via integration |
+| Coolify | Hosting — Docker container, automatic HTTPS |
+| GitHub | Source control; `master` branch auto-deploys to Coolify via integration |
 | Supabase Cloud | Managed Postgres + Auth; migrations applied separately from deploys |
 | Supabase CLI | 2.75.0 — local development, migration management, type generation |
 
 **Deployment flow:**
-1. Push to `master` → Vercel auto-deploys frontend + API routes
-2. DB migrations applied independently: `supabase db push` (does not run on Vercel deploy)
+1. Push to `master` → Coolify builds Docker image and deploys
+2. DB migrations applied independently: `supabase db push` (Coolify does not run migrations)
 
-**Environment config:** `.env.local` for local dev. Production env vars set in Vercel project dashboard. See `.env.local.example` for the full list (Supabase keys, OpenRouter, Slack team ID, exchangerate.host API key).
+**Environment config:** `.env.local` for local dev. Production env vars set in Coolify service environment panel. See `.env.local.example` for the full list (Supabase keys, OpenRouter, Slack team ID, exchangerate.host API key).
 
 **Build constraints:** `node_modules` are Windows-native. `npm run build` and `npm run lint` must be run from a Windows terminal, not WSL. `supabase` CLI commands work from WSL.
 
-**No Docker.** No containerization in development or production.
+**Docker:** `next.config.ts` sets `output: 'standalone'`. The multi-stage `Dockerfile` at the repo root produces the production image.
 
 **No CI pipeline** (GitHub Actions, CircleCI, etc.). Quality gate is `npm run build` passing locally before merge.
 
@@ -129,11 +129,11 @@ TypeScript config targets `ES2017`, strict mode enabled, `moduleResolution: bund
 | Anthropic Claude (via OpenRouter) | LLM for summaries, inspection checks, email drafts | Accessed through OpenRouter; model: `anthropic/claude-haiku-4-5` (override via `OPENROUTER_MODEL`) |
 | exchangerate.host | CAD conversion rates for Financial Worksheet | `EXCHANGERATE_API_KEY`; proxied via `/api/exchange-rate` (never exposed to browser) |
 | Slack | Deep-link to user profiles (`slack://user?team=...`) | No API calls; `NEXT_PUBLIC_SLACK_TEAM_ID` env var only |
-| Vercel | Build, deploy, CDN | GitHub integration + `vercel` CLI |
+| Coolify | Build, deploy, CDN | GitHub integration, auto-deploy on push |
 
 **OpenRouter integration detail:** `POST https://openrouter.ai/api/v1/chat/completions`. Model configurable via `OPENROUTER_MODEL` env var. Summary responses cached in `deal_summary_cache` table; cache busted by changing the `MODEL_TAG` constant in the summarize route. Claude models via OpenRouter do not support `response_format: { type: 'json_object' }` — JSON is extracted from markdown-fenced responses using an `extractJSON()` helper.
 
-**exchangerate.host integration detail:** `GET http://api.exchangerate.host/live` — USD-based quotes. Rate to CAD is derived as `USDCAD / USDx`. Monthly cache: in-process variable in the route handler (resets on Vercel cold start) + `localStorage` in the browser (`fw_fx_cache`). Falls back to stale localStorage cache if the API is unreachable.
+**exchangerate.host integration detail:** `GET http://api.exchangerate.host/live` — USD-based quotes. Rate to CAD is derived as `USDCAD / USDx`. Monthly cache: in-process variable in the route handler (persists across requests in the Docker container) + `localStorage` in the browser (`fw_fx_cache`). Falls back to stale localStorage cache if the API is unreachable.
 
 **No analytics, no error tracking** (no Sentry, Datadog, PostHog, etc.) currently integrated.
 

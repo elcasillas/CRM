@@ -429,8 +429,8 @@ export async function POST(req: NextRequest) {
   }
 
   // Update existing deals: stage and value fields from CSV are authoritative.
-  // Chunked parallel updates prevent Vercel serverless timeout on large CSVs
-  // (sequential ~1295 × 10ms ≈ 13s would exceed the function limit).
+  // Chunked parallel updates prevent timeout on large CSVs
+  // (sequential ~1295 × 10ms ≈ 13s).
   let updatedCount = 0
   const updateResults: boolean[] = []
   for (let i = 0; i < existingRows.length; i += CHUNK) {

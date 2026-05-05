@@ -51,7 +51,7 @@ Key capabilities:
 | Styling | Tailwind CSS — light theme, white/gray palette, `brand-700` navy for modal headers |
 | Backend | Supabase — Postgres, Auth, RLS, RPCs |
 | AI | OpenRouter API (`anthropic/claude-haiku-4-5` default) |
-| Hosting | Vercel — auto-deploy on push to `master` |
+| Hosting | Coolify — Docker (standalone Next.js) |
 | Source control | GitHub (`ed-casillas-projects/crm`) |
 
 ### Supabase client selection
@@ -78,7 +78,7 @@ Key capabilities:
 | `OPENROUTER_MODEL` | No | Defaults to `anthropic/claude-haiku-4-5` |
 | `EXCHANGERATE_API_KEY` | No | exchangerate.host API key for Financial Worksheet currency conversion |
 
-Copy `.env.local.example` → `.env.local`. Same vars must be set in the Vercel project dashboard.
+Copy `.env.local.example` → `.env.local`. Same vars must be set in the Coolify service environment panel.
 
 ---
 
@@ -300,10 +300,12 @@ Settings (`/dashboard/admin/health-scoring`) consolidates: health score config, 
 
 ## Deployment
 
-- **Hosting:** Vercel — `ed-casillas-projects/crm`
-- **Auto-deploy:** pushes to `master` via GitHub integration
-- **DB migrations:** `supabase db push` — Vercel does not run migrations
-- **Auth redirects:** Supabase dashboard → Authentication → URL Configuration must include the Vercel domain
+- **Hosting:** Coolify — Docker build using `Dockerfile` at repo root
+- **Build:** Next.js standalone mode (`output: 'standalone'` in `next.config.ts`); image produced by multi-stage Dockerfile
+- **Auto-deploy:** connect Coolify to the GitHub repo and enable auto-deploy on push to `master`
+- **DB migrations:** `supabase db push` — Coolify does not run migrations
+- **Auth redirects:** Supabase dashboard → Authentication → URL Configuration must include the Coolify app domain
+- **Environment variables:** set all vars from `.env.local.example` in the Coolify service environment panel
 
 ---
 
