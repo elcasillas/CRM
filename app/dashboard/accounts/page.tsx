@@ -34,24 +34,25 @@ function formatRenewalDate(date: string | null | undefined): string {
 }
 
 type FormData = {
-  account_name:        string
-  account_website:     string
-  address_line1:       string
-  address_line2:       string
-  city:                string
-  region:              string
-  postal:              string
-  country:             string
-  industry:            string
-  status:              string
-  account_owner_id:    string
-  service_manager_id:  string
+  account_name:           string
+  account_website:        string
+  address_line1:          string
+  address_line2:          string
+  city:                   string
+  region:                 string
+  postal:                 string
+  country:                string
+  industry:               string
+  status:                 string
+  account_owner_id:       string
+  service_manager_id:     string
+  renewal_contract_date:  string
 }
 
 const EMPTY_FORM: FormData = {
   account_name: '', account_website: '', address_line1: '', address_line2: '',
   city: '', region: '', postal: '', country: '', industry: '', status: 'active',
-  account_owner_id: '', service_manager_id: '',
+  account_owner_id: '', service_manager_id: '', renewal_contract_date: '',
 }
 
 const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 text-sm'
@@ -180,10 +181,11 @@ export default function AccountsPage() {
       region:           a.region           ?? '',
       postal:           a.postal           ?? '',
       country:          a.country          ?? '',
-      industry:           a.industry         ?? '',
-      status:             a.status,
-      account_owner_id:   a.account_owner_id,
-      service_manager_id: a.service_manager_id ?? '',
+      industry:               a.industry               ?? '',
+      status:                 a.status,
+      account_owner_id:       a.account_owner_id,
+      service_manager_id:     a.service_manager_id     ?? '',
+      renewal_contract_date:  a.renewal_contract_date  ?? '',
     }
     setForm(formValues)
     accountInitialRef.current = formValues
@@ -228,10 +230,11 @@ export default function AccountsPage() {
       region:          form.region.trim()           || null,
       postal:          form.postal.trim()           || null,
       country:         form.country.trim()          || null,
-      industry:        form.industry                || null,
-      status:          form.status,
+      industry:               form.industry                   || null,
+      status:                 form.status,
       ...(isAdmin && modal === 'edit' && form.account_owner_id ? { account_owner_id: form.account_owner_id } : {}),
-      service_manager_id: form.service_manager_id || null,
+      service_manager_id:     form.service_manager_id         || null,
+      renewal_contract_date:  form.renewal_contract_date      || null,
     }
     if (modal === 'add') {
       const { data: { user } } = await supabase.auth.getUser()
@@ -552,6 +555,9 @@ export default function AccountsPage() {
                       <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
                     ))}
                   </select>
+                </Field>
+                <Field label="Renewal date">
+                  <input type="date" value={form.renewal_contract_date} onChange={set('renewal_contract_date')} className={INPUT} />
                 </Field>
                 {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
               </div>
