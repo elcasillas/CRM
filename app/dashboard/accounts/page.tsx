@@ -16,12 +16,13 @@ const STATUS_CLASSES: Record<string, string> = {
   churned:  'bg-red-50 text-red-600 ring-1 ring-red-200',
 }
 
-const INDUSTRY_OPTIONS = ['Teleco', 'Cableco', 'Hoster', 'MSP', 'Marketplace', 'Virtual Office'] as const
+const INDUSTRY_OPTIONS = ['Teleco', 'Cableco', 'Hoster', 'ISP', 'MSP', 'Marketplace', 'Virtual Office'] as const
 
 const INDUSTRY_COLORS: Record<string, string> = {
   'Teleco':          'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
   'Cableco':         'bg-purple-50 text-purple-700 ring-1 ring-purple-200',
   'Hoster':          'bg-[#E6F7F8] text-[#00ADB1] ring-1 ring-[#00ADB1]/30',
+  'ISP':             'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
   'MSP':             'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
   'Marketplace':     'bg-green-50 text-green-700 ring-1 ring-green-200',
   'Virtual Office':  'bg-gray-100 text-gray-600 ring-1 ring-gray-200',
@@ -67,7 +68,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 export default function AccountsPage() {
   const [accounts, setAccounts]           = useState<AccountWithOwners[]>([])
   const [profiles, setProfiles]           = useState<{ id: string; full_name: string | null; role: string }[]>([])
-  const [contractRenewalMap, setContractRenewalMap] = useState<Record<string, string>>({})
   const [isAdmin, setIsAdmin]             = useState(false)
   const [loading, setLoading]             = useState(true)
   const [modal, setModal]                 = useState<'add' | 'edit' | null>(null)
@@ -100,22 +100,6 @@ export default function AccountsPage() {
     setLoading(false)
   }, [])
 
-  const fetchContracts = useCallback(async () => {
-    const { data } = await supabase
-      .from('contracts')
-      .select('account_id, renewal_date')
-      .eq('status', 'active')
-      .not('renewal_date', 'is', null)
-      .order('renewal_date', { ascending: true })
-    const map: Record<string, string> = {}
-    for (const c of data ?? []) {
-      if (c.account_id && c.renewal_date && !map[c.account_id]) {
-        map[c.account_id] = c.renewal_date
-      }
-    }
-    setContractRenewalMap(map)
-  }, [])
-
   const fetchProfiles = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser()
     const { data } = await supabase.from('profiles').select('id, full_name, role').order('full_name')
@@ -125,7 +109,7 @@ export default function AccountsPage() {
     setIsAdmin(me?.role === 'admin')
   }, [])
 
-  useEffect(() => { Promise.all([fetchAccounts(), fetchProfiles(), fetchContracts()]) }, [fetchAccounts, fetchProfiles, fetchContracts])
+  useEffect(() => { Promise.all([fetchAccounts(), fetchProfiles()]) }, [fetchAccounts, fetchProfiles])
 
   const filtered = accounts.filter(a => {
     const q = search.toLowerCase()
@@ -146,7 +130,7 @@ export default function AccountsPage() {
     switch (sortCol) {
       case 'name':     return a.account_name
       case 'industry': return a.industry ?? null
-      case 'renewal':  return contractRenewalMap[a.id] ?? null
+      case 'renewal':  return a.renewal_contract_date ?? null
       case 'owner':    return a.account_owner?.full_name ?? null
       case 'manager':  return a.service_manager?.full_name ?? null
       case 'status':   return a.status
@@ -376,7 +360,7 @@ export default function AccountsPage() {
                       : <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-6 py-3.5 text-gray-500 text-sm">
-                    {formatRenewalDate(contractRenewalMap[a.id])}
+                    {formatRenewalDate(a.renewal_contract_date)}
                   </td>
                   <td className="px-6 py-3.5 text-gray-500">
                     {a.account_owner?.full_name ?? '—'}
@@ -483,6 +467,10 @@ export default function AccountsPage() {
                   <div>
                     <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Service Manager</p>
                     <p className="text-sm text-gray-900 mt-0.5">{editing.service_manager?.full_name ?? '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Renewal Date</p>
+                    <p className="text-sm text-gray-900 mt-0.5">{formatRenewalDate(editing.renewal_contract_date)}</p>
                   </div>
                   {(editing.address_line1 || editing.city || editing.country) && (
                     <div className="col-span-2">

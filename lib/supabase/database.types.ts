@@ -54,6 +54,7 @@ export type Database = {
           industry: string | null
           postal: string | null
           region: string | null
+          renewal_contract_date: string | null
           service_manager_id: string | null
           status: string
           updated_at: string
@@ -72,6 +73,7 @@ export type Database = {
           industry?: string | null
           postal?: string | null
           region?: string | null
+          renewal_contract_date?: string | null
           service_manager_id?: string | null
           status?: string
           updated_at?: string
@@ -90,6 +92,7 @@ export type Database = {
           industry?: string | null
           postal?: string | null
           region?: string | null
+          renewal_contract_date?: string | null
           service_manager_id?: string | null
           status?: string
           updated_at?: string
