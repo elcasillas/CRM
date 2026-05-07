@@ -47,6 +47,7 @@ export interface ContactWithRoles extends Contact {
 export interface AccountWithOwners extends Account {
   account_owner:   { id: string; full_name: string | null } | null
   service_manager: { id: string; full_name: string | null } | null
+  contracts?:      { renewal_date: string | null }[]
 }
 
 export interface NoteWithAuthor extends Note {

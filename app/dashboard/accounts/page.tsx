@@ -33,26 +33,33 @@ function formatRenewalDate(date: string | null | undefined): string {
   return new Date(date + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
+function nearestRenewal(contracts: { renewal_date: string | null }[] | undefined): string | null {
+  const dates = (contracts ?? []).map(c => c.renewal_date).filter(Boolean) as string[]
+  if (!dates.length) return null
+  const today = new Date().toISOString().slice(0, 10)
+  const future = dates.filter(d => d >= today).sort()
+  return future[0] ?? [...dates].sort().at(-1) ?? null
+}
+
 type FormData = {
-  account_name:           string
-  account_website:        string
-  address_line1:          string
-  address_line2:          string
-  city:                   string
-  region:                 string
-  postal:                 string
-  country:                string
-  industry:               string
-  status:                 string
-  account_owner_id:       string
-  service_manager_id:     string
-  renewal_contract_date:  string
+  account_name:       string
+  account_website:    string
+  address_line1:      string
+  address_line2:      string
+  city:               string
+  region:             string
+  postal:             string
+  country:            string
+  industry:           string
+  status:             string
+  account_owner_id:   string
+  service_manager_id: string
 }
 
 const EMPTY_FORM: FormData = {
   account_name: '', account_website: '', address_line1: '', address_line2: '',
   city: '', region: '', postal: '', country: '', industry: '', status: 'active',
-  account_owner_id: '', service_manager_id: '', renewal_contract_date: '',
+  account_owner_id: '', service_manager_id: '',
 }
 
 const INPUT = 'w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:border-[#00ADB1] focus:ring-1 focus:ring-[#00ADB1]/20 text-sm'
@@ -94,7 +101,7 @@ export default function AccountsPage() {
     setLoading(true)
     const { data, error } = await supabase
       .from('accounts')
-      .select('*, account_owner:profiles!account_owner_id(id, full_name), service_manager:profiles!service_manager_id(id, full_name)')
+      .select('*, account_owner:profiles!account_owner_id(id, full_name), service_manager:profiles!service_manager_id(id, full_name), contracts(renewal_date, status)')
       .order('account_name')
     if (error) console.error('accounts fetch:', error.message)
     else setAccounts((data ?? []) as AccountWithOwners[])
@@ -131,7 +138,7 @@ export default function AccountsPage() {
     switch (sortCol) {
       case 'name':     return a.account_name
       case 'industry': return a.industry ?? null
-      case 'renewal':  return a.renewal_contract_date ?? null
+      case 'renewal':  return nearestRenewal(a.contracts) ?? null
       case 'owner':    return a.account_owner?.full_name ?? null
       case 'manager':  return a.service_manager?.full_name ?? null
       case 'status':   return a.status
@@ -173,19 +180,18 @@ export default function AccountsPage() {
 
   function openEdit(a: AccountWithOwners) {
     const formValues: FormData = {
-      account_name:     a.account_name,
-      account_website:  a.account_website  ?? '',
-      address_line1:    a.address_line1    ?? '',
-      address_line2:    a.address_line2    ?? '',
-      city:             a.city             ?? '',
-      region:           a.region           ?? '',
-      postal:           a.postal           ?? '',
-      country:          a.country          ?? '',
-      industry:               a.industry               ?? '',
-      status:                 a.status,
-      account_owner_id:       a.account_owner_id,
-      service_manager_id:     a.service_manager_id     ?? '',
-      renewal_contract_date:  a.renewal_contract_date  ?? '',
+      account_name:       a.account_name,
+      account_website:    a.account_website  ?? '',
+      address_line1:      a.address_line1    ?? '',
+      address_line2:      a.address_line2    ?? '',
+      city:               a.city             ?? '',
+      region:             a.region           ?? '',
+      postal:             a.postal           ?? '',
+      country:            a.country          ?? '',
+      industry:           a.industry         ?? '',
+      status:             a.status,
+      account_owner_id:   a.account_owner_id,
+      service_manager_id: a.service_manager_id ?? '',
     }
     setForm(formValues)
     accountInitialRef.current = formValues
@@ -233,8 +239,7 @@ export default function AccountsPage() {
       industry:               form.industry                   || null,
       status:                 form.status,
       ...(isAdmin && modal === 'edit' && form.account_owner_id ? { account_owner_id: form.account_owner_id } : {}),
-      service_manager_id:     form.service_manager_id         || null,
-      renewal_contract_date:  form.renewal_contract_date      || null,
+      service_manager_id: form.service_manager_id || null,
     }
     if (modal === 'add') {
       const { data: { user } } = await supabase.auth.getUser()
@@ -363,7 +368,7 @@ export default function AccountsPage() {
                       : <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-6 py-3.5 text-gray-500 text-sm">
-                    {formatRenewalDate(a.renewal_contract_date)}
+                    {formatRenewalDate(nearestRenewal(a.contracts))}
                   </td>
                   <td className="px-6 py-3.5 text-gray-500">
                     {a.account_owner?.full_name ?? '—'}
@@ -471,10 +476,6 @@ export default function AccountsPage() {
                     <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Service Manager</p>
                     <p className="text-sm text-gray-900 mt-0.5">{editing.service_manager?.full_name ?? '—'}</p>
                   </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Renewal Date</p>
-                    <p className="text-sm text-gray-900 mt-0.5">{formatRenewalDate(editing.renewal_contract_date)}</p>
-                  </div>
                   {(editing.address_line1 || editing.city || editing.country) && (
                     <div className="col-span-2">
                       <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Address</p>
@@ -555,9 +556,6 @@ export default function AccountsPage() {
                       <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
                     ))}
                   </select>
-                </Field>
-                <Field label="Renewal date">
-                  <input type="date" value={form.renewal_contract_date} onChange={set('renewal_contract_date')} className={INPUT} />
                 </Field>
                 {formError && <p className="text-red-600 text-sm font-medium">{formError}</p>}
               </div>

@@ -63,7 +63,7 @@ type ContactForm = { first_name: string; last_name: string; email: string; phone
 type HidForm     = { hid_number: string; dc_location: string; cluster_id: string; start_date: string; domain_name: string }
 type ContractForm = { entity_name: string; effective_date: string; renewal_date: string; renewal_term_months: string; auto_renew: boolean; status: string }
 type DealForm    = { deal_name: string; deal_description: string; stage_id: string; deal_owner_id: string; solutions_engineer_id: string; amount: string; contract_term_months: string; currency: string; close_date: string; region: string; deal_type: string }
-type AccountForm = { account_name: string; account_website: string; address_line1: string; address_line2: string; city: string; region: string; postal: string; country: string; industry: string; status: string; account_owner_id: string; service_manager_id: string; renewal_contract_date: string }
+type AccountForm = { account_name: string; account_website: string; address_line1: string; address_line2: string; city: string; region: string; postal: string; country: string; industry: string; status: string; account_owner_id: string; service_manager_id: string }
 
 const EMPTY_CONTACT: ContactForm  = { first_name: '', last_name: '', email: '', phone: '', title: '', role: '', status: 'Active', roles: [] }
 const EMPTY_HID: HidForm          = { hid_number: '', dc_location: '', cluster_id: '', start_date: '', domain_name: '' }
@@ -205,7 +205,7 @@ export default function AccountDetailPage() {
   // account edit
   const [accountModal,    setAccountModal]    = useState(false)
   const [accountViewMode, setAccountViewMode] = useState<'view' | 'edit'>('view')
-  const [accountForm,     setAccountForm]     = useState<AccountForm>({ account_name: '', account_website: '', address_line1: '', address_line2: '', city: '', region: '', postal: '', country: '', industry: '', status: 'active', account_owner_id: '', service_manager_id: '', renewal_contract_date: '' })
+  const [accountForm,     setAccountForm]     = useState<AccountForm>({ account_name: '', account_website: '', address_line1: '', address_line2: '', city: '', region: '', postal: '', country: '', industry: '', status: 'active', account_owner_id: '', service_manager_id: '' })
   const [accountSaving,   setAccountSaving]   = useState(false)
   const [accountFormError, setAccountFormError] = useState<string | null>(null)
 
@@ -323,11 +323,10 @@ export default function AccountDetailPage() {
       region:             account.region             ?? '',
       postal:             account.postal             ?? '',
       country:            account.country            ?? '',
-      industry:               account.industry               ?? '',
-      status:                 account.status,
-      account_owner_id:       account.account_owner_id       ?? '',
-      service_manager_id:     account.service_manager_id     ?? '',
-      renewal_contract_date:  account.renewal_contract_date  ?? '',
+      industry:           account.industry           ?? '',
+      status:             account.status,
+      account_owner_id:   account.account_owner_id   ?? '',
+      service_manager_id: account.service_manager_id ?? '',
     }
     setAccountForm(af)
     setAccountFormError(null)
@@ -368,8 +367,7 @@ export default function AccountDetailPage() {
       industry:               accountForm.industry                   || null,
       status:                 accountForm.status,
       account_owner_id:       accountForm.account_owner_id           || null,
-      service_manager_id:     accountForm.service_manager_id         || null,
-      renewal_contract_date:  accountForm.renewal_contract_date      || null,
+      service_manager_id: accountForm.service_manager_id || null,
     }
     const { error } = await supabase.from('accounts').update(payload).eq('id', id)
     if (error) {
@@ -621,9 +619,6 @@ const STATUS_CLASSES: Record<string, string> = {
               )}
               {account.service_manager?.full_name && (
                 <span>SM: {account.service_manager.full_name}</span>
-              )}
-              {account.renewal_contract_date && (
-                <span>Renewal: {fmtDate(account.renewal_contract_date)}</span>
               )}
             </div>
           </div>
@@ -1033,10 +1028,6 @@ const STATUS_CLASSES: Record<string, string> = {
                     <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Service Manager</p>
                     <p className="text-sm text-gray-900 mt-0.5">{account.service_manager?.full_name ?? '—'}</p>
                   </div>
-                  <div>
-                    <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Renewal Date</p>
-                    <p className="text-sm text-gray-900 mt-0.5">{fmtDate(account.renewal_contract_date)}</p>
-                  </div>
                   {(account.address_line1 || account.city || account.country) && (
                     <div className="col-span-2">
                       <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">Address</p>
@@ -1110,9 +1101,6 @@ const STATUS_CLASSES: Record<string, string> = {
                       <option key={p.id} value={p.id}>{p.full_name ?? p.id}</option>
                     ))}
                   </select>
-                </Field>
-                <Field label="Renewal date">
-                  <input type="date" value={accountForm.renewal_contract_date} onChange={e => setAccountForm(f => ({ ...f, renewal_contract_date: e.target.value }))} className={INPUT} />
                 </Field>
                 {accountFormError && <p className="text-red-600 text-sm font-medium">{accountFormError}</p>}
               </div>
