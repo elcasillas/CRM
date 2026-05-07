@@ -428,6 +428,7 @@ export type Database = {
           total_contract_value: number | null
           updated_at: string
           value_amount: number | null
+          worksheet_data: Json | null
         }
         Insert: {
           account_id: string
@@ -462,6 +463,7 @@ export type Database = {
           total_contract_value?: number | null
           updated_at?: string
           value_amount?: number | null
+          worksheet_data?: Json | null
         }
         Update: {
           account_id?: string
@@ -496,6 +498,7 @@ export type Database = {
           total_contract_value?: number | null
           updated_at?: string
           value_amount?: number | null
+          worksheet_data?: Json | null
         }
         Relationships: [
           {
@@ -788,6 +791,45 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_health_import_log: {
+        Row: {
+          created_at: string
+          error_count: number
+          id: string
+          imported_at: string
+          imported_by: string | null
+          message: string | null
+          partner_count: number
+          row_count: number
+          skipped_count: number
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error_count?: number
+          id?: string
+          imported_at?: string
+          imported_by?: string | null
+          message?: string | null
+          partner_count?: number
+          row_count?: number
+          skipped_count?: number
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          error_count?: number
+          id?: string
+          imported_at?: string
+          imported_by?: string | null
+          message?: string | null
+          partner_count?: number
+          row_count?: number
+          skipped_count?: number
+          status?: string
+        }
+        Relationships: []
+      }
       partner_health_scores: {
         Row: {
           category_scores: Json | null
@@ -944,6 +986,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          partner_code: string | null
           partner_name: string
           partner_type: string
           region: string | null
@@ -959,6 +1002,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          partner_code?: string | null
           partner_name: string
           partner_type: string
           region?: string | null
@@ -974,6 +1018,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          partner_code?: string | null
           partner_name?: string
           partner_type?: string
           region?: string | null
