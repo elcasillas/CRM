@@ -28,7 +28,7 @@ TypeScript config targets `ES2017`, strict mode enabled, `moduleResolution: bund
 | PostCSS | 8.5.6 | Tailwind processing pipeline |
 | Autoprefixer | 10.4.24 | Vendor prefix injection via PostCSS |
 
-**UI approach:** No component library (no shadcn, Radix, MUI, etc.). All UI components are hand-built with Tailwind. Light theme (white/gray palette). No charting library — the pipeline bar chart on the Overview page is pure CSS/Tailwind.
+**UI approach:** No component library (no shadcn, Radix, MUI, etc.). All UI components are hand-built with Tailwind. Light theme (white/gray palette). No charting library — the pipeline bar chart on the Dashboard page is pure CSS/Tailwind.
 
 **State management:** No Redux, Zustand, or Context API for global state. Each client component manages its own local `useState` with grouped state objects. Data flows from server components as typed props.
 
@@ -102,7 +102,7 @@ TypeScript config targets `ES2017`, strict mode enabled, `moduleResolution: bund
 | Service | Usage |
 |---|---|
 | Coolify | Hosting — Docker container, automatic HTTPS |
-| GitHub | Source control; `master` branch auto-deploys to Coolify via integration |
+| GitHub | Source control; `master` branch triggers Coolify deploy via webhook |
 | Supabase Cloud | Managed Postgres + Auth; migrations applied separately from deploys |
 | Supabase CLI | 2.75.0 — local development, migration management, type generation |
 
@@ -129,7 +129,7 @@ TypeScript config targets `ES2017`, strict mode enabled, `moduleResolution: bund
 | Anthropic Claude (via OpenRouter) | LLM for summaries, inspection checks, email drafts | Accessed through OpenRouter; model: `anthropic/claude-haiku-4-5` (override via `OPENROUTER_MODEL`) |
 | exchangerate.host | CAD conversion rates for Financial Worksheet | `EXCHANGERATE_API_KEY`; proxied via `/api/exchange-rate` (never exposed to browser) |
 | Slack | Deep-link to user profiles (`slack://user?team=...`) | No API calls; `NEXT_PUBLIC_SLACK_TEAM_ID` env var only |
-| Coolify | Build, deploy, CDN | GitHub integration, auto-deploy on push |
+| Coolify | Build, deploy, CDN | Deploy webhook called by GitHub on push to `master` |
 
 **OpenRouter integration detail:** `POST https://openrouter.ai/api/v1/chat/completions`. Model configurable via `OPENROUTER_MODEL` env var. Summary responses cached in `deal_summary_cache` table; cache busted by changing the `MODEL_TAG` constant in the summarize route. Claude models via OpenRouter do not support `response_format: { type: 'json_object' }` — JSON is extracted from markdown-fenced responses using an `extractJSON()` helper.
 
