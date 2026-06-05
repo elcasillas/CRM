@@ -12,7 +12,6 @@ const BASE_ITEMS: NavItem[] = [
   { href: '/dashboard/contacts',     label: 'Contacts' },
   { href: '/dashboard/products',     label: 'Products' },
   { href: '/dashboard/partners',     label: 'PHI' },
-  { href: '/dashboard/financial-worksheet',   label: 'Worksheet',  exact: true },
 ]
 
 const ADMIN_ITEMS: NavItem[] = [

@@ -10,7 +10,6 @@ const NAV_ITEMS = [
   { href: '/dashboard/deals/all',            label: 'All Deals'      },
   { href: '/dashboard/products',             label: 'Products'       },
   { href: '/dashboard/partners',             label: 'AHI'            },
-  { href: '/dashboard/financial-worksheet',  label: 'Worksheet'      },
 ]
 
 const ADMIN_ITEMS = [
