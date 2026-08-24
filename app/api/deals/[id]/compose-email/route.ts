@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runInspection, topMissingChecks, type InspectionCheckDef, type InspectionResult } from '@/lib/deal-inspect'
+import { buildDateContext, DATE_AWARENESS_RULES } from '@/lib/ai-date-context'
 
 // ── POST — compose an AI-generated follow-up email about a deal ───────────────
 // Runs (or reuses) a deal inspection, then generates a targeted manager email
@@ -110,9 +111,25 @@ Rules for the body:
 - One closing sentence: brief request to update the deal record or reply before the next review
 - Sign off: "Thanks"
 - Plain text only — no markdown, no bullet symbols other than dashes, no headers
-- Under 160 words total`
+- Under 160 words total
 
-  const userContent = `Deal: "${deal.deal_name as string}"
+${DATE_AWARENESS_RULES}`
+
+  // Classify every date in the deal data, summary and inspection gaps against
+  // today, so stale milestones are reframed rather than asked about as pending.
+  const dateContext = buildDateContext(
+    [
+      deal.close_date as string | null,
+      deal.deal_description as string | null,
+      deal.ai_summary as string | null,
+      missingItemsBlock,
+    ],
+    new Date(),
+  )
+
+  const userContent = `${dateContext}
+
+Deal: "${deal.deal_name as string}"
 Owner: ${ownerName}
 Stage: ${stageName}
 ACV: ${acv}

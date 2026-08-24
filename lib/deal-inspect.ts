@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { buildDateContext, DATE_AWARENESS_RULES } from './ai-date-context'
 import { getOrCreateSummary } from './deal-summarize'
 import { extractDealRevenue } from './dealCalc'
 
@@ -245,9 +246,18 @@ Rules:
 - Base your evaluation on the AI summary and recent notes
 - If there is no AI summary and no notes, mark all qualitative checks as "missing"
 - Be concise and specific
-- Return ONLY valid JSON, no markdown`
+- Return ONLY valid JSON, no markdown
 
-  const userContent = `Deal: "${ctx.deal_name}"
+${DATE_AWARENESS_RULES}`
+
+  const dateContext = buildDateContext(
+    [ctx.close_date, ctx.deal_description, ctx.ai_summary, notesBlock],
+    new Date(),
+  )
+
+  const userContent = `${dateContext}
+
+Deal: "${ctx.deal_name}"
 Stage: ${ctx.stage_name ?? 'Unknown'}
 Owner: ${ctx.owner_name ?? 'Unknown'}
 Close Date: ${ctx.close_date ?? 'Not set'}
