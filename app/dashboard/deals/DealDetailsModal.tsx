@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import type { DealStage } from '@/lib/types'
 import type { InspectionResult } from '@/lib/deal-inspect'
 import { DealStageBadge } from '@/components/dashboard/deal-stage-badge'
@@ -21,7 +22,10 @@ function fmtDate(d: string | null): string | null {
 }
 
 function fmtTs(ts: string): string {
-  return new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  const d = new Date(ts)
+  const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return `${date} ${time}`
 }
 
 function relativeTime(iso: string): string {
@@ -62,6 +66,7 @@ export interface ModalDeal {
 }
 
 export interface ModalNote {
+  id: string
   note_text: string
   author?: { full_name: string | null } | null
   created_at: string
@@ -76,7 +81,8 @@ export interface DealDetailsModalProps {
   slackTeamId?: string
   /** ISO timestamp of the most recent note (for "Days Since Update" row) */
   lastNoteDate?: string | null
-  recentNote?: ModalNote | null
+  /** full note history for the deal, newest first */
+  notes?: ModalNote[]
   summary: string | null
   summaryGeneratedAt: string | null
   loadingSummary: boolean
@@ -88,6 +94,9 @@ export interface DealDetailsModalProps {
   onRegenerateSummary: () => void
   onRunInspection: () => void
   onEmailOwner: () => void
+  /** 'working' while generating, 'copied' right after a successful copy */
+  templateStatus?: 'idle' | 'working' | 'copied'
+  onCopyTemplate?: () => void
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -97,7 +106,7 @@ export function DealDetailsModal({
   slackMemberId,
   slackTeamId = '',
   lastNoteDate,
-  recentNote,
+  notes = [],
   summary,
   summaryGeneratedAt,
   loadingSummary,
@@ -109,7 +118,11 @@ export function DealDetailsModal({
   onRegenerateSummary,
   onRunInspection,
   onEmailOwner,
+  templateStatus = 'idle',
+  onCopyTemplate,
 }: DealDetailsModalProps) {
+  const [notesOpen, setNotesOpen] = useState(false)
+
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-white border border-gray-200 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
@@ -248,6 +261,22 @@ export function DealDetailsModal({
                     : <><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M3 4a2 2 0 00-2 2v1.161l8.441 4.221a1.25 1.25 0 001.118 0L19 7.162V6a2 2 0 00-2-2H3z" /><path d="M19 8.839l-7.77 3.885a2.75 2.75 0 01-2.46 0L1 8.839V14a2 2 0 002 2h14a2 2 0 002-2V8.839z" /></svg> Email Owner</>
                   }
                 </button>
+                {onCopyTemplate && (
+                  <button
+                    onClick={onCopyTemplate}
+                    disabled={templateStatus === 'working' || emailStatus !== 'idle'}
+                    title="Copy the Email Owner content to the clipboard"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-60 px-4 py-2 rounded-lg transition-colors"
+                  >
+                    {templateStatus === 'copied' ? (
+                      <><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-green-600"><path fillRule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clipRule="evenodd" /></svg> Template copied</>
+                    ) : templateStatus === 'working' ? (
+                      'Copying…'
+                    ) : (
+                      <><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path d="M7 3.5A1.5 1.5 0 0 1 8.5 2h3.879a1.5 1.5 0 0 1 1.06.44l3.122 3.12A1.5 1.5 0 0 1 17 6.622V12.5a1.5 1.5 0 0 1-1.5 1.5h-1v-3.379a3 3 0 0 0-.879-2.121L10.5 5.379A3 3 0 0 0 8.379 4.5H7v-1Z" /><path d="M4.5 6A1.5 1.5 0 0 0 3 7.5v9A1.5 1.5 0 0 0 4.5 18h7a1.5 1.5 0 0 0 1.5-1.5v-5.879a1.5 1.5 0 0 0-.44-1.06L9.44 6.439A1.5 1.5 0 0 0 8.378 6H4.5Z" /></svg> Template</>
+                    )}
+                  </button>
+                )}
                 {slackMemberId && (
                   <a href={`slack://user?team=${slackTeamId}&id=${slackMemberId}`} className="inline-flex items-center gap-2 text-sm font-medium text-white bg-[#4A154B] hover:bg-[#3a1039] px-4 py-2 rounded-lg transition-colors">
                     <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4"><path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"/></svg>
@@ -258,16 +287,41 @@ export function DealDetailsModal({
             </div>
           )}
 
-          {/* Most Recent Note */}
+          {/* Notes */}
           <div className="border-t border-gray-100 pt-4">
-            <p className="text-sm font-semibold text-gray-700 mb-3">Most Recent Note</p>
-            {recentNote ? (
-              <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
-                <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{recentNote.note_text}</p>
-                <p className="text-xs text-gray-400 mt-2">{recentNote.author?.full_name ?? 'Unknown'} · {fmtTs(recentNote.created_at)}</p>
-              </div>
+            {notes.length === 0 ? (
+              <>
+                <p className="text-sm font-semibold text-gray-700 mb-3">Notes</p>
+                <p className="text-xs text-gray-400">No notes yet.</p>
+              </>
             ) : (
-              <p className="text-xs text-gray-400">No notes yet.</p>
+              <>
+                <button
+                  onClick={() => setNotesOpen(v => !v)}
+                  aria-expanded={notesOpen}
+                  className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900 transition-colors"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    className={`w-3.5 h-3.5 text-gray-400 transition-transform duration-200 ${notesOpen ? 'rotate-180' : ''}`}
+                  >
+                    <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+                  </svg>
+                  Notes ({notes.length})
+                </button>
+                {notesOpen && (
+                  <ul className="space-y-3 mt-3">
+                    {notes.map(n => (
+                      <li key={n.id} className="bg-gray-50 border border-gray-100 rounded-xl p-4">
+                        <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{n.note_text}</p>
+                        <p className="text-xs text-gray-400 mt-2">{n.author?.full_name ?? 'Unknown'} · {fmtTs(n.created_at)}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
             )}
           </div>
 

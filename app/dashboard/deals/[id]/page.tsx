@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { composeOwnerEmail, renderEmailText, copyText } from '@/lib/deal-email'
 import type { DealStage, NoteWithAuthor } from '@/lib/types'
 import type { InspectionResult } from '@/lib/deal-inspect'
 import { DealDetailsModal } from '../DealDetailsModal'
@@ -69,7 +70,10 @@ function fmtDate(d: string | null | undefined): string {
 }
 
 function fmtTs(ts: string): string {
-  return new Date(ts).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  const d = new Date(ts)
+  const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  return `${date} ${time}`
 }
 
 
@@ -168,7 +172,7 @@ export default function DealDetailPage() {
   const [noteText,       setNoteText]       = useState('')
   const [loggingNote,    setLoggingNote]    = useState(false)
   const [confirmDeleteNote, setConfirmDeleteNote] = useState<string | null>(null)
-  const [showHistoricalNotes, setShowHistoricalNotes] = useState(false)
+  const [showHistoricalNotes, setShowHistoricalNotes] = useState(true)
 
   // Delete confirm
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -196,6 +200,7 @@ export default function DealDetailPage() {
   const [inspection,                setInspection]                = useState<InspectionResult | null>(null)
   const [inspectionLoading,         setInspectionLoading]         = useState(false)
   const [emailStatus,               setEmailStatus]               = useState<'idle'|'checking'|'summarizing'|'inspecting'|'emailing'>('idle')
+  const [templateStatus,            setTemplateStatus]            = useState<'idle' | 'working' | 'copied'>('idle')
 
   // ── Data fetchers ──────────────────────────────────────────────────────────
 
@@ -311,28 +316,41 @@ export default function DealDetailPage() {
     setInspectionLoading(false)
   }
 
-  async function handleEmailOwner() {
-    if (!deal) return
-    setEmailStatus('checking')
+  /** Refresh summary + inspection so the composed email has current inputs. */
+  async function prepareEmailInputs(setStatus: (s: 'idle' | 'checking' | 'summarizing' | 'inspecting' | 'emailing') => void) {
+    setStatus('checking')
     if (!detailsSummary) {
-      setEmailStatus('summarizing')
+      setStatus('summarizing')
       try { const res = await fetch(`/api/deals/${id}/summarize`, { method: 'POST' }); if (res.ok) { const d = await res.json(); if (d.summary) { setDetailsSummary(d.summary); setDetailsSummaryGeneratedAt(d.generatedAt ?? null) } } } catch { /* continue */ }
     }
     if (!inspection) {
-      setEmailStatus('inspecting')
+      setStatus('inspecting')
       try { const res = await fetch(`/api/deals/${id}/inspect`, { method: 'POST' }); if (res.ok) { const d = await res.json(); if (d.result) setInspection(d.result as InspectionResult) } } catch { /* continue */ }
     }
-    setEmailStatus('emailing')
+    setStatus('emailing')
+  }
+
+  async function handleEmailOwner() {
+    if (!deal) return
+    await prepareEmailInputs(setEmailStatus)
     let ownerEmail = ''
     try { const res = await fetch('/api/admin/users'); if (res.ok) { const users = await res.json(); const owner = users.find((u: { id: string; email: string }) => u.id === deal.deal_owner_id); ownerEmail = owner?.email ?? '' } } catch { /* silent */ }
-    try {
-      const res = await fetch(`/api/deals/${id}/compose-email`, { method: 'POST' })
-      if (res.ok) { const data = await res.json(); if (data.subject && data.body) { window.open(`mailto:${ownerEmail}?subject=${encodeURIComponent(data.subject)}&body=${encodeURIComponent(data.body)}`, '_blank'); setEmailStatus('idle'); return } }
-    } catch { /* fallback */ }
-    const stageName = deal.deal_stages?.stage_name ?? 'unknown stage'
-    const ownerName = deal.deal_owner?.full_name ?? 'there'
-    window.open(`mailto:${ownerEmail}?subject=${encodeURIComponent(`Deal Update: ${deal.deal_name}`)}&body=${encodeURIComponent(`Hi ${ownerName},\n\nI wanted to follow up on "${deal.deal_name}" (${stageName}).\n\nCould you please provide a current status update and flag any blockers?\n\nThanks.`)}`, '_blank')
+    const email = await composeOwnerEmail(id, deal)
+    if (email.inspection) setInspection(email.inspection)
+    window.open(`mailto:${ownerEmail}?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body)}`, '_blank')
     setEmailStatus('idle')
+  }
+
+  /** Copy the same generated email content to the clipboard — no mail client. */
+  async function handleCopyTemplate() {
+    if (!deal) return
+    setTemplateStatus('working')
+    await prepareEmailInputs(s => setTemplateStatus(s === 'idle' ? 'idle' : 'working'))
+    const email = await composeOwnerEmail(id, deal)
+    if (email.inspection) setInspection(email.inspection)
+    const ok = await copyText(renderEmailText(email))
+    setTemplateStatus(ok ? 'copied' : 'idle')
+    if (ok) setTimeout(() => setTemplateStatus('idle'), 2000)
   }
 
   // ── Save deal ────────────────────────────────────────────────────────────────
@@ -1096,7 +1114,7 @@ export default function DealDetailPage() {
           slackMemberId={deal.deal_owner?.slack_member_id}
           slackTeamId={SLACK_TEAM_ID}
           lastNoteDate={notes[0]?.created_at ?? null}
-          recentNote={notes[0] ?? null}
+          notes={notes}
           summary={detailsSummary}
           summaryGeneratedAt={detailsSummaryGeneratedAt}
           loadingSummary={loadingDetailsSummary}
@@ -1108,6 +1126,8 @@ export default function DealDetailPage() {
           onRegenerateSummary={handleRegenerateSummary}
           onRunInspection={handleRunInspection}
           onEmailOwner={handleEmailOwner}
+          templateStatus={templateStatus}
+          onCopyTemplate={handleCopyTemplate}
         />
       )}
     </div>

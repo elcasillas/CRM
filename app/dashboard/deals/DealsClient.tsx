@@ -7,7 +7,8 @@ import { createClient } from '@/lib/supabase/client'
 import type { DealStage, DealWithRelations, NoteWithAuthor } from '@/lib/types'
 import type { DealsInitialData, DealPageRow } from './types'
 import type { InspectionResult } from '@/lib/deal-inspect'
-import { DealDetailsModal } from './DealDetailsModal'
+import { DealDetailsModal, type EmailStatus } from './DealDetailsModal'
+import { composeOwnerEmail, renderEmailText, copyText } from '@/lib/deal-email'
 import { DealStageBadge } from '@/components/dashboard/deal-stage-badge'
 import { stageColor, stageTextColor } from '@/lib/deal-stage-colors'
 
@@ -139,7 +140,8 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
 
   // ── Feedback modal state ─────────────────────────────────────────────────────
   const [feedbackDeal,              setFeedbackDeal]              = useState<DealWithRelations | null>(null)
-  const [feedbackNote,              setFeedbackNote]              = useState<NoteWithAuthor | null>(null)
+  const [feedbackNotes,             setFeedbackNotes]             = useState<NoteWithAuthor[]>([])
+  const [templateStatus,            setTemplateStatus]            = useState<'idle' | 'working' | 'copied'>('idle')
   const [feedbackSummary,           setFeedbackSummary]           = useState<string | null>(null)
   const [feedbackSummaryGeneratedAt,setFeedbackSummaryGeneratedAt]= useState<string | null>(null)
   const [loadingFeedbackSummary,    setLoadingFeedbackSummary]    = useState(false)
@@ -236,19 +238,19 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
 
   async function openFeedback(deal: DealWithRelations) {
     setFeedbackDeal(deal)
-    setFeedbackNote(null)
+    setFeedbackNotes([])
+    setTemplateStatus('idle')
     setFeedbackSummary(null)
     setFeedbackSummaryGeneratedAt(null)
     setInspection(null)
     setEmailStatus('idle')
-    // Load most recent note
+    // Load full note history for this deal (newest first)
     supabase.from('notes')
       .select('*, author:profiles!created_by(full_name)')
       .eq('entity_type', 'deal')
       .eq('entity_id', deal.id)
       .order('created_at', { ascending: false })
-      .limit(1)
-      .then(({ data }) => { if (data?.[0]) setFeedbackNote(data[0] as NoteWithAuthor) })
+      .then(({ data }) => { setFeedbackNotes((data ?? []) as NoteWithAuthor[]) })
     // Load stored summary & inspection (non-blocking)
     if (canViewAI) {
       fetch(`/api/deals/${deal.id}/summarize`).then(async r => {
@@ -282,42 +284,46 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     setInspectionLoading(false)
   }
 
-  async function handleEmailOwner() {
-    if (!feedbackDeal) return
-    const ownerEmail = emailMap.get(feedbackDeal.deal_owner_id) ?? ''
-    setEmailStatus('checking')
+  /** Refresh summary + inspection so the composed email has current inputs. */
+  async function prepareEmailInputs(deal: DealWithRelations, setStatus: (s: EmailStatus) => void) {
+    setStatus('checking')
     if (!feedbackSummary) {
-      setEmailStatus('summarizing')
+      setStatus('summarizing')
       try {
-        const res = await fetch(`/api/deals/${feedbackDeal.id}/summarize`, { method: 'POST' })
+        const res = await fetch(`/api/deals/${deal.id}/summarize`, { method: 'POST' })
         if (res.ok) { const b = await res.json(); if (b.summary) { setFeedbackSummary(b.summary); setFeedbackSummaryGeneratedAt(b.generatedAt ?? null) } }
       } catch (_e) { /* continue */ }
     }
     if (!inspection) {
-      setEmailStatus('inspecting')
+      setStatus('inspecting')
       try {
-        const res = await fetch(`/api/deals/${feedbackDeal.id}/inspect`, { method: 'POST' })
+        const res = await fetch(`/api/deals/${deal.id}/inspect`, { method: 'POST' })
         if (res.ok) { const data = await res.json(); if (data.result) setInspection(data.result as InspectionResult) }
       } catch (_e) { /* fallback */ }
     }
-    setEmailStatus('emailing')
-    try {
-      const res = await fetch(`/api/deals/${feedbackDeal.id}/compose-email`, { method: 'POST' })
-      if (res.ok) {
-        const data = await res.json()
-        if (data.subject && data.body) {
-          if (data.inspection) setInspection(data.inspection as InspectionResult)
-          window.open(`mailto:${ownerEmail}?subject=${encodeURIComponent(data.subject)}&body=${encodeURIComponent(data.body)}`, '_blank')
-          setEmailStatus('idle'); return
-        }
-      }
-    } catch (_e) { /* fallback */ }
-    const stageName = feedbackDeal.deal_stages?.stage_name ?? 'unknown stage'
-    const ownerName = feedbackDeal.deal_owner?.full_name ?? 'there'
-    const fallbackSubject = `Deal Update: ${feedbackDeal.deal_name}`
-    const fallbackBody = `Hi ${ownerName},\n\nI wanted to follow up on "${feedbackDeal.deal_name}" (${stageName}).\n\nCould you please provide a current status update and flag any blockers?\n\nThanks.`
-    window.open(`mailto:${ownerEmail}?subject=${encodeURIComponent(fallbackSubject)}&body=${encodeURIComponent(fallbackBody)}`, '_blank')
+    setStatus('emailing')
+  }
+
+  async function handleEmailOwner() {
+    if (!feedbackDeal) return
+    const ownerEmail = emailMap.get(feedbackDeal.deal_owner_id) ?? ''
+    await prepareEmailInputs(feedbackDeal, setEmailStatus)
+    const email = await composeOwnerEmail(feedbackDeal.id, feedbackDeal)
+    if (email.inspection) setInspection(email.inspection)
+    window.open(`mailto:${ownerEmail}?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body)}`, '_blank')
     setEmailStatus('idle')
+  }
+
+  /** Copy the same generated email content to the clipboard — no mail client. */
+  async function handleCopyTemplate() {
+    if (!feedbackDeal) return
+    setTemplateStatus('working')
+    await prepareEmailInputs(feedbackDeal, s => setTemplateStatus(s === 'idle' ? 'idle' : 'working'))
+    const email = await composeOwnerEmail(feedbackDeal.id, feedbackDeal)
+    if (email.inspection) setInspection(email.inspection)
+    const ok = await copyText(renderEmailText(email))
+    setTemplateStatus(ok ? 'copied' : 'idle')
+    if (ok) setTimeout(() => setTemplateStatus('idle'), 2000)
   }
 
   // ── Sort ─────────────────────────────────────────────────────────────────────
@@ -671,11 +677,12 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
       {/* Deal Details modal */}
       {feedbackDeal && (
         <DealDetailsModal
+          key={feedbackDeal.id}
           deal={feedbackDeal}
           slackMemberId={profiles.find(p => p.id === feedbackDeal.deal_owner_id)?.slack_member_id}
           slackTeamId={slackTeamId}
           lastNoteDate={lastNoteDates.get(feedbackDeal.id) ?? null}
-          recentNote={feedbackNote}
+          notes={feedbackNotes}
           summary={feedbackSummary}
           summaryGeneratedAt={feedbackSummaryGeneratedAt}
           loadingSummary={loadingFeedbackSummary}
@@ -687,6 +694,8 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
           onRegenerateSummary={handleRegenerateSummary}
           onRunInspection={handleRunInspection}
           onEmailOwner={handleEmailOwner}
+          templateStatus={templateStatus}
+          onCopyTemplate={handleCopyTemplate}
         />
       )}
 
