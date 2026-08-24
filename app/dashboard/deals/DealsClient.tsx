@@ -308,7 +308,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     if (!feedbackDeal) return
     const ownerEmail = emailMap.get(feedbackDeal.deal_owner_id) ?? ''
     await prepareEmailInputs(feedbackDeal, setEmailStatus)
-    const email = await composeOwnerEmail(feedbackDeal.id, feedbackDeal)
+    const email = await composeOwnerEmail(feedbackDeal.id, feedbackDeal, lastNoteDates.get(feedbackDeal.id) ?? null)
     if (email.inspection) setInspection(email.inspection)
     window.open(`mailto:${ownerEmail}?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body)}`, '_blank')
     setEmailStatus('idle')
@@ -319,7 +319,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
     if (!feedbackDeal) return
     setTemplateStatus('working')
     await prepareEmailInputs(feedbackDeal, s => setTemplateStatus(s === 'idle' ? 'idle' : 'working'))
-    const email = await composeOwnerEmail(feedbackDeal.id, feedbackDeal)
+    const email = await composeOwnerEmail(feedbackDeal.id, feedbackDeal, lastNoteDates.get(feedbackDeal.id) ?? null)
     if (email.inspection) setInspection(email.inspection)
     const ok = await copyText(renderEmailText(email))
     setTemplateStatus(ok ? 'copied' : 'idle')

@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { runInspection, topMissingChecks, type InspectionCheckDef, type InspectionResult } from '@/lib/deal-inspect'
-import { buildDateContext, DATE_AWARENESS_RULES } from '@/lib/ai-date-context'
+import { buildDateContext, formatLastNoteLine } from '@/lib/ai-date-context'
+import { SHARED_GENERATION_RULES, FOLLOW_UP_OUTPUT_RULES } from '@/lib/ai-prompt-rules'
 
-// ── POST — compose an AI-generated follow-up email about a deal ───────────────
-// Runs (or reuses) a deal inspection, then generates a targeted manager email
-// asking the rep specifically about the top missing or weak items.
-// Returns { subject: string, body: string }
+// ── POST — compose follow-up content for a deal ──────────────────────────────
+// Runs (or reuses) a deal inspection, then generates targeted follow-up items
+// about the top missing or weak parts of the deal. The deal name and "Last
+// note" lines are prepended here rather than generated, so they are always
+// exact. Returns { subject: string, body: string }
 
 const STALE_INSPECTION_HOURS = 2
 
@@ -46,6 +48,16 @@ export async function POST(
     if (owner?.full_name) ownerName = owner.full_name
   }
 
+  // Most recent note timestamp — drives the "Last note:" line
+  const { data: latestNote } = await admin
+    .from('notes')
+    .select('created_at')
+    .eq('entity_type', 'deal')
+    .eq('entity_id', id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
   // Determine if we need a fresh inspection
   const staleMs = STALE_INSPECTION_HOURS * 60 * 60 * 1000
   const inspRunAt = deal.inspection_run_at ? new Date(deal.inspection_run_at as string).getTime() : 0
@@ -80,7 +92,6 @@ export async function POST(
   const acv = deal.value_amount != null
     ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(deal.value_amount as number)
     : 'N/A'
-  const ownerFirst = ownerName.split(' ')[0] ?? ownerName
 
   // Build the missing-items block for the email prompt — top 3–6 by severity
   let missingItemsBlock = ''
@@ -93,27 +104,18 @@ export async function POST(
   }
 
   const summaryContext = deal.ai_summary
-    ? `AI SUMMARY:\n${deal.ai_summary}`
-    : '(No AI summary available)'
+    ? `DEAL HISTORY:\n${deal.ai_summary}`
+    : '(No deal history available)'
 
-  const systemPrompt = `You are a sales manager writing an internal follow-up email to a deal owner about deal quality and forecast readiness.
+  const systemPrompt = `You are a sales manager reviewing a deal for quality and forecast readiness, listing what still needs answering.
 
-Tone: direct, professional, practical. Sound like a manager who has reviewed the deal and wants specific answers — not a form letter.
+Tone: direct, professional, practical. Each item should sound like a manager who has read the deal and wants a specific answer.
 
-Return a JSON object with exactly two keys:
-- "subject": short, specific subject line under 60 characters — reference the deal name
-- "body": the email body as plain text
+Base the items on the inspection gaps provided, prioritising critical gaps.
 
-Rules for the body:
-- Open: "Hi ${ownerFirst},"
-- One sentence: why you're writing (reviewed "${deal.deal_name as string}", need a few updates before forecast review, or similar — be specific to the deal)
-- List 3 to 6 questions as dash-separated lines. Use the inspection gaps provided. Prioritize critical gaps. Write each question as a direct, specific ask — no fluff, no preamble
-- One closing sentence: brief request to update the deal record or reply before the next review
-- Sign off: "Thanks"
-- Plain text only — no markdown, no bullet symbols other than dashes, no headers
-- Under 160 words total
+${FOLLOW_UP_OUTPUT_RULES}
 
-${DATE_AWARENESS_RULES}`
+${SHARED_GENERATION_RULES}`
 
   // Classify every date in the deal data, summary and inspection gaps against
   // today, so stale milestones are reframed rather than asked about as pending.
@@ -142,13 +144,14 @@ ${missingItemsBlock}`
 
   const model = (process.env.OPENROUTER_MODEL || 'anthropic/claude-haiku-4-5').trim()
 
-  function extractJSON(text: string): string {
-    const fenced = text.match(/```(?:json)?\s*([\s\S]+?)\s*```/)
-    if (fenced) return fenced[1]
-    const start = text.indexOf('{')
-    const end = text.lastIndexOf('}')
-    if (start !== -1 && end > start) return text.slice(start, end + 1)
-    return text
+  /** Strip markdown fences and any stray preamble before the first item. */
+  function cleanItems(text: string): string {
+    let out = text.trim()
+    const fenced = out.match(/```(?:\w+)?\s*([\s\S]+?)\s*```/)
+    if (fenced) out = fenced[1].trim()
+    const firstItem = out.search(/^\s*1[.)]\s+/m)
+    if (firstItem > 0) out = out.slice(firstItem).trim()
+    return out
   }
 
   try {
@@ -176,16 +179,21 @@ ${missingItemsBlock}`
     }
 
     const json = await res.json()
-    const raw = (json.choices?.[0]?.message?.content ?? '').trim()
-    const parsed = JSON.parse(extractJSON(raw))
+    const items = cleanItems((json.choices?.[0]?.message?.content ?? '').trim())
 
-    if (!parsed.subject || !parsed.body) {
+    if (!items) {
       return NextResponse.json({ error: 'Invalid response from AI' }, { status: 502 })
     }
 
+    // Lines 1 and 2 are assembled here, never generated, so the deal name is
+    // always verbatim and the day count always reflects the current date.
+    const dealName = deal.deal_name as string
+    const lastNoteLine = formatLastNoteLine(latestNote?.created_at as string | undefined, new Date())
+    const body = `${dealName}\n${lastNoteLine}\n\n${items}`
+
     return NextResponse.json({
-      subject:    parsed.subject as string,
-      body:       parsed.body as string,
+      subject:    dealName,
+      body,
       inspection: inspectionResult,
     })
   } catch (err) {

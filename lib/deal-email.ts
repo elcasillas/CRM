@@ -1,4 +1,5 @@
 import type { InspectionResult } from './deal-inspect'
+import { formatLastNoteLine } from './ai-date-context'
 
 // ── Owner follow-up email generation ─────────────────────────────────────────
 // Single source of truth for the "Email Owner" template. Both the Email Owner
@@ -19,13 +20,22 @@ export interface FallbackDealInfo {
   deal_owner?: { full_name: string | null } | null
 }
 
-/** Local template used when the compose-email API is unavailable. */
-export function fallbackOwnerEmail(deal: FallbackDealInfo): ComposedEmail {
+/**
+ * Local template used when the compose-email API is unavailable. Matches the
+ * generated shape: deal name, last note line, then numbered items.
+ */
+export function fallbackOwnerEmail(deal: FallbackDealInfo, lastNoteAt?: string | null): ComposedEmail {
   const stageName = deal.deal_stages?.stage_name ?? 'unknown stage'
-  const ownerName = deal.deal_owner?.full_name ?? 'there'
+  const lastNoteLine = formatLastNoteLine(lastNoteAt, new Date())
+  const items = [
+    `1. What is the current status of this deal in ${stageName}?`,
+    '2. What are the outstanding actions and who owns each one?',
+    '3. What blockers are open right now, and what is needed to clear them?',
+    '4. What is the current target date for the next milestone?',
+  ].join('\n')
   return {
-    subject: `Deal Update: ${deal.deal_name}`,
-    body: `Hi ${ownerName},\n\nI wanted to follow up on "${deal.deal_name}" (${stageName}).\n\nCould you please provide a current status update and flag any blockers?\n\nThanks.`,
+    subject: deal.deal_name,
+    body: `${deal.deal_name}\n${lastNoteLine}\n\n${items}`,
   }
 }
 
@@ -33,7 +43,7 @@ export function fallbackOwnerEmail(deal: FallbackDealInfo): ComposedEmail {
  * Generate the owner follow-up email for a deal via the compose-email API,
  * falling back to the local template if the request fails or returns nothing.
  */
-export async function composeOwnerEmail(dealId: string, deal: FallbackDealInfo): Promise<ComposedEmail> {
+export async function composeOwnerEmail(dealId: string, deal: FallbackDealInfo, lastNoteAt?: string | null): Promise<ComposedEmail> {
   try {
     const res = await fetch(`/api/deals/${dealId}/compose-email`, { method: 'POST' })
     if (res.ok) {
@@ -43,12 +53,15 @@ export async function composeOwnerEmail(dealId: string, deal: FallbackDealInfo):
       }
     }
   } catch (_e) { /* fall through to local template */ }
-  return fallbackOwnerEmail(deal)
+  return fallbackOwnerEmail(deal, lastNoteAt)
 }
 
-/** Plain-text rendering of a composed email, for clipboard use. */
+/**
+ * Plain-text rendering for clipboard use. The body already opens with the deal
+ * name and last note line, so nothing is prepended.
+ */
 export function renderEmailText(email: ComposedEmail): string {
-  return `Subject: ${email.subject}\n\n${email.body}`
+  return email.body
 }
 
 /** Copy text to the clipboard, with a fallback for non-secure contexts. */

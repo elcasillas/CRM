@@ -177,6 +177,23 @@ export function extractDateRefs(text: string, today: Date): DateRef[] {
   return out
 }
 
+/**
+ * The "Last note:" line that heads generated follow-up content. Calendar-day
+ * difference against today, so a note from late yesterday reads as 1 day ago
+ * rather than rounding by elapsed hours.
+ */
+export function formatLastNoteLine(latestNoteAt: string | null | undefined, today: Date): string {
+  if (!latestNoteAt) return 'Last note: none recorded'
+  const noted = new Date(latestNoteAt)
+  if (isNaN(noted.getTime())) return 'Last note: none recorded'
+  const a = day(today.getFullYear(), today.getMonth(), today.getDate())
+  const b = day(noted.getFullYear(), noted.getMonth(), noted.getDate())
+  const days = Math.round((a.getTime() - b.getTime()) / 86_400_000)
+  if (days <= 0) return 'Last note: Today'
+  if (days === 1) return 'Last note: 1 day ago'
+  return `Last note: ${days} days ago`
+}
+
 /** Format today's date for prompt context, e.g. "Monday, August 24, 2026". */
 export function formatToday(today: Date): string {
   return today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })

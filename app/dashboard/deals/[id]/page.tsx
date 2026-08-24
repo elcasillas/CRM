@@ -335,7 +335,7 @@ export default function DealDetailPage() {
     await prepareEmailInputs(setEmailStatus)
     let ownerEmail = ''
     try { const res = await fetch('/api/admin/users'); if (res.ok) { const users = await res.json(); const owner = users.find((u: { id: string; email: string }) => u.id === deal.deal_owner_id); ownerEmail = owner?.email ?? '' } } catch { /* silent */ }
-    const email = await composeOwnerEmail(id, deal)
+    const email = await composeOwnerEmail(id, deal, notes[0]?.created_at ?? null)
     if (email.inspection) setInspection(email.inspection)
     window.open(`mailto:${ownerEmail}?subject=${encodeURIComponent(email.subject)}&body=${encodeURIComponent(email.body)}`, '_blank')
     setEmailStatus('idle')
@@ -346,7 +346,7 @@ export default function DealDetailPage() {
     if (!deal) return
     setTemplateStatus('working')
     await prepareEmailInputs(s => setTemplateStatus(s === 'idle' ? 'idle' : 'working'))
-    const email = await composeOwnerEmail(id, deal)
+    const email = await composeOwnerEmail(id, deal, notes[0]?.created_at ?? null)
     if (email.inspection) setInspection(email.inspection)
     const ok = await copyText(renderEmailText(email))
     setTemplateStatus(ok ? 'copied' : 'idle')

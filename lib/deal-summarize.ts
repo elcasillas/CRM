@@ -1,7 +1,8 @@
 import { createHash } from 'crypto'
+import { SOURCE_FRAMING_RULES, PLAIN_PUNCTUATION_RULES } from './ai-prompt-rules'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export const MODEL_TAG = 'haiku-s1'
+export const MODEL_TAG = 'haiku-s2'
 
 export function buildCanonical(texts: string[]): string {
   const unique = [...new Set(texts.map(t => t.trim()).filter(Boolean))].sort()
@@ -12,6 +13,42 @@ export function sha256Hex(text: string): string {
   return createHash('sha256').update(text, 'utf8').digest('hex')
 }
 
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December']
+
+/**
+ * Remove hyphens, dashes and semicolons from a generated summary. The prompt
+ * asks the model to avoid them; this guarantees it, so no summary can reach
+ * the UI containing them. Rewrites rather than deletes wherever the character
+ * carries meaning (dates, ranges, clause breaks).
+ */
+export function stripRestrictedPunctuation(text: string): string {
+  if (!text) return text
+  let out = text
+
+  // ISO dates first, so they survive as readable text instead of losing digits
+  out = out.replace(/\b(\d{4})-(\d{1,2})-(\d{1,2})\b/g, (m, y, mo, d) => {
+    const idx = Number(mo) - 1
+    return idx >= 0 && idx < 12 ? `${MONTH_NAMES[idx]} ${Number(d)}, ${y}` : m
+  })
+  // Year and numeric ranges
+  out = out.replace(/(\d)\s*[-–—]\s*(\d)/g, '$1 to $2')
+  // Dash bullets at the start of a line
+  out = out.replace(/^[ \t]*[-–—]+[ \t]+/gm, '')
+  // Clause breaks: dash or semicolon between words becomes a sentence break
+  out = out.replace(/\s*[;]\s*/g, '. ')
+  out = out.replace(/\s+[–—]+\s+/g, '. ')
+  // Compound words keep both halves, joined by a space
+  out = out.replace(/(\w)[-–—]+(\w)/g, '$1 $2')
+  // Anything left over
+  out = out.replace(/[-–—]/g, '')
+  // Capitalise after the sentence breaks introduced above
+  out = out.replace(/([.!?]\s+)([a-z])/g, (_m, p, c) => p + c.toUpperCase())
+  // Tidy spacing left behind
+  out = out.replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+$/gm, '')
+  return out
+}
+
 export async function callSummarizeLLM(canonical: string, dealName: string): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) throw new Error('OPENROUTER_API_KEY not configured')
@@ -19,7 +56,7 @@ export async function callSummarizeLLM(canonical: string, dealName: string): Pro
 
   const noteLines = canonical
     .split('\n---\n')
-    .map(n => `- ${n.trim()}`)
+    .map((n, i) => `${i + 1}. ${n.trim()}`)
     .join('\n')
 
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -52,7 +89,11 @@ Rules:
 - Be specific — include names, dates, and action items where the notes mention them.
 - Remove duplicate or repeated information while preserving the underlying facts.
 - Do not invent or infer facts beyond what the notes contain.
-- Keep the tone professional and concise — suitable for a quick cross-deal review.`,
+- Keep the tone professional and concise — suitable for a quick cross-deal review.
+
+${SOURCE_FRAMING_RULES}
+
+${PLAIN_PUNCTUATION_RULES}`,
         },
         {
           role: 'user',
@@ -68,7 +109,8 @@ Rules:
   }
 
   const json = await res.json()
-  return (json.choices?.[0]?.message?.content ?? '').trim()
+  const raw = (json.choices?.[0]?.message?.content ?? '').trim()
+  return stripRestrictedPunctuation(raw)
 }
 
 export interface SummaryResult {

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { buildDateContext, DATE_AWARENESS_RULES } from './ai-date-context'
+import { buildDateContext } from './ai-date-context'
+import { SHARED_GENERATION_RULES } from './ai-prompt-rules'
 import { getOrCreateSummary } from './deal-summarize'
 import { extractDealRevenue } from './dealCalc'
 
@@ -221,8 +222,8 @@ async function callInspectionLLM(
     : '(no notes available)'
 
   const summaryBlock = ctx.ai_summary
-    ? `AI SUMMARY:\n${ctx.ai_summary}`
-    : '(no AI summary available)'
+    ? `DEAL HISTORY:\n${ctx.ai_summary}`
+    : '(no deal history available)'
 
   const systemPrompt = `You are a CRM deal quality inspector for a sales manager.
 
@@ -243,12 +244,12 @@ Criteria to evaluate:
 ${checksSpec}
 
 Rules:
-- Base your evaluation on the AI summary and recent notes
-- If there is no AI summary and no notes, mark all qualitative checks as "missing"
+- Base your evaluation on the deal history and recent notes
+- If there is no deal history and no notes, mark all qualitative checks as "missing"
 - Be concise and specific
 - Return ONLY valid JSON, no markdown
 
-${DATE_AWARENESS_RULES}`
+${SHARED_GENERATION_RULES}`
 
   const dateContext = buildDateContext(
     [ctx.close_date, ctx.deal_description, ctx.ai_summary, notesBlock],
