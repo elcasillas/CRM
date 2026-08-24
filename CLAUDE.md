@@ -51,8 +51,8 @@ Key capabilities:
 | Styling | Tailwind CSS — light theme, white/gray palette, `brand-700` navy for modal headers |
 | Backend | Supabase — Postgres, Auth, RLS, RPCs |
 | AI | OpenRouter API (`anthropic/claude-haiku-4-5` default) |
-| Hosting | Coolify — Docker (standalone Next.js) |
-| Source control | GitHub (`ed-casillas-projects/crm`) |
+| Hosting | Vercel |
+| Source control | GitHub (`elcasillas/CRM`) |
 
 ### Supabase client selection
 
@@ -78,7 +78,7 @@ Key capabilities:
 | `OPENROUTER_MODEL` | No | Defaults to `anthropic/claude-haiku-4-5` |
 | `EXCHANGERATE_API_KEY` | No | exchangerate.host API key for Financial Worksheet currency conversion |
 
-Copy `.env.local.example` → `.env.local`. Same vars must be set in the Coolify service environment panel.
+Copy `.env.local.example` → `.env.local`. Same vars must be set in the Vercel project settings (Settings → Environment Variables), for each environment that needs them.
 
 ---
 
@@ -300,12 +300,12 @@ Settings (`/dashboard/admin/health-scoring`) consolidates: health score config, 
 
 ## Deployment
 
-- **Hosting:** Coolify — Docker build using `Dockerfile` at repo root
-- **Build:** Next.js standalone mode (`output: 'standalone'` in `next.config.ts`); image produced by multi-stage Dockerfile
-- **Auto-deploy:** connect Coolify to the GitHub repo and enable auto-deploy on push to `master`
-- **DB migrations:** `supabase db push` — Coolify does not run migrations
-- **Auth redirects:** Supabase dashboard → Authentication → URL Configuration must include the Coolify app domain
-- **Environment variables:** set all vars from `.env.local.example` in the Coolify service environment panel
+- **Hosting:** Vercel, connected to the GitHub repo
+- **Auto-deploy:** push to `master` deploys to production; any other branch or PR gets its own preview deployment
+- **Build:** Vercel runs `next build` itself — no Docker involved. `Dockerfile` and `output: 'standalone'` in `next.config.ts` are leftovers from an earlier Coolify setup and are not used by Vercel
+- **DB migrations:** `supabase db push` — Vercel does not run migrations
+- **Auth redirects:** Supabase dashboard → Authentication → URL Configuration must include the Vercel production domain, plus preview domains if you sign in on previews
+- **Environment variables:** set all vars from `.env.local.example` in Vercel → Settings → Environment Variables
 
 ---
 
