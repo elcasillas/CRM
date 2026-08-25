@@ -8,6 +8,7 @@ import type { DealStage, DealWithRelations, NoteWithAuthor } from '@/lib/types'
 import type { DealsInitialData, DealPageRow } from './types'
 import type { InspectionResult } from '@/lib/deal-inspect'
 import { DealDetailsModal, type EmailStatus } from './DealDetailsModal'
+import { SalesUserAIModal } from './SalesUserAIModal'
 import { composeOwnerEmail, renderEmailText, copyText } from '@/lib/deal-email'
 import { DealStageBadge } from '@/components/dashboard/deal-stage-badge'
 import { stageColor, stageTextColor } from '@/lib/deal-stage-colors'
@@ -142,6 +143,7 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
   const [feedbackDeal,              setFeedbackDeal]              = useState<DealWithRelations | null>(null)
   const [feedbackNotes,             setFeedbackNotes]             = useState<NoteWithAuthor[]>([])
   const [templateStatus,            setTemplateStatus]            = useState<'idle' | 'working' | 'copied'>('idle')
+  const [aiOwner,                   setAiOwner]                   = useState<{ id: string; name: string } | null>(null)
   const [feedbackSummary,           setFeedbackSummary]           = useState<string | null>(null)
   const [feedbackSummaryGeneratedAt,setFeedbackSummaryGeneratedAt]= useState<string | null>(null)
   const [loadingFeedbackSummary,    setLoadingFeedbackSummary]    = useState(false)
@@ -506,8 +508,9 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
           {ownerSummaries.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mb-4">
               {ownerSummaries.map(o => (
-                <button key={o.id} onClick={() => setFilter('filterOwner', filterOwner === o.id ? '' : o.id)} className={`text-left bg-white border rounded-xl p-4 shadow-sm transition-colors ${filterOwner === o.id ? 'border-l-4 border-[#00ADB1] bg-[#E6F7F8]' : 'border-gray-200 hover:border-gray-300'}`}>
-                  <p className="font-medium text-gray-900 text-sm mb-2 truncate">{o.name}</p>
+                <div key={o.id} className="relative">
+                <button onClick={() => setFilter('filterOwner', filterOwner === o.id ? '' : o.id)} className={`w-full text-left bg-white border rounded-xl p-4 shadow-sm transition-colors ${filterOwner === o.id ? 'border-l-4 border-[#00ADB1] bg-[#E6F7F8]' : 'border-gray-200 hover:border-gray-300'}`}>
+                  <p className={`font-medium text-gray-900 text-sm mb-2 truncate${canViewAI ? ' pr-7' : ''}`}>{o.name}</p>
                   <div className="grid grid-cols-4 gap-1 text-center">
                     <div><p className="text-base font-bold text-gray-900">{o.count}</p><p className="text-xs text-gray-400">Deals</p></div>
                     <div><p className="text-base font-bold text-gray-900">{formatCurrency(o.acv) ?? '—'}</p><p className="text-xs text-gray-400">ACV</p></div>
@@ -515,6 +518,19 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
                     <div><p className={`text-base font-bold ${o.overdue > 0 ? 'text-red-600' : 'text-gray-900'}`}>{o.overdue}</p><p className="text-xs text-gray-400">Overdue</p></div>
                   </div>
                 </button>
+                {canViewAI && (
+                  <button
+                    onClick={() => setAiOwner({ id: o.id, name: o.name })}
+                    title={`Follow-up items across ${o.name}'s open deals`}
+                    aria-label={`Follow-up items across ${o.name}'s open deals`}
+                    className="absolute top-3.5 right-3 text-gray-300 hover:text-[#00ADB1] transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
+                      <path fillRule="evenodd" d="M9 4.5a.75.75 0 0 1 .721.544l.813 2.846a3.75 3.75 0 0 0 2.576 2.576l2.846.813a.75.75 0 0 1 0 1.442l-2.846.813a3.75 3.75 0 0 0-2.576 2.576l-.813 2.846a.75.75 0 0 1-1.442 0l-.813-2.846a3.75 3.75 0 0 0-2.576-2.576l-2.846-.813a.75.75 0 0 1 0-1.442l2.846-.813A3.75 3.75 0 0 0 7.466 7.89l.813-2.846A.75.75 0 0 1 9 4.5ZM18 1.5a.75.75 0 0 1 .728.568l.258 1.036c.236.94.97 1.674 1.91 1.91l1.036.258a.75.75 0 0 1 0 1.456l-1.036.258c-.94.236-1.674.97-1.91 1.91l-.258 1.036a.75.75 0 0 1-1.456 0l-.258-1.036a2.625 2.625 0 0 0-1.91-1.91l-1.036-.258a.75.75 0 0 1 0-1.456l1.036-.258a2.625 2.625 0 0 0 1.91-1.91l.258-1.036A.75.75 0 0 1 18 1.5Z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                )}
+                </div>
               ))}
             </div>
           )}
@@ -672,6 +688,15 @@ export default function DealsClient({ initialData }: { initialData: DealsInitial
             })}
           </div>
         </div>
+      )}
+
+      {/* Sales user follow-up modal */}
+      {aiOwner && (
+        <SalesUserAIModal
+          ownerId={aiOwner.id}
+          ownerName={aiOwner.name}
+          onClose={() => setAiOwner(null)}
+        />
       )}
 
       {/* Deal Details modal */}

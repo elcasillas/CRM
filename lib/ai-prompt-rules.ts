@@ -19,14 +19,16 @@ export const SOURCE_FRAMING_RULES = `SOURCE FRAMING (mandatory):
 - The reader must not be able to tell that any part of this was assembled or analysed automatically.`
 
 /**
- * Dash restriction for every generated path. Enforced deterministically after
- * generation as well, via normalizeDashes in lib/ai-sanitize.
+ * Punctuation restriction for every generated path. Enforced deterministically
+ * after generation as well, via sanitizeGeneratedText in lib/ai-sanitize.
  */
-export const NO_DASH_RULES = `DASHES (mandatory):
+export const OUTPUT_PUNCTUATION_RULES = `PUNCTUATION (mandatory):
 - Never use an em dash or an en dash anywhere in the output.
-- Where you would reach for one, use a period, a comma, a colon, or a separate sentence.
+- Never use a semicolon anywhere in the output.
+- Where you would reach for either, use a period, a comma, a colon, or a separate sentence.
 - If a question is followed by the options that answer it, close the question with a question mark and start a new sentence, or introduce the options with a colon.
-- Write "What is their stated commitment level to proceeding? Are they actively evaluating, exploratory, or stalled?" and never join those two parts with a dash.`
+- Write "What is their stated commitment level to proceeding? Are they actively evaluating, exploratory, or stalled?" and never join those two parts with a dash.
+- Introduce a list with a colon rather than a semicolon: write "The migration has three dependencies: provisioning, reporting, and billing."`
 
 /**
  * Punctuation restriction for the deal summary: no hyphens, dashes or
@@ -62,4 +64,4 @@ export const SHARED_GENERATION_RULES = `${DATE_AWARENESS_RULES}
 
 ${SOURCE_FRAMING_RULES}
 
-${NO_DASH_RULES}`
+${OUTPUT_PUNCTUATION_RULES}`

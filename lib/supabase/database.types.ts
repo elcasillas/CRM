@@ -267,6 +267,41 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_followup_cache: {
+        Row: {
+          created_at: string
+          deal_id: string
+          generated_at: string
+          items: string
+          model: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          generated_at?: string
+          items: string
+          model?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          generated_at?: string
+          items?: string
+          model?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_followup_cache_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_stage_history: {
         Row: {
           changed_at: string

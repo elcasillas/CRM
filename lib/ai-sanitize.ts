@@ -72,3 +72,22 @@ export function normalizeDashes(text: string): string {
   out = out.replace(/[ \t]{2,}/g, ' ').replace(/[ \t]+$/gm, '').replace(/\s+([.,;:?!])/g, '$1')
   return out
 }
+
+/**
+ * Replace semicolons with a sentence break. A semicolon joining a clause to
+ * the list that explains it reads better as a colon, so that case is kept.
+ */
+export function stripSemicolons(text: string): string {
+  if (!text) return text
+  let out = text
+  // "three dependencies; provisioning, reporting and billing" reads as a list
+  out = out.replace(/\s*;\s*(?=[a-z][^.!?\n]*,)/g, ': ')
+  out = out.replace(/\s*;\s*/g, '. ')
+  out = out.replace(/([.!?]\s+)([a-z])/g, (_m, p: string, c: string) => p + c.toUpperCase())
+  return out
+}
+
+/** Every punctuation guarantee that applies to generated follow-up content. */
+export function sanitizeGeneratedText(text: string): string {
+  return stripSemicolons(normalizeDashes(text))
+}

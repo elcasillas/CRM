@@ -182,16 +182,23 @@ export function extractDateRefs(text: string, today: Date): DateRef[] {
  * difference against today, so a note from late yesterday reads as 1 day ago
  * rather than rounding by elapsed hours.
  */
-export function formatLastNoteLine(latestNoteAt: string | null | undefined, today: Date): string {
-  if (!latestNoteAt) return 'Last note: none recorded'
+export type LastNoteStyle = 'prefixed' | 'suffixed'
+
+export function formatLastNoteLine(
+  latestNoteAt: string | null | undefined,
+  today: Date,
+  style: LastNoteStyle = 'prefixed',
+): string {
+  const suffixed = style === 'suffixed'
+  if (!latestNoteAt) return suffixed ? 'No notes available' : 'Last note: none recorded'
   const noted = new Date(latestNoteAt)
-  if (isNaN(noted.getTime())) return 'Last note: none recorded'
+  if (isNaN(noted.getTime())) return suffixed ? 'No notes available' : 'Last note: none recorded'
   const a = day(today.getFullYear(), today.getMonth(), today.getDate())
   const b = day(noted.getFullYear(), noted.getMonth(), noted.getDate())
   const days = Math.round((a.getTime() - b.getTime()) / 86_400_000)
-  if (days <= 0) return 'Last note: Today'
-  if (days === 1) return 'Last note: 1 day ago'
-  return `Last note: ${days} days ago`
+  if (days <= 0) return suffixed ? 'Today' : 'Last note: Today'
+  if (days === 1) return suffixed ? '1 day since last note' : 'Last note: 1 day ago'
+  return suffixed ? `${days} days since last note` : `Last note: ${days} days ago`
 }
 
 /** Format today's date for prompt context, e.g. "Monday, August 24, 2026". */

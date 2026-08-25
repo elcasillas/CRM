@@ -1,6 +1,6 @@
 import { createHash } from 'crypto'
 import { SOURCE_FRAMING_RULES, PLAIN_PUNCTUATION_RULES } from './ai-prompt-rules'
-import { normalizeDashes } from './ai-sanitize'
+import { sanitizeGeneratedText } from './ai-sanitize'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const MODEL_TAG = 'haiku-s2'
@@ -32,12 +32,11 @@ export function stripRestrictedPunctuation(text: string): string {
     const idx = Number(mo) - 1
     return idx >= 0 && idx < 12 ? `${MONTH_NAMES[idx]} ${Number(d)}, ${y}` : m
   })
-  // Em and en dashes, via the shared sanitiser
-  out = normalizeDashes(out)
-  // Hyphen ranges, hyphen bullets, then compounds and leftovers
+  // Dashes and semicolons, via the shared sanitiser
+  out = sanitizeGeneratedText(out)
+  // The summary additionally bans hyphens: ranges, bullets, compounds, leftovers
   out = out.replace(/(\d)\s*-\s*(\d)/g, '$1 to $2')
   out = out.replace(/^[ \t]*-+[ \t]+/gm, '')
-  out = out.replace(/\s*;\s*/g, '. ')
   out = out.replace(/(\w)-+(\w)/g, '$1 $2')
   out = out.replace(/-/g, '')
   // Capitalise after the sentence breaks introduced above
