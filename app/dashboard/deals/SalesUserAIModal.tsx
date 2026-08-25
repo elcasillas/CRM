@@ -18,6 +18,27 @@ export interface FollowUpSection {
   error:        string | null
 }
 
+/** "Aug 24, 2026". Date only: no other modal header in the app shows a time. */
+function fmtGeneratedDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+/**
+ * Newest generation timestamp on show. A report mixes reused and freshly
+ * generated deals, so the title reports the most recent date represented.
+ */
+function latestGeneratedAt(sections: FollowUpSection[]): string | null {
+  let newest: number | null = null
+  let iso: string | null = null
+  for (const s of sections) {
+    if (!s.generatedAt) continue
+    const ms = new Date(s.generatedAt).getTime()
+    if (isNaN(ms)) continue
+    if (newest === null || ms > newest) { newest = ms; iso = s.generatedAt }
+  }
+  return iso
+}
+
 /** "today", "3 days ago" — how old the saved items for a deal are. */
 function generatedAge(iso: string | null): string | null {
   if (!iso) return null
@@ -94,6 +115,8 @@ export function SalesUserAIModal({ ownerId, ownerName, onClose }: Props) {
 
   const failedCount = sections.filter(s => s.error).length
   const reusedCount = sections.filter(s => s.fromCache && !s.error).length
+  const generatedOn = latestGeneratedAt(sections)
+  const title = `${ownerName} · AI Deal Review${generatedOn ? ` · Generated ${fmtGeneratedDate(generatedOn)}` : ''}`
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -102,7 +125,7 @@ export function SalesUserAIModal({ ownerId, ownerName, onClose }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 bg-[#00ADB1] rounded-t-xl shrink-0">
           <div className="min-w-0">
-            <h3 className="font-semibold text-white truncate">{ownerName}</h3>
+            <h3 className="font-semibold text-white truncate" title={title}>{title}</h3>
             <p className="text-xs text-white/70 mt-0.5">
               {loading ? 'Generating…' : `${sections.length} ${sections.length === 1 ? 'deal' : 'deals'}`}
               {!loading && reusedCount > 0 && ` · ${reusedCount} reused`}
