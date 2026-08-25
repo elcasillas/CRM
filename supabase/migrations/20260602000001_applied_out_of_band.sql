@@ -6,10 +6,22 @@
 -- original statements could not be recovered.
 --
 -- The file exists so local migration history matches the remote, which is what
--- lets 'supabase db push' run. It is intentionally a no-op: the remote already
--- has whatever schema change this version made.
+-- lets 'supabase db push' run. It is intentionally a no-op.
 --
--- WARNING: rebuilding a database purely from this directory will NOT reproduce
--- this change. The authoritative record of the current schema is
--- lib/supabase/database.types.ts, regenerated from the live database.
+-- What these eight migrations changed was recovered by auditing the live
+-- database on 2026-08-25:
+--
+--   tables, columns, RPCs   identical to the committed database.types.ts
+--   indexes  (63)           every one created by a committed migration
+--   functions (17)          every one created by a committed migration
+--   policies (77)           one was missing, now restored by
+--                           20260825000001_restore_deals_select_all_authenticated.sql
+--
+-- So the structural gap is closed: a database rebuilt from this directory now
+-- reproduces the live schema, indexes, functions and RLS policies.
+--
+-- What remains unrecoverable is data: any rows these migrations inserted,
+-- updated or deleted. Introspection cannot distinguish seeded rows from rows
+-- created through the app, so if one of these versions corrected data, that
+-- correction is not represented here. Replace this file if the original turns up.
 SELECT 1;
