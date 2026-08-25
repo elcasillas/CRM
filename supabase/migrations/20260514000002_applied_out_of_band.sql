@@ -1,0 +1,15 @@
+-- Placeholder for migration 20260514000002.
+--
+-- This version is recorded as applied in the remote database's migration
+-- history, but its SQL was never committed to this repository. It was applied
+-- from another clone or directly through the Supabase SQL editor, and the
+-- original statements could not be recovered.
+--
+-- The file exists so local migration history matches the remote, which is what
+-- lets 'supabase db push' run. It is intentionally a no-op: the remote already
+-- has whatever schema change this version made.
+--
+-- WARNING: rebuilding a database purely from this directory will NOT reproduce
+-- this change. The authoritative record of the current schema is
+-- lib/supabase/database.types.ts, regenerated from the live database.
+SELECT 1;
