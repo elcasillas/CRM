@@ -13,6 +13,37 @@ import { sanitizeGeneratedText } from './ai-sanitize'
 
 const STALE_INSPECTION_HOURS = 2
 
+/**
+ * Stages a deal must not be in to appear in the per-salesperson report. Once a
+ * contract is signed the deal is no longer a forecast question, so follow-up
+ * items about it are noise. "Closed Implemented" and "Closed Lost" are already
+ * closed stages, named here as well so eligibility does not depend on the
+ * is_closed flag staying correct in configuration.
+ */
+export const FOLLOWUP_EXCLUDED_STAGES = [
+  'Contract Signed',
+  'Implementing',
+  'Closed Implemented',
+  'Closed Lost',
+] as const
+
+const EXCLUDED_LOOKUP = new Set<string>(FOLLOWUP_EXCLUDED_STAGES.map(n => n.toLowerCase()))
+
+/**
+ * Whether a deal in this stage may be generated for. Evaluated against the
+ * deal's current stage before any saved content is consulted, so a deal that
+ * has moved into an excluded stage is dropped regardless of what was stored
+ * for it, and one that moves back out becomes eligible again.
+ */
+export function isStageEligibleForFollowUp(
+  stageName: string | null | undefined,
+  isClosed?: boolean | null,
+): boolean {
+  if (isClosed) return false
+  if (!stageName) return true
+  return !EXCLUDED_LOOKUP.has(stageName.trim().toLowerCase())
+}
+
 export class DealFollowUpError extends Error {
   status: number
   constructor(message: string, status = 500) {

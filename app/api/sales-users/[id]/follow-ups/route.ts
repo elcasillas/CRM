@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assertManagerOrAdmin } from '@/lib/api-helpers'
-import { getOrGenerateDealFollowUp } from '@/lib/deal-followup'
+import { getOrGenerateDealFollowUp, isStageEligibleForFollowUp } from '@/lib/deal-followup'
 
 // ── POST — follow-up content for every open deal of one salesperson ──────────
 // Same generator as the single-deal Email and Template actions, run across the
@@ -46,17 +46,20 @@ export async function POST(
     .maybeSingle()
   if (!owner) return NextResponse.json({ error: 'Salesperson not found' }, { status: 404 })
 
-  // The salesperson's deals as the Deals page represents them: open stages only
   const { data: dealRows, error: dealsErr } = await admin
     .from('deals')
-    .select('id, deal_name, deal_stages ( is_closed )')
+    .select('id, deal_name, deal_stages ( stage_name, is_closed )')
     .eq('deal_owner_id', ownerId)
   if (dealsErr) return NextResponse.json({ error: dealsErr.message }, { status: 502 })
 
+  // Stage eligibility is settled first, on the deal's current stage, before any
+  // saved content is read or any generation is considered. An excluded deal is
+  // therefore never displayed, generated, regenerated or copied, whatever is
+  // stored for it and whether or not this is a forced refresh.
   const openDeals = (dealRows ?? []).filter(d => {
-    const stage = d.deal_stages as { is_closed: boolean }[] | { is_closed: boolean } | null
+    const stage = d.deal_stages as { stage_name: string; is_closed: boolean }[] | { stage_name: string; is_closed: boolean } | null
     const resolved = Array.isArray(stage) ? stage[0] : stage
-    return !resolved?.is_closed
+    return isStageEligibleForFollowUp(resolved?.stage_name, resolved?.is_closed)
   })
 
   if (openDeals.length === 0) {
