@@ -48,9 +48,6 @@ CREATE POLICY "followup_cache: update if deal visible"
     )
   );
 
-CREATE INDEX IF NOT EXISTS idx_followup_cache_generated_at
-  ON public.deal_followup_cache (generated_at);
-
 DROP TRIGGER IF EXISTS set_updated_at_deal_followup_cache ON public.deal_followup_cache;
 CREATE TRIGGER set_updated_at_deal_followup_cache
   BEFORE UPDATE ON public.deal_followup_cache
