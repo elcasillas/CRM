@@ -1,13 +1,37 @@
 import { createHash } from 'crypto'
 import { SOURCE_FRAMING_RULES, PLAIN_PUNCTUATION_RULES } from './ai-prompt-rules'
+import { DATE_AWARENESS_RULES, buildDateContext } from './ai-date-context'
+import { criteriaForStage, buildSummaryStageBlock } from './deal-stage-criteria'
 import { sanitizeGeneratedText } from './ai-sanitize'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-export const MODEL_TAG = 'haiku-s2'
+// Bumped whenever the summary prompt changes, so cached summaries written
+// under the previous prompt regenerate rather than being served.
+export const MODEL_TAG = 'haiku-s3'
 
 export function buildCanonical(texts: string[]): string {
   const unique = [...new Set(texts.map(t => t.trim()).filter(Boolean))].sort()
   return unique.join('\n---\n')
+}
+
+/** The CRM fields the summary is allowed to reason about, beside the notes. */
+export interface SummaryDealFacts {
+  dealName:           string
+  stageName:          string | null
+  closeDate:          string | null
+  amount:             number | null
+  acv:                number | null
+  tcv:                number | null
+  contractTermMonths: number | null
+}
+
+/**
+ * Cache identity beyond the notes. The summary is scoped to the deal's stage
+ * and speaks to its commercial fields, so a stage change or an edited amount
+ * has to invalidate the cached summary just as an edited note does.
+ */
+export function factsFingerprint(f: SummaryDealFacts): string {
+  return [f.stageName ?? '', f.closeDate ?? '', f.amount ?? '', f.acv ?? '', f.tcv ?? '', f.contractTermMonths ?? ''].join('|')
 }
 
 export function sha256Hex(text: string): string {
@@ -46,7 +70,7 @@ export function stripRestrictedPunctuation(text: string): string {
   return out
 }
 
-export async function callSummarizeLLM(canonical: string, dealName: string): Promise<string> {
+export async function callSummarizeLLM(canonical: string, facts: SummaryDealFacts): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) throw new Error('OPENROUTER_API_KEY not configured')
   const model = (process.env.OPENROUTER_MODEL || 'anthropic/claude-haiku-4-5').trim()
@@ -55,6 +79,26 @@ export async function callSummarizeLLM(canonical: string, dealName: string): Pro
     .split('\n---\n')
     .map((n, i) => `${i + 1}. ${n.trim()}`)
     .join('\n')
+
+  // Stage decides what the four sections are about. An unrecognised stage falls
+  // back to an unscoped summary rather than to an empty scope.
+  const criteria = criteriaForStage(facts.stageName)
+  const stageBlock = criteria ? `${buildSummaryStageBlock(criteria)}\n\n` : ''
+  const dateContext = buildDateContext([facts.closeDate, canonical], new Date())
+
+  const money = (v: number | null) => v == null ? 'Not set' : `$${Math.round(v).toLocaleString()}`
+  const userContent = `${dateContext}
+
+${stageBlock}Deal: "${facts.dealName}"
+Stage: ${facts.stageName ?? 'Not set'}
+Close Date: ${facts.closeDate ?? 'Not set'}
+Amount: ${money(facts.amount)}
+ACV: ${money(facts.acv)}
+TCV: ${money(facts.tcv)}
+Contract Term: ${facts.contractTermMonths != null ? `${facts.contractTermMonths} months` : 'Not set'}
+
+Notes:
+${noteLines}`
 
   const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
@@ -85,16 +129,19 @@ Rules:
 - If the notes contain no relevant information for a section, write a single neutral sentence such as "No blockers have been identified at this time." or "No specific timeline or next steps are noted."
 - Be specific. Include names, dates, and action items where the notes mention them.
 - Remove duplicate or repeated information while preserving the underlying facts.
-- Do not invent or infer facts beyond what the notes contain.
+- Do not invent or infer facts beyond what the notes and deal fields contain.
 - Keep the tone professional and concise, suitable for a quick cross deal review.
+- Where the user message contains a STAGE block, it is authoritative for all four sections.
 
 ${SOURCE_FRAMING_RULES}
+
+${DATE_AWARENESS_RULES}
 
 ${PLAIN_PUNCTUATION_RULES}`,
         },
         {
           role: 'user',
-          content: `Deal: "${dealName}"\nNotes:\n${noteLines}`,
+          content: userContent,
         },
       ],
     }),
@@ -119,7 +166,7 @@ export interface SummaryResult {
 export async function getOrCreateSummary(dealId: string, admin: SupabaseClient<any>): Promise<SummaryResult | null> {
   const { data: deal, error: dealErr } = await admin
     .from('deals')
-    .select('deal_name')
+    .select('deal_name, close_date, amount, value_amount, total_contract_value, contract_term_months, deal_stages ( stage_name )')
     .eq('id', dealId)
     .single()
   if (dealErr || !deal) return null
@@ -134,7 +181,20 @@ export async function getOrCreateSummary(dealId: string, admin: SupabaseClient<a
   const canonical = buildCanonical(notesTexts)
   if (!canonical) return null
 
-  const notesHash = sha256Hex(canonical)
+  const stagesVal = deal.deal_stages as { stage_name: string }[] | { stage_name: string } | null
+  const facts: SummaryDealFacts = {
+    dealName:           deal.deal_name as string,
+    stageName:          (Array.isArray(stagesVal) ? stagesVal[0] : stagesVal)?.stage_name ?? null,
+    closeDate:          (deal.close_date as string | null) ?? null,
+    amount:             (deal.amount as number | null) ?? null,
+    acv:                (deal.value_amount as number | null) ?? null,
+    tcv:                (deal.total_contract_value as number | null) ?? null,
+    contractTermMonths: (deal.contract_term_months as number | null) ?? null,
+  }
+
+  // Stage and commercial fields are part of the cache identity, since the
+  // summary is scoped to them as much as to the notes.
+  const notesHash = sha256Hex(`${canonical}\n::facts::${factsFingerprint(facts)}`)
 
   const { data: cached } = await admin
     .from('deal_summary_cache')
@@ -150,7 +210,7 @@ export async function getOrCreateSummary(dealId: string, admin: SupabaseClient<a
   if (cached?.summary) {
     summary = cached.summary
   } else {
-    summary = await callSummarizeLLM(canonical, deal.deal_name)
+    summary = await callSummarizeLLM(canonical, facts)
     if (!summary) return null
 
     await admin.from('deal_summary_cache').upsert(

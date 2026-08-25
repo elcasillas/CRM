@@ -1,4 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { DEFAULT_CHECKS, type InspectionCheckDef } from './deal-inspect-checks'
+// Re-exported so existing importers keep a single entry point
+export { DEFAULT_CHECKS, type InspectionCheckDef }
 import { buildDateContext } from './ai-date-context'
 import { SHARED_GENERATION_RULES } from './ai-prompt-rules'
 import { getOrCreateSummary } from './deal-summarize'
@@ -6,12 +9,6 @@ import { extractDealRevenue } from './dealCalc'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export interface InspectionCheckDef {
-  id:       string
-  label:    string
-  severity: 'critical' | 'medium' | 'low'
-  enabled:  boolean
-}
 
 export interface CheckResult {
   id:          string
@@ -30,23 +27,7 @@ export interface InspectionResult {
 
 // ── Default check definitions ─────────────────────────────────────────────────
 
-export const DEFAULT_CHECKS: InspectionCheckDef[] = [
-  { id: 'stage_valid',           label: 'Deal stage is present and valid',                    severity: 'critical', enabled: true },
-  { id: 'close_date_credible',   label: 'Close date is present and still credible',           severity: 'critical', enabled: true },
-  { id: 'amount_reasonable',     label: 'Amount is present and reasonable',                   severity: 'critical', enabled: true },
-  { id: 'contract_term',         label: 'Contract term is present',                           severity: 'medium',   enabled: true },
-  { id: 'acv_tcv_aligned',       label: 'ACV and TCV are present and aligned',                severity: 'medium',   enabled: true },
-  { id: 'next_step_defined',     label: 'Next step is clearly defined',                       severity: 'critical', enabled: true },
-  { id: 'next_step_owner',       label: 'Next step owner is clear',                           severity: 'medium',   enabled: true },
-  { id: 'next_step_date',        label: 'Next step date is present',                          severity: 'medium',   enabled: true },
-  { id: 'recent_update',         label: 'Last meaningful update is recent',                   severity: 'medium',   enabled: true },
-  { id: 'decision_process',      label: 'Customer decision process is described',             severity: 'critical', enabled: true },
-  { id: 'economic_buyer',        label: 'Executive decision maker is identified',             severity: 'critical', enabled: true },
-  { id: 'business_problem',      label: 'Business problem or use case is defined',            severity: 'medium',   enabled: true },
-  { id: 'blockers_documented',   label: 'Blockers or risks are documented',                   severity: 'medium',   enabled: true },
-  { id: 'customer_intent',       label: 'Customer intent or commitment level is described',   severity: 'critical', enabled: true },
-  { id: 'implementation_target', label: 'Timeline or implementation target is documented',    severity: 'low',      enabled: true },
-]
+
 
 // IDs evaluated programmatically (no LLM needed)
 const STRUCTURED_CHECK_IDS = new Set([

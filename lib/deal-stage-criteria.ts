@@ -1,4 +1,4 @@
-import { DEFAULT_CHECKS } from './deal-inspect'
+import { DEFAULT_CHECKS } from './deal-inspect-checks'
 
 // ── Stage-appropriate inspection scope ───────────────────────────────────────
 // A deal early in the pipeline should not be questioned about things that are
@@ -7,7 +7,8 @@ import { DEFAULT_CHECKS } from './deal-inspect'
 // Conversation deal is never asked about contract terms and a Contract
 // Negotiations deal is never asked to restate its business problem.
 //
-// checkIds are inspection check ids from DEFAULT_CHECKS in deal-inspect, so the
+// checkIds are inspection check ids from DEFAULT_CHECKS, imported from the leaf
+// module rather than from deal-inspect to avoid an import cycle, so the
 // scope and the inspection engine cannot drift apart.
 
 export interface StageCriteria {
@@ -19,6 +20,8 @@ export interface StageCriteria {
   guideline: string
   /** inspection check ids in scope at this stage */
   checkIds: string[]
+  /** what the four summary sections should emphasise at this stage */
+  summaryFocus: string
 }
 
 export const STAGE_CRITERIA: StageCriteria[] = [
@@ -36,6 +39,8 @@ export const STAGE_CRITERIA: StageCriteria[] = [
       'next_step_owner',
       'next_step_date',
     ],
+    summaryFocus:
+      'whether the opportunity is real, the business need behind it, the current level of engagement, and the immediate next step. Do not raise contract terms, ACV or TCV, executive decision makers, the decision process, commitment level, or negotiation detail unless the notes already document them.',
   },
   {
     stage: 'Solution Qualified',
@@ -47,6 +52,8 @@ export const STAGE_CRITERIA: StageCriteria[] = [
       'implementation_target',
       'blockers_documented',
     ],
+    summaryFocus:
+      'commercial and technical viability, scope, known risks, implementation timing, and qualification activity. Do not draw conclusions from later stage expectations such as executive approval, competitive shortlisting, or a path to signature.',
   },
   {
     stage: 'Presenting to EDM',
@@ -56,6 +63,8 @@ export const STAGE_CRITERIA: StageCriteria[] = [
       'economic_buyer',
       'decision_process',
     ],
+    summaryFocus:
+      'who is involved in the decision, whether the executive decision maker is known, progress toward executive engagement, how the customer intends to evaluate and approve, and activity that bears directly on the decision process. Do not require evidence of final commitment or of contract negotiation unless the notes already document it.',
   },
   {
     stage: 'Short Listed',
@@ -65,6 +74,8 @@ export const STAGE_CRITERIA: StageCriteria[] = [
       'customer_intent',
       'close_date_credible',
     ],
+    summaryFocus:
+      'evidence the customer is actively considering the solution, their commitment level, competitive position where known, the decision activity that remains, and whether the projected close date is still realistic. Do not introduce contract negotiation expectations unless negotiations have actually started and are documented.',
   },
   {
     stage: 'Contract Negotiations',
@@ -79,6 +90,8 @@ export const STAGE_CRITERIA: StageCriteria[] = [
       'next_step_owner',
       'next_step_date',
     ],
+    summaryFocus:
+      'current negotiation status, the commercial terms under discussion, remaining contractual or approval blockers, what is required to reach signature, who owns each critical next step, and the expected timing to signature.',
   },
 ]
 
@@ -117,4 +130,31 @@ ${lines.join('\n')}
 - Do not treat information as missing when it is not yet expected at this stage.
 - Where a criterion above is already satisfied by the deal data or the notes, do not raise it. Say nothing rather than inventing a question.
 - If every criterion above is satisfied, write the smallest number of items that remain genuinely useful, even if that is fewer than three.`
+}
+
+/**
+ * The stage block for the deal summary. Scopes all four sections to the
+ * expectations of the current stage, so nothing belonging to a later stage is
+ * reported as missing or as a blocker.
+ */
+export function buildSummaryStageBlock(
+  criteria: StageCriteria,
+  labels?: Map<string, string>,
+): string {
+  const lines = criteria.checkIds.map(id => `- ${labels?.get(id) ?? DEFAULT_LABELS.get(id) ?? id}`)
+  return `STAGE (mandatory):
+This deal is at stage "${criteria.stage}". The purpose of this stage is to establish that ${criteria.maturity}.
+${criteria.guideline}
+
+The criteria that matter at this stage:
+${lines.join('\n')}
+
+Across all four sections, focus on ${criteria.summaryFocus}
+
+- Write every section from the expectations of this stage alone. Do not assess the deal against a fuller checklist.
+- Never describe information that belongs to a later stage as missing, lacking, or a deficiency.
+- Earlier stage information may be referenced where it still materially affects the deal, but this stage sets what the summary is about.
+- Current Blockers: only what actually impedes progress out of this stage. Information not yet expected is not a blocker. With none, say so plainly instead of manufacturing one.
+- Timeline and Next Steps: describe what is required to progress toward the next stage. A milestone date that has passed is overdue, missed or completed, never upcoming, and say when a date needs updating.
+- Do not invent a question, blocker, risk or next step to fill a section.`
 }
