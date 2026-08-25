@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { assertManagerOrAdmin } from '@/lib/api-helpers'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getOrGenerateDealFollowUp, DealFollowUpError } from '@/lib/deal-followup'
 
@@ -16,9 +16,9 @@ export async function POST(
   // Optional { force: true } bypasses saved output for this deal
   const force = await req.json().then(b => b?.force === true).catch(() => false)
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // Same restriction as the rest of the Deal Details content
+  const user = await assertManagerOrAdmin()
+  if (!user) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   try {
     const result = await getOrGenerateDealFollowUp(id, createAdminClient(), { force })

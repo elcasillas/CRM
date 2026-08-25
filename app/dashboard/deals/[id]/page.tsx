@@ -1116,8 +1116,8 @@ export default function DealDetailPage() {
         />
       )}
 
-      {/* Deal Details Modal */}
-      {showDetailsModal && (
+      {/* Deal Details Modal — role gated as well as the icon that opens it */}
+      {showDetailsModal && canViewAI && (
         <DealDetailsModal
           deal={deal}
           slackMemberId={deal.deal_owner?.slack_member_id}
