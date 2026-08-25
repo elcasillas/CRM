@@ -1138,18 +1138,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      can_view_account: {
-        Args: { acct_id: string; uid: string }
-        Returns: boolean
-      }
-      can_view_note_entity: {
-        Args: { eid: string; etype: string; uid: string }
-        Returns: boolean
-      }
-      can_view_partner: {
-        Args: { p_id: string; uid: string }
-        Returns: boolean
-      }
       evaluate_partner_alerts: {
         Args: { p_partner_id: string }
         Returns: undefined
@@ -1242,7 +1230,6 @@ export type Database = {
           website: string
         }[]
       }
-      is_admin: { Args: { uid: string }; Returns: boolean }
       recompute_all_deal_health_scores: { Args: never; Returns: number }
       recompute_all_partner_health_scores: { Args: never; Returns: number }
       recompute_deal_health_score: {
