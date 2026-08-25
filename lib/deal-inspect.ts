@@ -144,13 +144,13 @@ export function evaluateStructuredChecks(
 
     if (rev.acv <= 0) {
       // No ACV at all — could not be computed
-      results.push({ id: def.id, label: def.label, status: 'missing', explanation: 'ACV has not been computed — likely because the revenue amount is missing.', question: 'Please confirm the contract amount so ACV and TCV can be calculated.', severity: def.severity })
+      results.push({ id: def.id, label: def.label, status: 'missing', explanation: 'ACV has not been computed, likely because the revenue amount is missing.', question: 'Please confirm the contract amount so ACV and TCV can be calculated.', severity: def.severity })
     } else if (rev.tcv <= 0 && rev.term > 0) {
       // ACV is present but TCV is missing despite a term being set — data gap
       results.push({ id: def.id, label: def.label, status: 'missing', explanation: `ACV is $${Math.round(rev.acv).toLocaleString()} but TCV is not recorded despite a ${rev.term}-month term.`, question: 'Please verify the total contract value is correctly set.', severity: def.severity })
     } else if (rev.tcv <= 0) {
       // No term → TCV cannot be computed; ACV alone is acceptable (one-time or term not entered)
-      results.push({ id: def.id, label: def.label, status: 'pass', explanation: `ACV is $${Math.round(rev.acv).toLocaleString()}${rev.isOneTime ? ' (one-time)' : '; TCV not computed — no contract term set'}.`, question: null, severity: def.severity })
+      results.push({ id: def.id, label: def.label, status: 'pass', explanation: `ACV is $${Math.round(rev.acv).toLocaleString()}${rev.isOneTime ? ' (one-time)' : '; TCV not computed, no contract term set'}.`, question: null, severity: def.severity })
     } else {
       // Both ACV and TCV present — verify rough alignment (±5% tolerance for rounding)
       const expectedTcv = rev.term === 1 ? rev.acv : (rev.mrr > 0 ? rev.mrr * rev.term : rev.acv)
@@ -214,7 +214,7 @@ async function callInspectionLLM(
   const model = (process.env.OPENROUTER_MODEL || 'anthropic/claude-haiku-4-5').trim()
 
   const checksSpec = pendingDefs.map((d, i) =>
-    `${i + 1}. id="${d.id}" — ${d.label}`
+    `${i + 1}. id="${d.id}": ${d.label}`
   ).join('\n')
 
   const notesBlock = notes.length > 0
@@ -414,7 +414,7 @@ export async function runInspection(
         id:          def.id,
         label:       def.label,
         status:      'missing' as const,
-        explanation: 'Could not evaluate — AI inspection unavailable.',
+        explanation: 'Could not evaluate. Inspection unavailable.',
         question:    `Please provide an update on: ${def.label.toLowerCase()}.`,
         severity:    def.severity,
       }))

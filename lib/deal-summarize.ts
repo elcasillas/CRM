@@ -1,5 +1,6 @@
 import { createHash } from 'crypto'
 import { SOURCE_FRAMING_RULES, PLAIN_PUNCTUATION_RULES } from './ai-prompt-rules'
+import { normalizeDashes } from './ai-sanitize'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const MODEL_TAG = 'haiku-s2'
@@ -31,17 +32,14 @@ export function stripRestrictedPunctuation(text: string): string {
     const idx = Number(mo) - 1
     return idx >= 0 && idx < 12 ? `${MONTH_NAMES[idx]} ${Number(d)}, ${y}` : m
   })
-  // Year and numeric ranges
-  out = out.replace(/(\d)\s*[-–—]\s*(\d)/g, '$1 to $2')
-  // Dash bullets at the start of a line
-  out = out.replace(/^[ \t]*[-–—]+[ \t]+/gm, '')
-  // Clause breaks: dash or semicolon between words becomes a sentence break
-  out = out.replace(/\s*[;]\s*/g, '. ')
-  out = out.replace(/\s+[–—]+\s+/g, '. ')
-  // Compound words keep both halves, joined by a space
-  out = out.replace(/(\w)[-–—]+(\w)/g, '$1 $2')
-  // Anything left over
-  out = out.replace(/[-–—]/g, '')
+  // Em and en dashes, via the shared sanitiser
+  out = normalizeDashes(out)
+  // Hyphen ranges, hyphen bullets, then compounds and leftovers
+  out = out.replace(/(\d)\s*-\s*(\d)/g, '$1 to $2')
+  out = out.replace(/^[ \t]*-+[ \t]+/gm, '')
+  out = out.replace(/\s*;\s*/g, '. ')
+  out = out.replace(/(\w)-+(\w)/g, '$1 $2')
+  out = out.replace(/-/g, '')
   // Capitalise after the sentence breaks introduced above
   out = out.replace(/([.!?]\s+)([a-z])/g, (_m, p, c) => p + c.toUpperCase())
   // Tidy spacing left behind
@@ -86,10 +84,10 @@ Rules:
 - Include all four sections every time, in the order listed above. Do not rename, skip, or reorder them.
 - Write each section as one or two complete, professional sentences. Do not use bullet points or lists.
 - If the notes contain no relevant information for a section, write a single neutral sentence such as "No blockers have been identified at this time." or "No specific timeline or next steps are noted."
-- Be specific — include names, dates, and action items where the notes mention them.
+- Be specific. Include names, dates, and action items where the notes mention them.
 - Remove duplicate or repeated information while preserving the underlying facts.
 - Do not invent or infer facts beyond what the notes contain.
-- Keep the tone professional and concise — suitable for a quick cross-deal review.
+- Keep the tone professional and concise, suitable for a quick cross deal review.
 
 ${SOURCE_FRAMING_RULES}
 

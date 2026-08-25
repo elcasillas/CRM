@@ -169,7 +169,7 @@ export function extractDateRefs(text: string, today: Date): DateRef[] {
     for (const m of text.matchAll(re)) {
       push(m[0], {
         classification: 'ambiguous',
-        note: 'relative to when the note was written, which may itself be long past — do not assume it is still upcoming',
+        note: 'relative to when the note was written, which may itself be long past, so do not assume it is still upcoming',
       })
     }
   }
@@ -240,8 +240,8 @@ export const DATE_AWARENESS_RULES = `DATE AWARENESS (mandatory):
 - Never describe a PAST date as upcoming, planned, or still targeted.
 - Never ask whether something "will happen", "will slip", "will delay", "is still on track for", or "is still targeting" a PAST date.
 - For a PAST milestone, convert "Will X happen?" into "Did X happen? If not, what is the current status and the revised date?" Ask about the actual outcome.
-- You may cite a past date as historical context — say it "was previously identified" or "was the planned date" and note that it has passed — but the question itself must be about current status, outcome, or next steps.
+- You may cite a past date as historical context. Say it "was previously identified" or "was the planned date" and note that it has passed. The question itself must still be about current status, outcome, or next steps.
 - Never invent or guess a replacement date. If no newer date exists in the data, ask the rep for the current or revised target date.
 - Treat AMBIGUOUS references as unverified. Do not assert they are still in the future; ask for a concrete date instead.
-- FUTURE dates are still actionable — ask normal forward-looking questions about them.
+- FUTURE dates are still actionable. Ask normal forward looking questions about them.
 - Prioritise unresolved items that matter now or later: current status, outstanding decisions, next steps, blockers, and owners.`

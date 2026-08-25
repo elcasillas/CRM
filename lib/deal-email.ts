@@ -1,5 +1,6 @@
 import type { InspectionResult } from './deal-inspect'
 import { formatLastNoteLine } from './ai-date-context'
+import { normalizeDashes } from './ai-sanitize'
 
 // ── Owner follow-up email generation ─────────────────────────────────────────
 // Single source of truth for the "Email Owner" template. Both the Email Owner
@@ -34,8 +35,8 @@ export function fallbackOwnerEmail(deal: FallbackDealInfo, lastNoteAt?: string |
     '4. What is the current target date for the next milestone?',
   ].join('\n')
   return {
-    subject: deal.deal_name,
-    body: `${deal.deal_name}\n${lastNoteLine}\n\n${items}`,
+    subject: normalizeDashes(deal.deal_name),
+    body: normalizeDashes(`${deal.deal_name}\n${lastNoteLine}\n\n${items}`),
   }
 }
 
@@ -49,7 +50,11 @@ export async function composeOwnerEmail(dealId: string, deal: FallbackDealInfo, 
     if (res.ok) {
       const data = await res.json()
       if (data.subject && data.body) {
-        return { subject: data.subject, body: data.body, inspection: (data.inspection as InspectionResult) ?? null }
+        return {
+          subject: normalizeDashes(data.subject),
+          body: normalizeDashes(data.body),
+          inspection: (data.inspection as InspectionResult) ?? null,
+        }
       }
     }
   } catch (_e) { /* fall through to local template */ }

@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { runInspection, topMissingChecks, type InspectionCheckDef, type InspectionResult } from '@/lib/deal-inspect'
 import { buildDateContext, formatLastNoteLine } from '@/lib/ai-date-context'
 import { SHARED_GENERATION_RULES, FOLLOW_UP_OUTPUT_RULES } from '@/lib/ai-prompt-rules'
+import { normalizeDashes } from '@/lib/ai-sanitize'
 
 // ── POST — compose follow-up content for a deal ──────────────────────────────
 // Runs (or reuses) a deal inspection, then generates targeted follow-up items
@@ -98,7 +99,7 @@ export async function POST(
   if (inspectionResult) {
     const missing = topMissingChecks(inspectionResult, 6)
     if (missing.length > 0) {
-      missingItemsBlock = `\nINSPECTION GAPS (deal score ${inspectionResult.score}/100 — use these to drive the questions):\n` +
+      missingItemsBlock = `\nINSPECTION GAPS (deal score ${inspectionResult.score}/100, use these to drive the questions):\n` +
         missing.map(c => `- ${c.question ?? c.explanation}`).join('\n')
     }
   }
@@ -189,7 +190,8 @@ ${missingItemsBlock}`
     // always verbatim and the day count always reflects the current date.
     const dealName = deal.deal_name as string
     const lastNoteLine = formatLastNoteLine(latestNote?.created_at as string | undefined, new Date())
-    const body = `${dealName}\n${lastNoteLine}\n\n${items}`
+    // Final guard: no em or en dash may reach the client, whatever the model did
+    const body = normalizeDashes(`${dealName}\n${lastNoteLine}\n\n${items}`)
 
     return NextResponse.json({
       subject:    dealName,
