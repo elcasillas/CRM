@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { runInspection, topMissingChecks, type InspectionCheckDef, type InspectionResult } from './deal-inspect'
 import { buildDateContext, formatLastNoteLine, type LastNoteStyle } from './ai-date-context'
 import { SHARED_GENERATION_RULES, FOLLOW_UP_OUTPUT_RULES } from './ai-prompt-rules'
+import { criteriaForStage, buildStageScopeBlock } from './deal-stage-criteria'
 import { sanitizeGeneratedText } from './ai-sanitize'
 
 // ── Deal follow-up generation ────────────────────────────────────────────────
@@ -160,14 +161,30 @@ export async function generateDealFollowUp(
     ? new Intl.NumberFormat('en-CA', { style: 'currency', currency: 'CAD', maximumFractionDigits: 0 }).format(deal.value_amount as number)
     : 'N/A'
 
-  // Build the missing-items block for the email prompt — top 3–6 by severity
+  // Stage decides what may be asked about. Criteria outside the deal's current
+  // stage are dropped before they can drive a question, so the scope is
+  // enforced on the input as well as stated in the prompt.
+  const stageCriteria = criteriaForStage(stageName)
+
   let missingItemsBlock = ''
+  let stageScopeBlock = ''
   if (inspectionResult) {
-    const missing = topMissingChecks(inspectionResult, 6)
+    const inScope = stageCriteria
+      ? { ...inspectionResult, checks: inspectionResult.checks.filter(c => stageCriteria.checkIds.includes(c.id)) }
+      : inspectionResult
+    const missing = topMissingChecks(inScope, 6)
     if (missing.length > 0) {
-      missingItemsBlock = `\nINSPECTION GAPS (deal score ${inspectionResult.score}/100, use these to drive the questions):\n` +
+      missingItemsBlock = `\nINSPECTION GAPS (use these to drive the questions):\n` +
         missing.map(c => `- ${c.question ?? c.explanation}`).join('\n')
+    } else if (stageCriteria) {
+      missingItemsBlock = `\nINSPECTION GAPS: none. Every criterion in scope for this stage is already satisfied.`
     }
+    if (stageCriteria) {
+      const labels = new Map(inspectionResult.checks.map(c => [c.id, c.label]))
+      stageScopeBlock = `\n${buildStageScopeBlock(stageCriteria, labels)}\n`
+    }
+  } else if (stageCriteria) {
+    stageScopeBlock = `\n${buildStageScopeBlock(stageCriteria)}\n`
   }
 
   const summaryContext = deal.ai_summary
@@ -179,6 +196,8 @@ export async function generateDealFollowUp(
 Tone: direct, professional, practical. Each item should sound like a manager who has read the deal and wants a specific answer.
 
 Base the items on the inspection gaps provided, prioritising critical gaps.
+
+Where the user message contains a STAGE SCOPE block, it is authoritative: write items only about the criteria it lists.
 
 ${FOLLOW_UP_OUTPUT_RULES}
 
@@ -197,7 +216,7 @@ ${SHARED_GENERATION_RULES}`
   )
 
   const userContent = `${dateContext}
-
+${stageScopeBlock}
 Deal: "${deal.deal_name as string}"
 Owner: ${ownerName}
 Stage: ${stageName}
@@ -288,6 +307,12 @@ interface GetOrGenerateOptions extends GenerateOptions {
   force?: boolean
   /** Deal name, when the caller already holds it. Saves a lookup on cache hits. */
   dealName?: string
+  /**
+   * Current stage id, when the caller already holds it, which skips the lookup.
+   * Saved items are scoped to the stage they were generated for, so a change
+   * counts as staleness however recent they are.
+   */
+  stageId?: string | null
 }
 
 function modelTag(): string {
@@ -306,18 +331,27 @@ export async function getOrGenerateDealFollowUp(
   admin: SupabaseClient<any>,
   opts: GetOrGenerateOptions = {},
 ): Promise<CachedFollowUp> {
-  const { force = false, dealName: knownName, ...genOpts } = opts
+  const { force = false, dealName: knownName, stageId: knownStageId, ...genOpts } = opts
   const lastNoteStyle = genOpts.lastNoteStyle ?? 'prefixed'
 
   const { data: cached } = await admin
     .from('deal_followup_cache')
-    .select('items, generated_at')
+    .select('items, generated_at, stage_id')
     .eq('deal_id', dealId)
     .maybeSingle()
 
+  // Current stage, needed to tell whether saved items still match their scope
+  let stageId: string | null | undefined = knownStageId
+  if (stageId === undefined) {
+    const { data: row } = await admin.from('deals').select('stage_id').eq('id', dealId).maybeSingle()
+    stageId = (row?.stage_id as string | undefined) ?? null
+  }
+
   const cachedAt = cached?.generated_at ? new Date(cached.generated_at as string) : null
   const ageMs = cachedAt ? Date.now() - cachedAt.getTime() : Infinity
-  const isFresh = !!cached?.items && ageMs <= FOLLOWUP_MAX_AGE_DAYS * 86_400_000
+  // A null stored stage predates stage scoping, so it never counts as matching
+  const stageMatches = !!cached?.stage_id && cached.stage_id === stageId
+  const isFresh = !!cached?.items && ageMs <= FOLLOWUP_MAX_AGE_DAYS * 86_400_000 && stageMatches
 
   if (!force && isFresh) {
     const rendered = await renderCached(dealId, cached!.items as string, admin, lastNoteStyle, knownName, genOpts.latestNoteAt)
@@ -328,7 +362,7 @@ export async function getOrGenerateDealFollowUp(
     const fresh = await generateDealFollowUp(dealId, admin, genOpts)
     const generatedAt = new Date().toISOString()
     await admin.from('deal_followup_cache').upsert(
-      { deal_id: dealId, items: fresh.items, model: modelTag(), generated_at: generatedAt, updated_at: generatedAt },
+      { deal_id: dealId, items: fresh.items, model: modelTag(), stage_id: stageId, generated_at: generatedAt, updated_at: generatedAt },
       { onConflict: 'deal_id' },
     )
     return { ...fresh, fromCache: false, generatedAt }

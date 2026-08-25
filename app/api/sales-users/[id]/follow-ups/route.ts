@@ -48,7 +48,7 @@ export async function POST(
 
   const { data: dealRows, error: dealsErr } = await admin
     .from('deals')
-    .select('id, deal_name, deal_stages ( stage_name, is_closed )')
+    .select('id, deal_name, stage_id, deal_stages ( stage_name, is_closed )')
     .eq('deal_owner_id', ownerId)
   if (dealsErr) return NextResponse.json({ error: dealsErr.message }, { status: 502 })
 
@@ -98,6 +98,7 @@ export async function POST(
       const result = await getOrGenerateDealFollowUp(dealId, admin, {
         force,
         dealName,
+        stageId: (deal.stage_id as string | null) ?? null,
         lastNoteStyle: 'suffixed',
         latestNoteAt: latestNote.get(dealId) ?? null,
       })

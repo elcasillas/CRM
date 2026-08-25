@@ -274,6 +274,7 @@ export type Database = {
           generated_at: string
           items: string
           model: string
+          stage_id: string | null
           updated_at: string
         }
         Insert: {
@@ -282,6 +283,7 @@ export type Database = {
           generated_at?: string
           items: string
           model?: string
+          stage_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -290,6 +292,7 @@ export type Database = {
           generated_at?: string
           items?: string
           model?: string
+          stage_id?: string | null
           updated_at?: string
         }
         Relationships: [
