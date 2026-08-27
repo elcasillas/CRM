@@ -23,6 +23,9 @@ const MONTHS: Record<string, number> = {
 
 const MONTH_ALT = Object.keys(MONTHS).sort((a, b) => b.length - a.length).join('|')
 
+const MONTH_NAMES_LONG = ['January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December']
+
 /** Inclusive span a reference covers, plus whether it names a single day. */
 interface Span { start: Date; end: Date }
 
@@ -81,8 +84,11 @@ const RELATIVE_PATTERNS = [
  * Deterministic — no model involvement — so the same text always yields the
  * same classification.
  */
-export function extractDateRefs(text: string, today: Date): DateRef[] {
+export function extractDateRefs(text: string, today: Date, anchor?: Date | null): DateRef[] {
   if (!text) return []
+  // A bare month or quarter is relative to when the text was written, not to
+  // today. A note from July 2026 saying "September" means September 2026.
+  const from = anchor && !isNaN(anchor.getTime()) ? anchor : today
   const out: DateRef[] = []
   const seen = new Set<string>()
 
@@ -164,6 +170,44 @@ export function extractDateRefs(text: string, today: Date): DateRef[] {
     push(key, classifySpan(yearSpan(y), today))
   }
 
+  // Bare month name with no year, e.g. "a decision in September". Resolved to
+  // the first occurrence of that month at or after the anchor, so an older note
+  // does not make a still-future month look past. "May" is excluded: as a bare
+  // word it is far more often the verb.
+  const bareMonthRe = new RegExp(`\\b(${MONTH_ALT})\\b`, 'gi')
+  for (const m of text.matchAll(bareMonthRe)) {
+    const raw = m[0]
+    if (raw[0] !== raw[0].toUpperCase()) continue          // require capitalisation
+    if (/^may$/i.test(raw)) continue                        // ambiguous with the verb
+    const mo = MONTHS[raw.toLowerCase()]
+    if (mo == null || m.index == null) continue
+    // Skip when a year or day already qualifies it: handled above, precisely
+    const after  = text.slice(m.index + raw.length, m.index + raw.length + 12)
+    const before = text.slice(Math.max(0, m.index - 6), m.index)
+    if (/^\.?\s*(\d{1,2}(st|nd|rd|th)?,?\s*)?\d{4}\b/.test(after)) continue
+    if (/\d\s*$/.test(before)) continue
+
+    let year = from.getFullYear()
+    if (mo < from.getMonth()) year += 1                      // next occurrence forward
+    const res = classifySpan(monthSpan(year, mo), today)
+    push(raw, {
+      classification: res.classification,
+      note: `no year given, read as ${MONTH_NAMES_LONG[mo]} ${year} from the surrounding text; ${res.note}`,
+    })
+  }
+
+  // Bare quarter with no year, e.g. "slipping to Q4"
+  for (const m of text.matchAll(/\bQ([1-4])\b(?!\s*(?:of\s+)?[-/ ]?\s*\d{4})/gi)) {
+    const q = +m[1]
+    let year = from.getFullYear()
+    if (q < Math.floor(from.getMonth() / 3) + 1) year += 1
+    const res = classifySpan(quarterSpan(year, q), today)
+    push(m[0], {
+      classification: res.classification,
+      note: `no year given, read as Q${q} ${year} from the surrounding text; ${res.note}`,
+    })
+  }
+
   // Relative expressions — anchor unknown, so never asserted as future
   for (const re of RELATIVE_PATTERNS) {
     for (const m of text.matchAll(re)) {
@@ -217,9 +261,36 @@ const CLASS_LABEL: Record<DateClass, string> = {
  * Build the date-context block injected into an AI prompt: today's date plus
  * every date found in `sources`, classified past/current/future/ambiguous.
  */
-export function buildDateContext(sources: Array<string | null | undefined>, today: Date, maxRefs = 40): string {
-  const combined = sources.filter(Boolean).join('\n')
-  const refs = extractDateRefs(combined, today).slice(0, maxRefs)
+export interface DatedSource {
+  text: string | null | undefined
+  /** when this text was written, used to resolve bare months and quarters */
+  anchor?: Date | string | null
+}
+
+export function buildDateContext(
+  sources: Array<string | null | undefined | DatedSource>,
+  today: Date,
+  maxRefs = 40,
+): string {
+  // Each source is classified against its own anchor, so a bare month in an
+  // older note resolves from that note's date rather than from today.
+  const refs: DateRef[] = []
+  const seen = new Set<string>()
+  for (const src of sources) {
+    const isDated = typeof src === 'object' && src !== null
+    const text = isDated ? (src as DatedSource).text : (src as string | null | undefined)
+    if (!text) continue
+    const rawAnchor = isDated ? (src as DatedSource).anchor : null
+    const anchor = rawAnchor ? new Date(rawAnchor) : null
+    for (const ref of extractDateRefs(text, today, anchor)) {
+      const key = ref.text.trim().toLowerCase().replace(/\s+/g, ' ')
+      if (seen.has(key)) continue
+      seen.add(key)
+      refs.push(ref)
+      if (refs.length >= maxRefs) break
+    }
+    if (refs.length >= maxRefs) break
+  }
 
   let block = `TODAY'S DATE: ${formatToday(today)}\n`
   if (refs.length === 0) {
@@ -248,6 +319,9 @@ export const DATE_AWARENESS_RULES = `DATE AWARENESS (mandatory):
 - Never ask whether something "will happen", "will slip", "will delay", "is still on track for", or "is still targeting" a PAST date.
 - For a PAST milestone, convert "Will X happen?" into "Did X happen? If not, what is the current status and the revised date?" Ask about the actual outcome.
 - You may cite a past date as historical context. Say it "was previously identified" or "was the planned date" and note that it has passed. The question itself must still be about current status, outcome, or next steps.
+- Judge a date by the date itself, never by the age of the note that mentions it. An old note often refers to a date that is still ahead. A target first written months ago has not passed unless the target itself is behind today.
+- Where a month or quarter was written without a year, the classification line states the year it was read as, taken from the surrounding text. Trust that reading.
+- A FUTURE target is still live. You may ask whether the deal is on track for it, or ask for a more specific date, but never say or imply it has passed, slipped or been missed, and never ask for a revised date for it.
 - Never invent or guess a replacement date. If no newer date exists in the data, ask the rep for the current or revised target date.
 - Treat AMBIGUOUS references as unverified. Do not assert they are still in the future; ask for a concrete date instead.
 - FUTURE dates are still actionable. Ask normal forward looking questions about them.

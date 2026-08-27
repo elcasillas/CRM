@@ -7,7 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 
 // Bumped whenever the summary prompt changes, so cached summaries written
 // under the previous prompt regenerate rather than being served.
-export const MODEL_TAG = 'haiku-s3'
+export const MODEL_TAG = 'haiku-s4'
 
 export function buildCanonical(texts: string[]): string {
   const unique = [...new Set(texts.map(t => t.trim()).filter(Boolean))].sort()
@@ -15,6 +15,12 @@ export function buildCanonical(texts: string[]): string {
 }
 
 /** The CRM fields the summary is allowed to reason about, beside the notes. */
+/** A note plus the date it was written, so its dates can be anchored. */
+export interface SummaryNote {
+  text:      string
+  writtenAt: string
+}
+
 export interface SummaryDealFacts {
   dealName:           string
   stageName:          string | null
@@ -70,21 +76,33 @@ export function stripRestrictedPunctuation(text: string): string {
   return out
 }
 
-export async function callSummarizeLLM(canonical: string, facts: SummaryDealFacts): Promise<string> {
+export async function callSummarizeLLM(canonical: string, facts: SummaryDealFacts, notes: SummaryNote[] = []): Promise<string> {
   const apiKey = process.env.OPENROUTER_API_KEY
   if (!apiKey) throw new Error('OPENROUTER_API_KEY not configured')
   const model = (process.env.OPENROUTER_MODEL || 'anthropic/claude-haiku-4-5').trim()
 
-  const noteLines = canonical
-    .split('\n---\n')
-    .map((n, i) => `${i + 1}. ${n.trim()}`)
-    .join('\n')
+  // Each note is labelled with when it was written, which is what lets a bare
+  // month such as "September" be read as the year the note was written in.
+  const fmtNoteDate = (iso: string) => {
+    const d = new Date(iso)
+    // UTC, matching how the timestamp is stored, so the label cannot shift a day
+    return isNaN(d.getTime()) ? 'date unknown'
+      : d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+  }
+  const noteLines = notes.length > 0
+    ? notes.map((n, i) => `${i + 1}. [written ${fmtNoteDate(n.writtenAt)}] ${n.text.trim()}`).join('\n')
+    : canonical.split('\n---\n').map((n, i) => `${i + 1}. ${n.trim()}`).join('\n')
 
   // Stage decides what the four sections are about. An unrecognised stage falls
   // back to an unscoped summary rather than to an empty scope.
   const criteria = criteriaForStage(facts.stageName)
   const stageBlock = criteria ? `${buildSummaryStageBlock(criteria)}\n\n` : ''
-  const dateContext = buildDateContext([facts.closeDate, canonical], new Date())
+  const dateContext = buildDateContext(
+    notes.length > 0
+      ? [facts.closeDate, ...notes.map(n => ({ text: n.text, anchor: n.writtenAt }))]
+      : [facts.closeDate, canonical],
+    new Date(),
+  )
 
   const money = (v: number | null) => v == null ? 'Not set' : `$${Math.round(v).toLocaleString()}`
   const userContent = `${dateContext}
@@ -173,11 +191,17 @@ export async function getOrCreateSummary(dealId: string, admin: SupabaseClient<a
 
   const { data: notes } = await admin
     .from('notes')
-    .select('note_text')
+    .select('note_text, created_at')
     .eq('entity_type', 'deal')
     .eq('entity_id', dealId)
     .order('created_at', { ascending: true })
   const notesTexts = (notes ?? []).map((n: { note_text: string }) => n.note_text)
+  // Chronological, with dates, for the prompt. The canonical form below stays
+  // sorted and undated so the cache key depends on content alone.
+  const datedNotes: SummaryNote[] = (notes ?? []).map((n: { note_text: string; created_at: string }) => ({
+    text: n.note_text,
+    writtenAt: n.created_at,
+  }))
   const canonical = buildCanonical(notesTexts)
   if (!canonical) return null
 
@@ -210,7 +234,7 @@ export async function getOrCreateSummary(dealId: string, admin: SupabaseClient<a
   if (cached?.summary) {
     summary = cached.summary
   } else {
-    summary = await callSummarizeLLM(canonical, facts)
+    summary = await callSummarizeLLM(canonical, facts, datedNotes)
     if (!summary) return null
 
     await admin.from('deal_summary_cache').upsert(

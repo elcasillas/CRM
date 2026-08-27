@@ -7,6 +7,21 @@ import { SHARED_GENERATION_RULES } from './ai-prompt-rules'
 import { getOrCreateSummary } from './deal-summarize'
 import { extractDealRevenue } from './dealCalc'
 
+/** A note plus the date it was written, so its dates can be anchored. */
+export interface DatedNote {
+  text:      string
+  writtenAt: string
+}
+
+/** "July 28, 2026" — how a note's date is labelled for the model. */
+function fmtNoteDate(iso: string): string {
+  const d = new Date(iso)
+  return isNaN(d.getTime())
+    ? 'date unknown'
+    // UTC, matching how the timestamp is stored, so the label cannot shift a day
+    : d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 
@@ -187,7 +202,7 @@ interface DealContext {
 
 async function callInspectionLLM(
   ctx: DealContext,
-  notes: string[],
+  notes: DatedNote[],
   pendingDefs: InspectionCheckDef[],
 ): Promise<CheckResult[]> {
   const apiKey = process.env.OPENROUTER_API_KEY
@@ -198,8 +213,10 @@ async function callInspectionLLM(
     `${i + 1}. id="${d.id}": ${d.label}`
   ).join('\n')
 
+  // Each note is labelled with when it was written, which is what lets a bare
+  // month such as "September" be read as the year the note was written in.
   const notesBlock = notes.length > 0
-    ? notes.map(n => `- ${n.trim()}`).join('\n')
+    ? notes.map(n => `- [written ${fmtNoteDate(n.writtenAt)}] ${n.text.trim()}`).join('\n')
     : '(no notes available)'
 
   const summaryBlock = ctx.ai_summary
@@ -233,7 +250,12 @@ Rules:
 ${SHARED_GENERATION_RULES}`
 
   const dateContext = buildDateContext(
-    [ctx.close_date, ctx.deal_description, ctx.ai_summary, notesBlock],
+    [
+      ctx.close_date,
+      ctx.deal_description,
+      ctx.ai_summary,
+      ...notes.map(n => ({ text: n.text, anchor: n.writtenAt })),
+    ],
     new Date(),
   )
 
@@ -344,12 +366,15 @@ export async function runInspection(
   // Recent notes (up to 5)
   const { data: notesRows } = await admin
     .from('notes')
-    .select('note_text')
+    .select('note_text, created_at')
     .eq('entity_type', 'deal')
     .eq('entity_id', dealId)
     .order('created_at', { ascending: false })
     .limit(5)
-  const notes = (notesRows ?? []).map((n: { note_text: string }) => n.note_text)
+  const notes: DatedNote[] = (notesRows ?? []).map((n: { note_text: string; created_at: string }) => ({
+    text: n.note_text,
+    writtenAt: n.created_at,
+  }))
 
   const todayStr = new Date().toISOString().split('T')[0]
 
